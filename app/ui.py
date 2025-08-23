@@ -2,12 +2,12 @@ from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel, QVBoxLayout, QLineEd
 from PySide6.QtCore import Signal, QObject
 from .search import lookup_ticker
 
-
+#just window stuff how it looks, buttons, etc.
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Stock Screener")
-
+        self.details_window=None
         main_layout = QVBoxLayout()
 
         self.resize(800, 600)
@@ -30,7 +30,6 @@ class MainWindow(QWidget):
         self.result_label = QLabel("Enter a ticker and press Enter")
         main_layout.addWidget(self.result_label)
 
-
         self.setLayout(main_layout)
 
     def handle_search(self):
@@ -39,7 +38,19 @@ class MainWindow(QWidget):
             self.result_label.setText("Please enter a ticker symbol.")
             return
         result = lookup_ticker(ticker)
-        self.result_label.setText(result)
+        if not result:
+            self.result_label.setText("Ticker not Found")
+            return
+        self.details_window = DetailsWindow(result)
+        self.details_window.show()
+        self.hide()
+
 
 class DetailsWindow(QWidget):
-    pass
+    def __init__(self, ticker_data):
+        super().__init__()
+        self.setWindowTitle(f"Details for {ticker_data["ticker"]}")
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel(f"Name: {ticker_data["name"]}"))
+        layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
+        self.setLayout(layout)
