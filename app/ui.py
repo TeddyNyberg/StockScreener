@@ -1,6 +1,9 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel, QVBoxLayout, QLineEdit, QPushButton, QSpacerItem, QSizePolicy
 from PySide6.QtCore import Signal, QObject
-from .search import lookup_ticker
+from .search import lookup_ticker, get_chart
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
 
 #just window stuff how it looks, buttons, etc.
 class MainWindow(QWidget):
@@ -53,4 +56,8 @@ class DetailsWindow(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(QLabel(f"Name: {ticker_data["name"]}"))
         layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
+
+        self.canvas = FigureCanvas(ticker_data["chart"])
+        layout.addWidget(self.canvas)
+
         self.setLayout(layout)
