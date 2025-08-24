@@ -33,8 +33,8 @@ def get_chart(ticker, time):
 
     fig, axlist = mpf.plot(
         data,
-        type='candle',
-        style='charles',  # or other style you like
+        type='line',  # or candle or line
+        style='charles',
         title=f"{ticker} Stock Price",
         returnfig=True
     )
