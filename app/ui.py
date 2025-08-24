@@ -8,14 +8,13 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Stock Screener")
-        self.details_window=None
         main_layout = QVBoxLayout()
 
         self.resize(800, 600)
 
         top_layout = QHBoxLayout()
 
-        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
         top_layout.addItem(spacer)
 
         self.search_bar = QLineEdit()
@@ -31,6 +30,7 @@ class MainWindow(QWidget):
         self.result_label = QLabel("Enter a ticker and press Enter")
         main_layout.addWidget(self.result_label)
 
+        self.open_detail_windows = []
         self.setLayout(main_layout)
 
     def handle_search(self):
@@ -42,18 +42,24 @@ class MainWindow(QWidget):
         if not result:
             self.result_label.setText("Ticker not Found")
             return
-        self.details_window = DetailsWindow(result)
-        self.details_window.show()
-        self.hide()
+
+        new_details_window = DetailsWindow(result)
+
+        self.open_detail_windows.append(new_details_window)
+        new_details_window.show()
+
+        self.result_label.setText(f"Opened details for {ticker}")
 
 
 class DetailsWindow(QMainWindow):
     def __init__(self, ticker_data):
         super().__init__()
         self.setWindowTitle(f"Details for {ticker_data["ticker"]}")
+        self.ticker = ticker_data["ticker"]
 
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
+        self.layout = layout
 
         layout.addWidget(QLabel(f"Name: {ticker_data["name"]}"))
         layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
@@ -61,14 +67,33 @@ class DetailsWindow(QMainWindow):
         self.canvas = CustomChartCanvas(ticker_data["chart"])
         layout.addWidget(self.canvas)
 
+        button_layout = QHBoxLayout()
+        timeframes = ["1D", "5D", "3ME", "6ME", "5YE", "MAX"]
+        for tf in timeframes:
+            btn = QPushButton(tf)
+            btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
+            button_layout.addWidget(btn)
+        layout.addLayout(button_layout)
+
         self.setCentralWidget(central_widget)
+
+    def update_chart(self, time):
+        new_fig = get_chart(self.ticker, time)
+        ind = self.layout.indexOf(self.canvas)
+        self.layout.removeWidget(self.canvas)
+        self.canvas.deleteLater()
+        self.canvas = CustomChartCanvas(new_fig)
+        self.layout.insertWidget(ind,self.canvas)
+
+
+
 
 
 class CustomChartCanvas(FigureCanvas):
     def __init__(self, chart_figure, parent=None):
-        self.fig = chart_figure
-        self.axes = self.fig.get_axes()[0]
-        super().__init__(self.fig)
+        self.figure = chart_figure
+        self.axes = self.figure.get_axes()[0]
+        super().__init__(self.figure)
 
         self.setParent(parent)
         self.mpl_connect('motion_notify_event', self.on_hover)
@@ -95,7 +120,7 @@ class CustomChartCanvas(FigureCanvas):
 
         if x is not None and y is not None:
             x_int = int(round(x))
-            data = self.fig.data[0]
+            data = self.figure.data[0]
 
             if 0 <= x_int < len(data.index):
                 date = data.index[x_int].strftime('%Y-%m-%d')
@@ -111,3 +136,5 @@ class CustomChartCanvas(FigureCanvas):
                 self.h_line.set_visible(True)
 
                 self.draw_idle()
+
+

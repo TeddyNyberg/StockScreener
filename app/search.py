@@ -55,6 +55,8 @@ def get_date_range(time):  # must be all caps
     today = pd.Timestamp.today().normalize()
     if time == "YTD":
         start = pd.Timestamp(year=today.year, month=1, day=1)
+    elif time == "MAX":
+        start = pd.Timestamp(year=1950, month=1, day=1)
     else:
         start = today - pd.tseries.frequencies.to_offset(time)
     return start, today
