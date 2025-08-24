@@ -69,7 +69,7 @@ class DetailsWindow(QMainWindow):
         layout.addWidget(self.canvas)
 
         button_layout = QHBoxLayout()
-        timeframes = ["1D", "5D", "3ME", "6ME", "1YE", "5YE", "MAX"]
+        timeframes = ["1D", "5D", "1ME", "3ME", "6ME", "1YE", "5YE", "MAX"]
         for tf in timeframes:
             btn = QPushButton(tf)
             btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
