@@ -1,8 +1,8 @@
 import yfinance as yf
 import mplfinance as mpf
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 import pandas as pd
+
+
 def lookup_ticker(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -25,7 +25,7 @@ def lookup_ticker(ticker):
 
 
 def get_chart(ticker, time):
-    start_time, end_time = get_date_range(ticker, time)
+    start_time, end_time = get_date_range(time)
 
     data = yf.download(ticker, start=start_time, end=end_time, auto_adjust=True)
     data.columns = data.columns.droplevel(1)
@@ -51,8 +51,7 @@ def get_chart(ticker, time):
     return fig
 
 
-
-def get_date_range(ticker, time):  # must be all caps
+def get_date_range(time):  # must be all caps
     today = pd.Timestamp.today().normalize()
     if time == "YTD":
         start = pd.Timestamp(year=today.year, month=1, day=1)

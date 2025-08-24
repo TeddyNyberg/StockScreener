@@ -1,7 +1,5 @@
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QLineEdit, QPushButton, QSpacerItem, QSizePolicy
-from PySide6.QtCore import Signal, QObject
 from .search import lookup_ticker, get_chart
-from PySide6.QtWebEngineWidgets import QWebEngineView
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
