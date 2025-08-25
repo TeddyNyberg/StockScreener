@@ -1,9 +1,11 @@
-from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QLineEdit, QPushButton, QSpacerItem, QSizePolicy
-from .search import lookup_ticker, get_chart
+from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
+                               QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
+                               QSizePolicy)
+from .search import lookup_ticker, get_chart, get_financial_metrics
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
-#just window stuff how it looks, buttons, etc.
+# just window stuff how it looks, buttons, etc.
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -68,16 +70,8 @@ class DetailsWindow(QMainWindow):
         self.canvas = CustomChartCanvas(ticker_data["chart"])
         layout.addWidget(self.canvas)
 
-        button_layout = QHBoxLayout()
-        timeframes = ["1D", "5D", "1ME", "3ME", "6ME", "1YE", "5YE", "MAX"]
-        for tf in timeframes:
-            btn = QPushButton(tf)
-            btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
-            button_layout.addWidget(btn)
-        layout.addLayout(button_layout)
-
-        self.add_financial_metrics(layout)
-
+        self.make_buttons()
+        self.show_financials()
         self.setCentralWidget(central_widget)
 
     def update_chart(self, time):
@@ -88,23 +82,33 @@ class DetailsWindow(QMainWindow):
         self.canvas = CustomChartCanvas(new_fig)
         self.layout.insertWidget(ind,self.canvas)
 
-    def add_financial_metrics(self, layout):
-        pe_ratio = self.ticker_data.get("trailingPE", "N/A")
-        market_cap = self.ticker_data.get("marketCap", "N/A")
-        pb_ratio = self.ticker_data.get("priceToBook", "N/A")
-        peg_ratio = self.ticker_data.get("pegRatio", "N/A")
-        roe = self.ticker_data.get("returnOnEquity", "N/A")
+    def make_buttons(self):
+        button_layout = QHBoxLayout()
+        timeframes = ["1D", "5D", "1ME", "3ME", "6ME", "1YE", "5YE", "MAX"]
+        for tf in timeframes:
+            btn = QPushButton(tf)
+            btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
+            button_layout.addWidget(btn)
+        self.layout.addLayout(button_layout)
 
-        layout.addWidget(QLabel("--- Financial Metrics ---"))
-        layout.addWidget(
-            QLabel(f"P/E Ratio: {pe_ratio:.2f}" if isinstance(pe_ratio, (int, float)) else f"P/E Ratio: {pe_ratio}"))
-        layout.addWidget(QLabel(
-            f"Market Cap: {market_cap:,}" if isinstance(market_cap, (int, float)) else f"Market Cap: {market_cap}"))
-        layout.addWidget(
-            QLabel(f"P/B Ratio: {pb_ratio:.2f}" if isinstance(pb_ratio, (int, float)) else f"P/B Ratio: {pb_ratio}"))
-        layout.addWidget(
-            QLabel(f"PEG Ratio: {peg_ratio:.2f}" if isinstance(peg_ratio, (int, float)) else f"PEG Ratio: {peg_ratio}"))
-        layout.addWidget(QLabel(f"ROE: {roe:.2%}" if isinstance(roe, (int, float)) else f"ROE: {roe}"))
+    def show_financials(self):
+        self.layout.addWidget(QLabel("--- Financials ---"))
+        financials_df = get_financial_metrics(self.ticker_data["ticker"])
+        if not financials_df.empty:
+            table_widget = QTableWidget()
+
+            table_widget.setRowCount(financials_df.shape[0])
+            table_widget.setColumnCount(financials_df.shape[1])
+
+            table_widget.setHorizontalHeaderLabels([str(col.date()) for col in financials_df.columns])
+            table_widget.setVerticalHeaderLabels(financials_df.index)
+
+            for row_index in range(financials_df.shape[0]):
+                for col_index in range(financials_df.shape[1]):
+                    value = financials_df.iloc[row_index, col_index]
+                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            self.layout.addWidget(table_widget)
+
 
 
 class CustomChartCanvas(FigureCanvas):

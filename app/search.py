@@ -33,7 +33,7 @@ def get_chart(ticker, time):
 
     fig, axlist = mpf.plot(
         data,
-        type='line',  # or candle or line
+        type='line', # or candle or line
         style='charles',
         title=f"{ticker} Stock Price",
         returnfig=True
@@ -60,4 +60,13 @@ def get_date_range(time):  # must be all caps
     else:
         start = today - pd.tseries.frequencies.to_offset(time)
     return start, today
+
+
+def get_yfticker(ticker):
+    return yf.Ticker(ticker)
+
+def get_financial_metrics(ticker):
+    # TODO: scale financials and return the scale with it too
+    # TODO: remove things I dont care abt??
+    return yf.Ticker(ticker).financials
 
