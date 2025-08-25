@@ -84,7 +84,15 @@ class DetailsWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         self.layout = layout
 
-        layout.addWidget(QLabel(f"Name: {ticker_data["name"]}"))
+        top_row_layout = QHBoxLayout()
+        top_row_layout.addWidget(QLabel(f"Name: {ticker_data["name"]}"))
+        top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        self.search_widget = SearchWidget()
+        self.search_widget.search_requested.connect(open_window_from_ticker)
+        self.search_widget.message_displayed.connect(self.update_status_message)
+        top_row_layout.addWidget(self.search_widget)
+        layout.addLayout(top_row_layout)
+
         layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
 
         self.canvas = CustomChartCanvas(ticker_data["chart"])
@@ -134,6 +142,9 @@ class DetailsWindow(QMainWindow):
                     value = financials_df.iloc[row_index, col_index]
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
             self.layout.addWidget(table_widget)
+
+    def update_status_message(self, message):
+        pass
 
     # TODO: show_balncesheet
     # def show_balancesheet(self):
@@ -198,6 +209,8 @@ class SearchWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        self.setMaximumWidth(250)
+
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
