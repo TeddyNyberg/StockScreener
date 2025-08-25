@@ -1,3 +1,4 @@
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy)
@@ -6,6 +7,40 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
 # just window stuff how it looks, buttons, etc.
+
+open_detail_windows = []
+def make_search_bar(self, layout):
+    search_bar = QLineEdit()
+    search_bar.setPlaceholderText("Enter ticker")
+    search_bar.returnPressed.connect(self.handle_search)
+    layout.addWidget(search_bar)
+    return search_bar
+
+
+def handle_search(self):
+    ticker = self.search_bar.text().strip().upper()
+    if not ticker:
+        self.result_label.setText("Please enter a ticker symbol.")
+        return
+    result = lookup_ticker(ticker)
+    if not result:
+        self.result_label.setText("Ticker not Found")
+        return
+
+    new_details_window = DetailsWindow(result)
+
+    self.open_detail_windows.append(new_details_window)
+    new_details_window.show()
+
+    self.result_label.setText(f"Opened details for {ticker}")
+
+
+def open_window_from_ticker(result):
+    new_details_window = DetailsWindow(result)
+    open_detail_windows.append(new_details_window)
+    new_details_window.show()
+
+
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -19,10 +54,10 @@ class MainWindow(QWidget):
         spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
         top_layout.addItem(spacer)
 
-        self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Enter ticker")
-        self.search_bar.returnPressed.connect(self.handle_search)
-        top_layout.addWidget(self.search_bar)
+        self.search_widget = SearchWidget()
+        self.search_widget.search_requested.connect(open_window_from_ticker)
+        self.search_widget.message_displayed.connect(self.update_status_message)
+        top_layout.addWidget(self.search_widget)
 
         main_layout.addLayout(top_layout)
 
@@ -33,30 +68,15 @@ class MainWindow(QWidget):
         self.canvas = CustomChartCanvas(spy["chart"])
         main_layout.addWidget(self.canvas)
 
-        self.open_detail_windows = []
         self.setLayout(main_layout)
 
-    def handle_search(self):
-        ticker = self.search_bar.text().strip().upper()
-        if not ticker:
-            self.result_label.setText("Please enter a ticker symbol.")
-            return
-        result = lookup_ticker(ticker)
-        if not result:
-            self.result_label.setText("Ticker not Found")
-            return
-
-        new_details_window = DetailsWindow(result)
-
-        self.open_detail_windows.append(new_details_window)
-        new_details_window.show()
-
-        self.result_label.setText(f"Opened details for {ticker}")
-
+    def update_status_message(self, message):
+        self.result_label = QLabel(message)
 
 class DetailsWindow(QMainWindow):
     def __init__(self, ticker_data):
         super().__init__()
+
         self.setWindowTitle(f"Details for {ticker_data["ticker"]}")
         self.ticker_data = ticker_data
 
@@ -166,5 +186,43 @@ class CustomChartCanvas(FigureCanvas):
                 self.h_line.set_visible(True)
 
                 self.draw_idle()
+
+
+class SearchWidget(QWidget):
+
+    search_requested = Signal(object)
+    message_displayed = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.search_bar_input = QLineEdit()
+        self.search_bar_input.setPlaceholderText("Enter ticker")
+        self.search_bar_input.returnPressed.connect(self.handle_search)
+        layout.addWidget(self.search_bar_input)
+
+        self.search_button = QPushButton("Search")
+        self.search_button.clicked.connect(self.handle_search)
+        layout.addWidget(self.search_button)
+
+        self.setLayout(layout)
+
+    def handle_search(self):
+        ticker = self.search_bar_input.text().strip().upper()
+        if not ticker:
+            self.message_displayed.emit("Please enter a ticker symbol.")
+            return
+        result = lookup_ticker(ticker)  # all the data
+        if not result:
+            return
+        self.search_bar_input.clear()
+        self.search_requested.emit(result)
+
+
 
 
