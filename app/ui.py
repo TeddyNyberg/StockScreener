@@ -68,10 +68,13 @@ class DetailsWindow(QMainWindow):
         layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
 
         self.canvas = CustomChartCanvas(ticker_data["chart"])
+        self.canvas.setMaximumSize(900, 600)
         layout.addWidget(self.canvas)
 
         self.make_buttons()
+        # TODO: make buttons
         self.show_financials()
+        # TODO: show_balancesheet()
         self.setCentralWidget(central_widget)
 
     def update_chart(self, time):
@@ -80,6 +83,7 @@ class DetailsWindow(QMainWindow):
         self.layout.removeWidget(self.canvas)
         self.canvas.deleteLater()
         self.canvas = CustomChartCanvas(new_fig)
+        self.canvas.setMaximumSize(900, 600)
         self.layout.insertWidget(ind,self.canvas)
 
     def make_buttons(self):
@@ -89,6 +93,8 @@ class DetailsWindow(QMainWindow):
             btn = QPushButton(tf)
             btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
             button_layout.addWidget(btn)
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
+        button_layout.addItem(spacer)
         self.layout.addLayout(button_layout)
 
     def show_financials(self):
@@ -109,7 +115,9 @@ class DetailsWindow(QMainWindow):
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
             self.layout.addWidget(table_widget)
 
-
+    # TODO: show_balncesheet
+    # def show_balancesheet(self):
+    #    pass
 
 class CustomChartCanvas(FigureCanvas):
     def __init__(self, chart_figure, parent=None):
