@@ -3,53 +3,100 @@ import mplfinance as mpf
 import pandas as pd
 
 
-def lookup_ticker(ticker):
-    try:
+
+# TODO: combine lookup_ticker and tickers????
+def lookup_tickers(tickers):
+    to_ret = []
+    valid_tickers_for_chart = []
+
+
+    if isinstance(tickers, str):
+        tickers = [tickers]
+
+    for ticker in tickers:
         stock = yf.Ticker(ticker)
         info = stock.info
 
-        if not info or "shortName" not in info:
-            return None
+        # Check for valid info and the 'shortName' key
+        if info and "shortName" in info:
+            # If valid, append the data to the return list
+            to_ret.append({
+                "ticker": ticker,
+                "name": info.get("shortName", "N/A"),
+                "price": info.get("currentPrice", "N/A"),
+                "currency": info.get("currency", "USD"),
+            })
+            # Add the ticker to the list for charting
+            valid_tickers_for_chart.append(ticker)
+        else:
+            # If not valid, print a warning and skip to the next ticker
+            print(f"Warning: Could not retrieve valid info for ticker {ticker}. Skipping this ticker.")
 
-        return {
-            "ticker": ticker,
-            "name": info.get("shortName", "N/A"),
-            "price": info.get("currentPrice", "N/A"),
-            "currency": info.get("currency", "USD"),
-            "chart": get_chart(ticker, "1YE")  #D, ME, YE
-        }
-
-    except Exception as e:
-        print(f"Error looking up {ticker}: {e}")
-        return None
+    print(valid_tickers_for_chart)
+    if valid_tickers_for_chart:
+        chart, chart_data = get_chart(valid_tickers_for_chart, "1YE")
+        return to_ret, chart, chart_data
+    else:
+        # If no valid tickers were found, return an empty list and None for the chart
+        return [], None, None
 
 
-def get_chart(ticker, time):
+def get_chart(tickers, time):
     start_time, end_time = get_date_range(time)
 
-    data = yf.download(ticker, start=start_time, end=end_time, auto_adjust=True)
-    data.columns = data.columns.droplevel(1)
+    if isinstance(tickers, str):
+        ticker_list = [tickers]
+        is_single_ticker = True
+    else:
+        ticker_list = list(tickers)
+        is_single_ticker = len(ticker_list) == 1
+
+    data = yf.download(ticker_list, start=start_time, end=end_time, auto_adjust=True)
+    print(data)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.droplevel(1)
     print(data)
 
+    if is_single_ticker:
+        plot_data = data
+        title = f"{ticker_list[0]} Stock Price"
+        type = 'line'
+    else:
+        close_data = data['Adj Close']
+
+        plot_data = close_data / close_data.iloc[0] * 100
+
+        title = f"Price Comparison of {', '.join(ticker_list)}"
+        type = 'line'
+    print("hello hombre")
+    print(plot_data)
     fig, axlist = mpf.plot(
-        data,
-        type='line', # or candle or line
+        plot_data,
+        type=type,
         style='charles',
-        title=f"{ticker} Stock Price",
-        returnfig=True
+        title=title,
+        returnfig=True,
+        figratio=(10, 6)
     )
 
-    low_price = data['Low'].min()
-    high_price = data['High'].max()
+    if not isinstance(axlist, list):
+        ax = axlist
+    else:
+        ax = axlist[0]
 
-    padding = (high_price - low_price) * 0.1
+    if not is_single_ticker:
 
-    ax = axlist[0]
-    ax.set_ylim(low_price - padding, high_price + padding)
-    fig.data = [data]
+        low_y = plot_data.min().min * 0.95
+        high_y = plot_data.max().max() * 1.05
+        ax.set_ylim(low_y, high_y)
+        ax.set_ylabel('Percent Change from Start (%)')
 
-    return fig
+    if not is_single_ticker:
+        ax.legend([ticker for ticker in ticker_list])
 
+    return fig, plot_data
+
+# TODO: complete comp chart
 
 def get_date_range(time):  # must be all caps
     today = pd.Timestamp.today().normalize()

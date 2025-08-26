@@ -2,7 +2,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy)
-from .search import lookup_ticker, get_chart, get_financial_metrics
+from .search import lookup_tickers, get_chart, get_financial_metrics
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
@@ -22,7 +22,7 @@ def handle_search(self):
     if not ticker:
         self.result_label.setText("Please enter a ticker symbol.")
         return
-    result = lookup_ticker(ticker)
+    result, chart, data = lookup_tickers(ticker)
     if not result:
         self.result_label.setText("Ticker not Found")
         return
@@ -64,8 +64,11 @@ class MainWindow(QWidget):
         self.result_label = QLabel("Enter a ticker and press Enter")
         main_layout.addWidget(self.result_label)
 
-        spy = lookup_ticker("^SPX")
-        self.canvas = CustomChartCanvas(spy["chart"])
+        spy, spy_chart, data = lookup_tickers("^SPX")
+        print("hello")
+        print(spy)
+        print(spy_chart)
+        self.canvas = CustomChartCanvas(data, spy_chart)
         main_layout.addWidget(self.canvas)
 
         self.setLayout(main_layout)
@@ -93,7 +96,14 @@ class DetailsWindow(QMainWindow):
         top_row_layout.addWidget(self.search_widget)
         layout.addLayout(top_row_layout)
 
-        layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
+        second_row_layout = QHBoxLayout()
+        second_row_layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
+        second_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        self.compare_button = QPushButton("connect")
+        self.compare_button.clicked.connect(self.compare)
+        second_row_layout.addWidget(self.compare_button)
+
+        layout.add(second_row_layout)
 
         self.canvas = CustomChartCanvas(ticker_data["chart"])
         self.canvas.setMaximumSize(900, 600)
@@ -146,19 +156,41 @@ class DetailsWindow(QMainWindow):
     def update_status_message(self, message):
         pass
 
+    def compare(self):
+        ticker_to_compare = self.search_widget.search_bar_input.text().strip().upper()
+        if not ticker_to_compare:
+            self.update_status_message("Please enter a ticker symbol to compare.")
+            return
+
+        tickers = [self.ticker_data["ticker"], ticker_to_compare]
+
+        result, chart, data = lookup_tickers(tickers)
+
+        if not result:
+            self.update_status_message("Could not find data for one or both tickers.")
+            return
+
+        valid_tickers_data, comparison_chart = result
+
+        self.update_chart_canvas(comparison_chart)
+
+
     # TODO: show_balncesheet
     # def show_balancesheet(self):
     #    pass
 
 class CustomChartCanvas(FigureCanvas):
-    def __init__(self, chart_figure, parent=None):
+    def __init__(self, chart_data, chart_figure, parent=None):
         self.figure = chart_figure
+        self.chart_data = chart_data
+
         self.axes = self.figure.get_axes()[0]
         super().__init__(self.figure)
 
         self.setParent(parent)
         self.mpl_connect('motion_notify_event', self.on_hover)
 
+        # for pointer
         self.v_line = self.axes.axvline(x=0, color='gray', linestyle='--', linewidth=1)
         self.h_line = self.axes.axhline(y=0, color='gray', linestyle='--', linewidth=1)
         self.v_line.set_visible(False)
@@ -181,7 +213,7 @@ class CustomChartCanvas(FigureCanvas):
 
         if x is not None and y is not None:
             x_int = int(round(x))
-            data = self.figure.data[0]
+            data = self.chart_data
 
             if 0 <= x_int < len(data.index):
                 date = data.index[x_int].strftime('%Y-%m-%d')
@@ -230,12 +262,11 @@ class SearchWidget(QWidget):
         if not ticker:
             self.message_displayed.emit("Please enter a ticker symbol.")
             return
-        result = lookup_ticker(ticker)  # all the data
+        result, chart, data = lookup_tickers(ticker)  # all the data
         if not result:
             return
         self.search_bar_input.clear()
         self.search_requested.emit(result)
-
 
 
 
