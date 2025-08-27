@@ -5,6 +5,10 @@ import pandas as pd
 
 
 # TODO: combine lookup_ticker and tickers????
+# returns 3 things, normally called result, chart, data
+# result = list of quaduple{ticker, price, currency, name}for each stock
+# chart = figure
+# data = data use to make chart
 def lookup_tickers(tickers):
     to_ret = []
     valid_tickers_for_chart = []
@@ -55,20 +59,21 @@ def get_chart(tickers, time):
     print(data)
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.droplevel(1)
-    print(data)
+    print("HERE SENOR")
+    print(data.columns)
 
+    plot_data = data.copy()
     if is_single_ticker:
-        plot_data = data
+
         title = f"{ticker_list[0]} Stock Price"
         type = 'line'
     else:
-        close_data = data['Adj Close']
-
-        plot_data = close_data / close_data.iloc[0] * 100
-
+        for col in data.columns:
+            plot_data[col] = data[col] / data[col].iloc[0] * 100
         title = f"Price Comparison of {', '.join(ticker_list)}"
         type = 'line'
     print("hello hombre")
+    print(plot_data.columns)
     print(plot_data)
     fig, axlist = mpf.plot(
         plot_data,
@@ -84,15 +89,18 @@ def get_chart(tickers, time):
     else:
         ax = axlist[0]
 
-    if not is_single_ticker:
+    plot_data_no_vol = plot_data.drop("Volume", axis=1)
 
-        low_y = plot_data.min().min * 0.95
-        high_y = plot_data.max().max() * 1.05
-        ax.set_ylim(low_y, high_y)
+    if not is_single_ticker:
+        low_y = plot_data_no_vol.min().min() * 0.95
+        high_y = plot_data_no_vol.max().max() * 1.05
         ax.set_ylabel('Percent Change from Start (%)')
-
-    if not is_single_ticker:
         ax.legend([ticker for ticker in ticker_list])
+    else:
+        low_y = plot_data_no_vol.min().min() * 0.95
+        high_y = plot_data_no_vol.max().max() * 1.05
+        ax.set_ylim(low_y, high_y)
+    ax.set_ylim(low_y, high_y)
 
     return fig, plot_data
 

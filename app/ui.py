@@ -9,34 +9,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 # just window stuff how it looks, buttons, etc.
 
 open_detail_windows = []
-def make_search_bar(self, layout):
-    search_bar = QLineEdit()
-    search_bar.setPlaceholderText("Enter ticker")
-    search_bar.returnPressed.connect(self.handle_search)
-    layout.addWidget(search_bar)
-    return search_bar
 
-
-def handle_search(self):
-    ticker = self.search_bar.text().strip().upper()
-    if not ticker:
-        self.result_label.setText("Please enter a ticker symbol.")
-        return
-    result, chart, data = lookup_tickers(ticker)
-    if not result:
-        self.result_label.setText("Ticker not Found")
-        return
-
-    new_details_window = DetailsWindow(result)
-
-    self.open_detail_windows.append(new_details_window)
-    new_details_window.show()
-
-    self.result_label.setText(f"Opened details for {ticker}")
-
-
+# result is structured as anme_and_price, chart, data
 def open_window_from_ticker(result):
-    new_details_window = DetailsWindow(result)
+    new_details_window = DetailsWindow(result[0], result[2], result[1])
     open_detail_windows.append(new_details_window)
     new_details_window.show()
 
@@ -65,9 +41,6 @@ class MainWindow(QWidget):
         main_layout.addWidget(self.result_label)
 
         spy, spy_chart, data = lookup_tickers("^SPX")
-        print("hello")
-        print(spy)
-        print(spy_chart)
         self.canvas = CustomChartCanvas(data, spy_chart)
         main_layout.addWidget(self.canvas)
 
@@ -77,18 +50,19 @@ class MainWindow(QWidget):
         self.result_label = QLabel(message)
 
 class DetailsWindow(QMainWindow):
-    def __init__(self, ticker_data):
+    def __init__(self, name_and_price, pricing_data, chart):
         super().__init__()
 
-        self.setWindowTitle(f"Details for {ticker_data["ticker"]}")
-        self.ticker_data = ticker_data
+        print(name_and_price[0]["ticker"])
+        self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
+        self.ticker_data = name_and_price
 
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
         self.layout = layout
 
         top_row_layout = QHBoxLayout()
-        top_row_layout.addWidget(QLabel(f"Name: {ticker_data["name"]}"))
+        top_row_layout.addWidget(QLabel(f"Name: {name_and_price[0]["name"]}"))
         top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_window_from_ticker)
@@ -97,15 +71,15 @@ class DetailsWindow(QMainWindow):
         layout.addLayout(top_row_layout)
 
         second_row_layout = QHBoxLayout()
-        second_row_layout.addWidget(QLabel(f"Price: {ticker_data["price"]} {ticker_data["currency"]}"))
+        second_row_layout.addWidget(QLabel(f"Price: {name_and_price[0]["price"]} {name_and_price[0]["currency"]}"))
         second_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        self.compare_button = QPushButton("connect")
+        self.compare_button = QPushButton("compare")
         self.compare_button.clicked.connect(self.compare)
         second_row_layout.addWidget(self.compare_button)
 
-        layout.add(second_row_layout)
+        layout.addLayout(second_row_layout)
 
-        self.canvas = CustomChartCanvas(ticker_data["chart"])
+        self.canvas = CustomChartCanvas(pricing_data, chart)
         self.canvas.setMaximumSize(900, 600)
         layout.addWidget(self.canvas)
 
@@ -116,13 +90,13 @@ class DetailsWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def update_chart(self, time):
-        new_fig = get_chart(self.ticker_data["ticker"], time)
+        new_fig, data = get_chart(self.ticker_data[0]["ticker"], time)
         ind = self.layout.indexOf(self.canvas)
         self.layout.removeWidget(self.canvas)
         self.canvas.deleteLater()
-        self.canvas = CustomChartCanvas(new_fig)
+        self.canvas = CustomChartCanvas(data, new_fig)
         self.canvas.setMaximumSize(900, 600)
-        self.layout.insertWidget(ind,self.canvas)
+        self.layout.insertWidget(ind, self.canvas)
 
     def make_buttons(self):
         button_layout = QHBoxLayout()
@@ -137,7 +111,7 @@ class DetailsWindow(QMainWindow):
 
     def show_financials(self):
         self.layout.addWidget(QLabel("--- Financials ---"))
-        financials_df = get_financial_metrics(self.ticker_data["ticker"])
+        financials_df = get_financial_metrics(self.ticker_data[0]["ticker"])
         if not financials_df.empty:
             table_widget = QTableWidget()
 
@@ -162,13 +136,16 @@ class DetailsWindow(QMainWindow):
             self.update_status_message("Please enter a ticker symbol to compare.")
             return
 
-        tickers = [self.ticker_data["ticker"], ticker_to_compare]
+        tickers = [self.ticker_data[0]["ticker"], ticker_to_compare]
+
 
         result, chart, data = lookup_tickers(tickers)
 
         if not result:
             self.update_status_message("Could not find data for one or both tickers.")
             return
+
+        print(result)
 
         valid_tickers_data, comparison_chart = result
 
@@ -262,7 +239,7 @@ class SearchWidget(QWidget):
         if not ticker:
             self.message_displayed.emit("Please enter a ticker symbol.")
             return
-        result, chart, data = lookup_tickers(ticker)  # all the data
+        result = lookup_tickers(ticker)  # all the data
         if not result:
             return
         self.search_bar_input.clear()
