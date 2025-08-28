@@ -1,6 +1,7 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 # TODO: change back all tickers to ticker it is that easy
@@ -17,7 +18,6 @@ def lookup_tickers(tickers):
         tickers = [tickers]
 
     # by now tickers is a list regardless of how it comes in
-
     for ticker in tickers:
         stock = yf.Ticker(ticker)
         info = stock.info
@@ -47,17 +47,11 @@ def lookup_tickers(tickers):
 
 
 def get_chart(tickers, time):
-    print(tickers)
-
     start_time, end_time = get_date_range(time)
 
     is_single_ticker = len(tickers) == 1
-    print(is_single_ticker)
 
     data = yf.download(tickers, start=start_time, end=end_time, auto_adjust=True)
-
-    print("data")
-    print(data)
 
     plot_data = data.copy()
     if not is_single_ticker:
@@ -71,11 +65,9 @@ def get_chart(tickers, time):
 
     if not is_single_ticker:
         for col in plot_data.columns:
-            #if not plot_data[col].iloc[0] == 0:
             temp = plot_data[col].iloc[0]
             plot_data[col] = (plot_data[col] / temp - 1) * 100
         for col in second_data.columns:
-            #if not second_data[col].iloc[0] == 0:
             temp = second_data[col].iloc[0]
             second_data[col] = (second_data[col] / temp - 1) * 100
         print("still")
@@ -87,48 +79,64 @@ def get_chart(tickers, time):
     else:
         title = f"Price Comparison of {", ".join(tickers)}"
 
-    print("MAYBE HERE??")
-    print(plot_data)
-    fig, ax = mpf.plot(
-        plot_data,
-        type="line",
-        style="charles",
-        title=title,
-        returnfig=True,
-        figratio=(10,6)
-    )
-
-    if not is_single_ticker:
-        comp_chart = mpf.make_addplot(second_data)
-        fig, ax = mpf.plot(plot_data,
-                 type="line",
-                 style="charles",
-                 title=title,
-                 returnfig=True,
-                 figratio=(10,6),
-                 addplot=comp_chart
-                 )
-
-
     plot_data_no_vol = plot_data.copy()
     plot_data_no_vol = plot_data_no_vol.drop("Volume", axis=1)
-    print("no vol")
-    print(plot_data_no_vol)
-    ax = ax[0]
+
     low_y = plot_data_no_vol.min().min() * 0.95
     high_y = plot_data_no_vol.max().max() * 1.05
     if not is_single_ticker:
-        ax.set_ylabel('Percent Change from Start (%)')
-        ax.legend([ticker for ticker in tickers])
+
         second_data_no_vol = second_data.copy()
         second_data_no_vol = second_data_no_vol.drop("Volume", axis=1)
         low_y_2 = second_data_no_vol.min().min() * 0.95
         high_y_2 = second_data_no_vol.max().max() * 1.05
         low_y = min(low_y, low_y_2)
         high_y = max(high_y, high_y_2)
-    ax.set_ylim(low_y, high_y)
+
+
+    if is_single_ticker:
+        fig, ax = mpf.plot(
+            plot_data,
+            type="line",
+            style="charles",
+            title=title,
+            returnfig=True,
+            figratio=(10, 6)
+        )
+
+    if not is_single_ticker:
+        #comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1])
+        combined_data = pd.DataFrame({
+            tickers[0]: plot_data['Close'],
+            tickers[1]: second_data['Close']
+        })
+        print(plot_data.columns)
+        fig, ax = plt.subplots()
+        ax.plot(plot_data.index,plot_data["Close"], label=tickers[0])
+        ax.plot(second_data.index, second_data["Close"], label=tickers[1])
+        ax.set_xlabel("Date")  # Add an x-label to the Axes.
+        ax.set_ylabel("Percent Change")  # Add a y-label to the Axes.
+        ax.set_title(title)  # Add a title to the Axes.
+        ax.legend()
+        fig.autofmt_xdate()
+        fig.tight_layout()
+        ax.set_xlim(left=plot_data.index[0], right=plot_data.index[-1])
+        #fig, ax = plt.plot(combined_data,
+        #                   #type="line",
+        #                   #style="charles",
+        #                   title=title,
+        #                   returnfig=True,
+        #                   figratio=(10, 6),
+        #                   #addplot=comp_chart,
+        #                   #label=tickers[0]
+        #
+        #          )
+    if is_single_ticker:
+        ax = ax[0]
+        ax.set_ylim(low_y, high_y)
 
     return fig, plot_data
+
 
 # TODO: complete comp chart
 
@@ -146,8 +154,8 @@ def get_date_range(time):  # must be all caps
 def get_yfticker(ticker):
     return yf.Ticker(ticker)
 
+
 def get_financial_metrics(ticker):
     # TODO: scale financials and return the scale with it too
     # TODO: remove things I dont care abt??
     return yf.Ticker(ticker).financials
-

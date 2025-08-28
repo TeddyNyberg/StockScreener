@@ -99,8 +99,12 @@ class DetailsWindow(QMainWindow):
         # TODO: show_balancesheet()
         self.setCentralWidget(central_widget)
 
-    def update_chart(self, time):
-        new_fig, data = get_chart([self.ticker_data[0]["ticker"]], time)
+    # TODO: changhe to accept time and optional current pricing data. If just time, keep. if contains pricing data, draw new customChartCanavs(data, fig)
+    def update_chart(self, time, tickers=None):
+        if tickers is None:
+            new_fig, data = get_chart([self.ticker_data[0]["ticker"]], time)
+        else:
+            new_fig, data = get_chart(tickers, time)
         ind = self.layout.indexOf(self.canvas)
         self.layout.removeWidget(self.canvas)
         self.canvas.deleteLater()
@@ -148,18 +152,13 @@ class DetailsWindow(QMainWindow):
 
         tickers = [self.ticker_data[0]["ticker"], ticker_to_compare]
 
-
-        result, chart, data = lookup_tickers(tickers)
+        result = lookup_tickers(tickers)
 
         if not result:
             self.update_status_message("Could not find data for one or both tickers.")
             return
 
-        print(result)
-
-        valid_tickers_data, comparison_chart = result
-
-        self.update_chart_canvas(comparison_chart)
+        self.update_chart("1YE", tickers)
 
 
     # TODO: show_balncesheet
@@ -167,6 +166,7 @@ class DetailsWindow(QMainWindow):
     #    pass
 
 # chart figure is a list of charts??????
+# TODO: make it accept possible a list of pricing data, so it works for comparison too fml
 class CustomChartCanvas(FigureCanvas):
     def __init__(self, chart_data, chart_figure, parent=None):
         self.figure = chart_figure
