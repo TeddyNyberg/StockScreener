@@ -100,8 +100,6 @@ class DetailsWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def update_chart(self, time):
-        print("TDDD")
-        print(self.ticker_data)
         new_fig, data = get_chart([self.ticker_data[0]["ticker"]], time)
         ind = self.layout.indexOf(self.canvas)
         self.layout.removeWidget(self.canvas)

@@ -64,7 +64,10 @@ def get_chart(tickers, time):
         plot_data = data.iloc[:, ::2]
         second_data = data.iloc[:, 1::2]
         second_data.columns = second_data.columns.droplevel(1)
+        print("comping")
+        print(second_data)
     plot_data.columns = plot_data.columns.droplevel(1)
+    print(plot_data)
 
     if not is_single_ticker:
         for col in plot_data.columns:
@@ -75,6 +78,9 @@ def get_chart(tickers, time):
             #if not second_data[col].iloc[0] == 0:
             temp = second_data[col].iloc[0]
             second_data[col] = (second_data[col] / temp - 1) * 100
+        print("still")
+        print(second_data)
+        print(plot_data)
 
     if is_single_ticker:
         title = f"{tickers} Stock Price"
@@ -109,16 +115,17 @@ def get_chart(tickers, time):
     print("no vol")
     print(plot_data_no_vol)
     ax = ax[0]
-    if is_single_ticker:
-        low_y = plot_data_no_vol.min().min() * 0.95
-        high_y = plot_data_no_vol.max().max() * 1.05
-        print(low_y)
-        print(high_y)
-    else:
+    low_y = plot_data_no_vol.min().min() * 0.95
+    high_y = plot_data_no_vol.max().max() * 1.05
+    if not is_single_ticker:
         ax.set_ylabel('Percent Change from Start (%)')
         ax.legend([ticker for ticker in tickers])
-        low_y = plot_data_no_vol[0].min().min() * 0.95
-        high_y = plot_data_no_vol[0].max().max() * 1.05
+        second_data_no_vol = second_data.copy()
+        second_data_no_vol = second_data_no_vol.drop("Volume", axis=1)
+        low_y_2 = second_data_no_vol.min().min() * 0.95
+        high_y_2 = second_data_no_vol.max().max() * 1.05
+        low_y = min(low_y, low_y_2)
+        high_y = max(high_y, high_y_2)
     ax.set_ylim(low_y, high_y)
 
     return fig, plot_data
