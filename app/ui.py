@@ -42,6 +42,16 @@ class MainWindow(QWidget):
 
         spy, spy_chart, data = lookup_tickers("^SPX")
         self.canvas = CustomChartCanvas(data, spy_chart)
+
+        # this is a chart, which takes data and chart ------------|
+        # it calls custchart                                      |
+        # cust chart takes data and figure                        |
+        # cust chart shows it and adds hoverability               |
+        # we get data and chart and spy from lookup_tickers <-----|
+        # lookup returns a [], chart, and data
+        # lookup gets chart and data from get_chart
+        # get_chart figures and plot_data df
+
         main_layout.addWidget(self.canvas)
 
         self.setLayout(main_layout)
@@ -53,7 +63,7 @@ class DetailsWindow(QMainWindow):
     def __init__(self, name_and_price, pricing_data, chart):
         super().__init__()
 
-        print(name_and_price[0]["ticker"])
+        print(name_and_price)
         self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
         self.ticker_data = name_and_price
 
@@ -90,7 +100,9 @@ class DetailsWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def update_chart(self, time):
-        new_fig, data = get_chart(self.ticker_data[0]["ticker"], time)
+        print("TDDD")
+        print(self.ticker_data)
+        new_fig, data = get_chart([self.ticker_data[0]["ticker"]], time)
         ind = self.layout.indexOf(self.canvas)
         self.layout.removeWidget(self.canvas)
         self.canvas.deleteLater()
@@ -156,6 +168,7 @@ class DetailsWindow(QMainWindow):
     # def show_balancesheet(self):
     #    pass
 
+# chart figure is a list of charts??????
 class CustomChartCanvas(FigureCanvas):
     def __init__(self, chart_data, chart_figure, parent=None):
         self.figure = chart_figure
