@@ -53,44 +53,17 @@ def get_chart(tickers, time):
 
     data = yf.download(tickers, start=start_time, end=end_time, auto_adjust=True)
 
-    plot_data = data.copy()
-    if not is_single_ticker:
-        plot_data = data.iloc[:, ::2]
-        second_data = data.iloc[:, 1::2]
-        second_data.columns = second_data.columns.droplevel(1)
-        print("comping")
-        print(second_data)
-    plot_data.columns = plot_data.columns.droplevel(1)
-    print(plot_data)
+    plot_data, second_data = rm_nm_and_chop2(is_single_ticker, data.copy())
 
     if not is_single_ticker:
-        for col in plot_data.columns:
-            temp = plot_data[col].iloc[0]
-            plot_data[col] = (plot_data[col] / temp - 1) * 100
-        for col in second_data.columns:
-            temp = second_data[col].iloc[0]
-            second_data[col] = (second_data[col] / temp - 1) * 100
-        print("still")
-        print(second_data)
-        print(plot_data)
+        plot_data, second_data = normalize(plot_data, second_data)
 
     if is_single_ticker:
-        title = f"{tickers} Stock Price"
+        title = f"{tickers[0]} Stock Price"
     else:
         title = f"Price Comparison of {", ".join(tickers)}"
 
-    plot_data_no_vol = plot_data.copy()
-    plot_data_no_vol = plot_data_no_vol.drop("Volume", axis=1)
-
-    low_y = plot_data_no_vol.min().min() * 0.95
-    high_y = plot_data_no_vol.max().max() * 1.05
-    if not is_single_ticker:
-        second_data_no_vol = second_data.copy()
-        second_data_no_vol = second_data_no_vol.drop("Volume", axis=1)
-        low_y_2 = second_data_no_vol.min().min() * 0.95
-        high_y_2 = second_data_no_vol.max().max() * 1.05
-        low_y = min(low_y, low_y_2)
-        high_y = max(high_y, high_y_2)
+    low_y, high_y = get_y_bounds(plot_data, second_data, is_single_ticker)
 
     if is_single_ticker:
         fig, ax = mpf.plot(
@@ -103,31 +76,37 @@ def get_chart(tickers, time):
         )
 
     if not is_single_ticker:
-        """
+
         print(plot_data.columns)
         fig, ax = plt.subplots()
         ax.plot(plot_data.index,plot_data["Close"], label=tickers[0])
         ax.plot(second_data.index, second_data["Close"], label=tickers[1])
-        ax.set_xlabel("Date")  # Add an x-label to the Axes.
-        ax.set_ylabel("Change (%)")  # Add a y-label to the Axes.
-        ax.set_title(title)  # Add a title to the Axes.
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Change (%)")
+        ax.set_title(title)
         ax.legend()
         fig.autofmt_xdate()
         fig.tight_layout()
         ax.set_xlim(left=plot_data.index[0], right=plot_data.index[-1])
         """
         comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1])
+        combined_data = pd.DataFrame({
+            tickers[0]: plot_data["Close"],
+            tickers[1]: second_data["Close"]
+        })
         fig, ax = mpf.plot(plot_data,
                            type="line",
                            style="charles",
                            title=title,
                            returnfig=True,
                            figratio=(10, 6),
+                           #columns=["Close"]
                            addplot=comp_chart
                            )
+                        
         ax = ax[0]
         print(tickers)
-        ax.legend(tickers)
+        ax.legend(tickers)"""
 
     if is_single_ticker:
         ax = ax[0]
@@ -137,6 +116,36 @@ def get_chart(tickers, time):
 
 
 # TODO: complete comp chart
+def rm_nm_and_chop2(is_single, df):
+    plot_data = df.copy()
+    second_data = None
+    if not is_single:
+        plot_data = df.iloc[:, ::2]
+        second_data = df.iloc[:, 1::2]
+        second_data.columns = second_data.columns.droplevel(1)
+    plot_data.columns = plot_data.columns.droplevel(1)
+    return plot_data, second_data
+
+
+def normalize(df1, df2):
+    df1 = (df1.div(df1.iloc[0]) - 1) * 100
+    df2 = (df2.div(df2.iloc[0]) - 1) * 100
+    return df1, df2
+
+
+def get_y_bounds(df1, df2, is_single):
+    df1_no_vol = df1.drop("Volume", axis=1)
+    low_y = df1_no_vol.min().min() * 0.95
+    high_y = df1_no_vol.max().max() * 1.05
+
+    if not is_single:
+        df2_no_vol = df2.drop("Volume", axis=1)
+        low_y_2 = df2_no_vol.min().min() * 0.95
+        high_y_2 = df2_no_vol.max().max() * 1.05
+        low_y = min(low_y, low_y_2)
+        high_y = max(high_y, high_y_2)
+    return low_y, high_y
+
 
 def get_date_range(time):  # must be all caps
     today = pd.Timestamp.today().normalize()

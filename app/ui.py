@@ -114,7 +114,7 @@ class DetailsWindow(QMainWindow):
 
     def make_buttons(self):
         button_layout = QHBoxLayout()
-        timeframes = ["1D", "5D", "1ME", "3ME", "6ME", "1YE", "5YE", "MAX"]
+        timeframes = ["1D", "5D", "1ME", "3ME", "6ME", "YTD", "1YE", "5YE", "MAX"]
         for tf in timeframes:
             btn = QPushButton(tf)
             btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
