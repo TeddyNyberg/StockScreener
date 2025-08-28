@@ -85,14 +85,12 @@ def get_chart(tickers, time):
     low_y = plot_data_no_vol.min().min() * 0.95
     high_y = plot_data_no_vol.max().max() * 1.05
     if not is_single_ticker:
-
         second_data_no_vol = second_data.copy()
         second_data_no_vol = second_data_no_vol.drop("Volume", axis=1)
         low_y_2 = second_data_no_vol.min().min() * 0.95
         high_y_2 = second_data_no_vol.max().max() * 1.05
         low_y = min(low_y, low_y_2)
         high_y = max(high_y, high_y_2)
-
 
     if is_single_ticker:
         fig, ax = mpf.plot(
@@ -105,32 +103,32 @@ def get_chart(tickers, time):
         )
 
     if not is_single_ticker:
-        #comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1])
-        combined_data = pd.DataFrame({
-            tickers[0]: plot_data['Close'],
-            tickers[1]: second_data['Close']
-        })
+        """
         print(plot_data.columns)
         fig, ax = plt.subplots()
         ax.plot(plot_data.index,plot_data["Close"], label=tickers[0])
         ax.plot(second_data.index, second_data["Close"], label=tickers[1])
         ax.set_xlabel("Date")  # Add an x-label to the Axes.
-        ax.set_ylabel("Percent Change")  # Add a y-label to the Axes.
+        ax.set_ylabel("Change (%)")  # Add a y-label to the Axes.
         ax.set_title(title)  # Add a title to the Axes.
         ax.legend()
         fig.autofmt_xdate()
         fig.tight_layout()
         ax.set_xlim(left=plot_data.index[0], right=plot_data.index[-1])
-        #fig, ax = plt.plot(combined_data,
-        #                   #type="line",
-        #                   #style="charles",
-        #                   title=title,
-        #                   returnfig=True,
-        #                   figratio=(10, 6),
-        #                   #addplot=comp_chart,
-        #                   #label=tickers[0]
-        #
-        #          )
+        """
+        comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1])
+        fig, ax = mpf.plot(plot_data,
+                           type="line",
+                           style="charles",
+                           title=title,
+                           returnfig=True,
+                           figratio=(10, 6),
+                           addplot=comp_chart
+                           )
+        ax = ax[0]
+        print(tickers)
+        ax.legend(tickers)
+
     if is_single_ticker:
         ax = ax[0]
         ax.set_ylim(low_y, high_y)

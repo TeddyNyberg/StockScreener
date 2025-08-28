@@ -83,7 +83,7 @@ class DetailsWindow(QMainWindow):
         second_row_layout = QHBoxLayout()
         second_row_layout.addWidget(QLabel(f"Price: {name_and_price[0]["price"]} {name_and_price[0]["currency"]}"))
         second_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        self.compare_button = QPushButton("compare")
+        self.compare_button = QPushButton("Compare")
         self.compare_button.clicked.connect(self.compare)
         second_row_layout.addWidget(self.compare_button)
 
