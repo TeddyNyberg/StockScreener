@@ -67,18 +67,6 @@ def get_chart(tickers, time):
         )
 
     if not is_single_ticker:
-        """
-        fig, ax = plt.subplots()
-        ax.plot(plot_data.index,plot_data["Close"], label=tickers[0])
-        ax.plot(second_data.index, second_data["Close"], label=tickers[1])
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Change (%)")
-        ax.set_title(title)
-        ax.legend()
-        fig.autofmt_xdate()
-        fig.tight_layout()
-        ax.set_xlim(left=plot_data.index[0], right=plot_data.index[-1])
-        """
         comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1], secondary_y=False)
         print(comp_chart)
 
