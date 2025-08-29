@@ -10,7 +10,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 open_detail_windows = []
 
-# result is structured as anme_and_price, chart, data
+# result is structured as name_and_price, chart, data
 def open_window_from_ticker(result):
     new_details_window = DetailsWindow(result[0], result[2], result[1])
     open_detail_windows.append(new_details_window)
@@ -62,8 +62,9 @@ class MainWindow(QWidget):
 class DetailsWindow(QMainWindow):
     def __init__(self, name_and_price, pricing_data, chart):
         super().__init__()
-
+        print("N&P")
         print(name_and_price)
+        self.comp_ticker = None
         self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
         self.ticker_data = name_and_price
 
@@ -114,10 +115,10 @@ class DetailsWindow(QMainWindow):
 
     def make_buttons(self):
         button_layout = QHBoxLayout()
-        timeframes = ["1D", "5D", "1ME", "3ME", "6ME", "YTD", "1YE", "5YE", "MAX"]
+        timeframes = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"]
         for tf in timeframes:
             btn = QPushButton(tf)
-            btn.clicked.connect(lambda _, t=tf: self.update_chart(t))
+            btn.clicked.connect(lambda _, t=tf: self.update_chart(t, [self.ticker_data[0]["ticker"], self.comp_ticker]))
             button_layout.addWidget(btn)
         spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
         button_layout.addItem(spacer)
@@ -145,12 +146,15 @@ class DetailsWindow(QMainWindow):
         pass
 
     def compare(self):
+
         ticker_to_compare = self.search_widget.search_bar_input.text().strip().upper()
+        self.ticker_data[0][1] = ticker_to_compare
         if not ticker_to_compare:
             self.update_status_message("Please enter a ticker symbol to compare.")
             return
 
         tickers = [self.ticker_data[0]["ticker"], ticker_to_compare]
+        self.comp_ticker = ticker_to_compare
 
         result = lookup_tickers(tickers)
 
@@ -158,7 +162,7 @@ class DetailsWindow(QMainWindow):
             self.update_status_message("Could not find data for one or both tickers.")
             return
 
-        self.update_chart("1YE", tickers)
+        self.update_chart("1Y", tickers)
 
 
     # TODO: show_balncesheet

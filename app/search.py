@@ -1,6 +1,7 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
+from pandas.tseries.offsets import DateOffset, Day, MonthEnd, YearEnd
 
 
 # returns 3 things, normally called result, chart, data
@@ -31,16 +32,22 @@ def lookup_tickers(tickers):
             print(f"Warning: Could not retrieve valid info for ticker {ticker}. Skipping this ticker.")
 
     if valid_tickers_for_chart:
-        chart, chart_data = get_chart(valid_tickers_for_chart, "1YE")
+        chart, chart_data = get_chart(valid_tickers_for_chart, "1Y")
         return to_ret, chart, chart_data
     else:
         return [], None, None
 
 
+# limitation of get_chart: it only works with 1 or 2 tickers.
+# also all supporting functions only work with 1 or 2 tickers.
+# its all hardcoded
+# TODO: allow adding more tickers for comparison
 def get_chart(tickers, time):
     is_single_ticker = len(tickers) == 1
 
     plot_data, second_data = get_yfdata(tickers, time)
+    print(plot_data)
+    print(second_data)
 
     title = get_title(tickers)
 
@@ -60,19 +67,16 @@ def get_chart(tickers, time):
 
     fig, ax = mpf.plot(plot_data, **plot_kwargs)
     ax = ax[0]
-
     if not is_single_ticker:
         ax.set_ylabel("Change (%)")
         ax.legend(tickers)
-
-    if is_single_ticker:
+    else:
         low_y, high_y = get_y_bounds(plot_data, second_data, is_single_ticker)
         ax.set_ylim(low_y, high_y)
 
     return fig, plot_data
 
 
-# TODO: complete comp chart
 def rm_nm(df1, df2=None):
     df1.columns = df1.columns.droplevel(1)
     if df2 is not None:
@@ -117,12 +121,21 @@ def get_y_bounds(df1, df2, is_single):
 
 def get_date_range(time):  # must be all caps
     today = pd.Timestamp.today().normalize()
-    if time == "YTD":
-        start = pd.Timestamp(year=today.year, month=1, day=1)
-    elif time == "MAX":
+
+    offsets = {
+        "1D": Day(1),
+        "5D": Day(5),
+        "1M": MonthEnd(1),
+        "3M": MonthEnd(3),
+        "6M": MonthEnd(6),
+        "1Y": YearEnd(1),
+        "5Y": YearEnd(5),
+        "YTD": DateOffset(year=today.year, month=1, day=1)
+    }
+    if time == "MAX":
         start = pd.Timestamp(year=1950, month=1, day=1)
     else:
-        start = today - pd.tseries.frequencies.to_offset(time)
+        start = today - offsets[time]
     return start, today
 
 
