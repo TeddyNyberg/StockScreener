@@ -1,11 +1,8 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
-# TODO: change back all tickers to ticker it is that easy
-# TODO: combine lookup_ticker and tickers????
 # returns 3 things, normally called result, chart, data
 # result = list of quaduple{ticker, price, currency, name}for each stock
 # chart = figure
@@ -22,27 +19,21 @@ def lookup_tickers(tickers):
         stock = yf.Ticker(ticker)
         info = stock.info
 
-        # Check for valid info and the 'shortName' key
         if info and "shortName" in info:
-            # If valid, append the data to the return list
             to_ret.append({
                 "ticker": ticker,
                 "name": info.get("shortName", "N/A"),
                 "price": info.get("currentPrice", "N/A"),
                 "currency": info.get("currency", "USD"),
             })
-            # Add the ticker to the list for charting
             valid_tickers_for_chart.append(ticker)
         else:
-            # If not valid, print a warning and skip to the next ticker
             print(f"Warning: Could not retrieve valid info for ticker {ticker}. Skipping this ticker.")
 
-    print(valid_tickers_for_chart)
     if valid_tickers_for_chart:
         chart, chart_data = get_chart(valid_tickers_for_chart, "1YE")
         return to_ret, chart, chart_data
     else:
-        # If no valid tickers were found, return an empty list and None for the chart
         return [], None, None
 
 
@@ -51,42 +42,31 @@ def get_chart(tickers, time):
 
     plot_data, second_data = get_yfdata(tickers, time)
 
-    title = f"{tickers[0]} Stock Price"
+    title = get_title(tickers)
+
     if not is_single_ticker:
         plot_data, second_data = normalize(plot_data, second_data)
-        title = f"Price Comparison of {", ".join(tickers)}"
 
-    if is_single_ticker:
-        fig, ax = mpf.plot(
-            plot_data,
-            type="line",
-            style="charles",
-            title=title,
-            returnfig=True,
-            figratio=(10, 6)
-        )
-
+    plot_kwargs = {
+        "type": "line",
+        "style": "charles",
+        "title": title,
+        "returnfig": True,
+        "figratio": (10, 6)
+    }
     if not is_single_ticker:
         comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1], secondary_y=False)
-        print(comp_chart)
+        plot_kwargs["addplot"] = comp_chart
 
-        fig, ax = mpf.plot(plot_data,
-                           type="line",
-                           style="charles",
-                           title=title,
-                           returnfig=True,
-                           figratio=(10, 6),
-                           addplot=comp_chart
-                           )
+    fig, ax = mpf.plot(plot_data, **plot_kwargs)
+    ax = ax[0]
 
-        ax = ax[0]
+    if not is_single_ticker:
         ax.set_ylabel("Change (%)")
-        print(tickers)
         ax.legend(tickers)
 
-    low_y, high_y = get_y_bounds(plot_data, second_data, is_single_ticker)
     if is_single_ticker:
-        ax = ax[0]
+        low_y, high_y = get_y_bounds(plot_data, second_data, is_single_ticker)
         ax.set_ylim(low_y, high_y)
 
     return fig, plot_data
@@ -98,6 +78,13 @@ def rm_nm(df1, df2=None):
     if df2 is not None:
         df2.columns = df2.columns.droplevel(1)
     return df1, df2
+
+
+def get_title(tickers):
+    title = f"{tickers[0]} Stock Price"
+    if len(tickers) > 1:
+        title = f"Price Comparison of {", ".join(tickers)}"
+    return title
 
 
 def get_yfdata(tickers, time):
