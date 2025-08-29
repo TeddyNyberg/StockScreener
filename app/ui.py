@@ -95,13 +95,15 @@ class DetailsWindow(QMainWindow):
         layout.addWidget(self.canvas)
 
         self.make_buttons()
-        # TODO: make buttons
+        # TODO: make buttons for fin vs info vs inc
         self.show_financials()
+        self.show_balancesheet()
         # TODO: show_balancesheet()
         self.setCentralWidget(central_widget)
 
-    # TODO: changhe to accept time and optional current pricing data. If just time, keep. if contains pricing data, draw new customChartCanavs(data, fig)
+
     def update_chart(self, time, tickers=None):
+        # TODO: implement cache
         if tickers is None:
             new_fig, data = get_chart([self.ticker_data[0]["ticker"]], time)
         else:
@@ -127,6 +129,24 @@ class DetailsWindow(QMainWindow):
     def show_financials(self):
         self.layout.addWidget(QLabel("--- Financials ---"))
         financials_df = get_financial_metrics(self.ticker_data[0]["ticker"])
+        if not financials_df.empty:
+            table_widget = QTableWidget()
+
+            table_widget.setRowCount(financials_df.shape[0])
+            table_widget.setColumnCount(financials_df.shape[1])
+
+            table_widget.setHorizontalHeaderLabels([str(col.date()) for col in financials_df.columns])
+            table_widget.setVerticalHeaderLabels(financials_df.index)
+
+            for row_index in range(financials_df.shape[0]):
+                for col_index in range(financials_df.shape[1]):
+                    value = financials_df.iloc[row_index, col_index]
+                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            self.layout.addWidget(table_widget)
+
+    def show_balancesheet(self):
+        self.layout.addWidget(QLabel("--- Balance Sheet ---"))
+        bs_df = get_financial_metrics(self.ticker_data[0]["ticker"])
         if not financials_df.empty:
             table_widget = QTableWidget()
 

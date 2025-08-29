@@ -147,3 +147,12 @@ def get_financial_metrics(ticker):
     # TODO: scale financials and return the scale with it too
     # TODO: remove things I dont care abt??
     return yf.Ticker(ticker).financials
+
+def get_balancesheet(ticker):
+    return yf.Ticker(ticker).balancesheet
+
+def get_history_metadata(ticker):
+    return yf.Ticker(ticker).history_metadata
+
+def getxx(ticker):
+    return yf.Ticker(ticker).
