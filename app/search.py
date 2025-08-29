@@ -47,23 +47,14 @@ def lookup_tickers(tickers):
 
 
 def get_chart(tickers, time):
-    start_time, end_time = get_date_range(time)
-
     is_single_ticker = len(tickers) == 1
 
-    data = yf.download(tickers, start=start_time, end=end_time, auto_adjust=True)
+    plot_data, second_data = get_yfdata(tickers, time)
 
-    plot_data, second_data = rm_nm_and_chop2(is_single_ticker, data.copy())
-
+    title = f"{tickers[0]} Stock Price"
     if not is_single_ticker:
         plot_data, second_data = normalize(plot_data, second_data)
-
-    if is_single_ticker:
-        title = f"{tickers[0]} Stock Price"
-    else:
         title = f"Price Comparison of {", ".join(tickers)}"
-
-    low_y, high_y = get_y_bounds(plot_data, second_data, is_single_ticker)
 
     if is_single_ticker:
         fig, ax = mpf.plot(
@@ -76,8 +67,7 @@ def get_chart(tickers, time):
         )
 
     if not is_single_ticker:
-
-        print(plot_data.columns)
+        """
         fig, ax = plt.subplots()
         ax.plot(plot_data.index,plot_data["Close"], label=tickers[0])
         ax.plot(second_data.index, second_data["Close"], label=tickers[1])
@@ -89,25 +79,24 @@ def get_chart(tickers, time):
         fig.tight_layout()
         ax.set_xlim(left=plot_data.index[0], right=plot_data.index[-1])
         """
-        comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1])
-        combined_data = pd.DataFrame({
-            tickers[0]: plot_data["Close"],
-            tickers[1]: second_data["Close"]
-        })
+        comp_chart = mpf.make_addplot(second_data["Close"], label=tickers[1], secondary_y=False)
+        print(comp_chart)
+
         fig, ax = mpf.plot(plot_data,
                            type="line",
                            style="charles",
                            title=title,
                            returnfig=True,
                            figratio=(10, 6),
-                           #columns=["Close"]
                            addplot=comp_chart
                            )
-                        
-        ax = ax[0]
-        print(tickers)
-        ax.legend(tickers)"""
 
+        ax = ax[0]
+        ax.set_ylabel("Change (%)")
+        print(tickers)
+        ax.legend(tickers)
+
+    low_y, high_y = get_y_bounds(plot_data, second_data, is_single_ticker)
     if is_single_ticker:
         ax = ax[0]
         ax.set_ylim(low_y, high_y)
@@ -116,15 +105,20 @@ def get_chart(tickers, time):
 
 
 # TODO: complete comp chart
-def rm_nm_and_chop2(is_single, df):
-    plot_data = df.copy()
-    second_data = None
-    if not is_single:
-        plot_data = df.iloc[:, ::2]
-        second_data = df.iloc[:, 1::2]
-        second_data.columns = second_data.columns.droplevel(1)
-    plot_data.columns = plot_data.columns.droplevel(1)
-    return plot_data, second_data
+def rm_nm(df1, df2=None):
+    df1.columns = df1.columns.droplevel(1)
+    if df2 is not None:
+        df2.columns = df2.columns.droplevel(1)
+    return df1, df2
+
+
+def get_yfdata(tickers, time):
+    start_time, end_time = get_date_range(time)
+    df1 = yf.download(tickers[0], start=start_time, end=end_time, auto_adjust=True)
+    df2 = None
+    if len(tickers) == 2:
+        df2 = yf.download(tickers[1], start=start_time, end=end_time, auto_adjust=True)
+    return rm_nm(df1, df2)
 
 
 def normalize(df1, df2):
@@ -137,7 +131,6 @@ def get_y_bounds(df1, df2, is_single):
     df1_no_vol = df1.drop("Volume", axis=1)
     low_y = df1_no_vol.min().min() * 0.95
     high_y = df1_no_vol.max().max() * 1.05
-
     if not is_single:
         df2_no_vol = df2.drop("Volume", axis=1)
         low_y_2 = df2_no_vol.min().min() * 0.95
