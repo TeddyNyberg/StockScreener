@@ -59,11 +59,11 @@ class MainWindow(QWidget):
     def update_status_message(self, message):
         self.result_label = QLabel(message)
 
+
 class DetailsWindow(QMainWindow):
     def __init__(self, name_and_price, pricing_data, chart):
         super().__init__()
-        print("N&P")
-        print(name_and_price)
+
         self.comp_ticker = None
         self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
         self.ticker_data = name_and_price
@@ -146,9 +146,8 @@ class DetailsWindow(QMainWindow):
         pass
 
     def compare(self):
-
         ticker_to_compare = self.search_widget.search_bar_input.text().strip().upper()
-        self.ticker_data[0][1] = ticker_to_compare
+
         if not ticker_to_compare:
             self.update_status_message("Please enter a ticker symbol to compare.")
             return

@@ -43,7 +43,7 @@ def lookup_tickers(tickers):
 # its all hardcoded
 # TODO: allow adding more tickers for comparison
 def get_chart(tickers, time):
-    is_single_ticker = len(tickers) == 1
+    is_single_ticker = len(tickers) == 1 or tickers[1] is None
 
     plot_data, second_data = get_yfdata(tickers, time)
     print(plot_data)
@@ -86,7 +86,7 @@ def rm_nm(df1, df2=None):
 
 def get_title(tickers):
     title = f"{tickers[0]} Stock Price"
-    if len(tickers) > 1:
+    if len(tickers) > 1 and tickers[1] is not None:
         title = f"Price Comparison of {", ".join(tickers)}"
     return title
 
@@ -95,7 +95,7 @@ def get_yfdata(tickers, time):
     start_time, end_time = get_date_range(time)
     df1 = yf.download(tickers[0], start=start_time, end=end_time, auto_adjust=True)
     df2 = None
-    if len(tickers) == 2:
+    if len(tickers) == 2 and tickers[1] is not None:
         df2 = yf.download(tickers[1], start=start_time, end=end_time, auto_adjust=True)
     return rm_nm(df1, df2)
 
