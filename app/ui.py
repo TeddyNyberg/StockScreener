@@ -2,8 +2,9 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy)
-from .search import lookup_tickers, get_chart, get_financial_metrics
+from .search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import pandas as pd
 
 
 # just window stuff how it looks, buttons, etc.
@@ -94,11 +95,13 @@ class DetailsWindow(QMainWindow):
         self.canvas.setMaximumSize(900, 600)
         layout.addWidget(self.canvas)
 
-        self.make_buttons()
+        #self.make_buttons()
+        self.make_buttons_v2(["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"], self.update_chart)
         # TODO: make buttons for fin vs info vs inc
-        self.show_financials()
-        self.show_balancesheet()
-        # TODO: show_balancesheet()
+        self.show_fin_info("financials")
+        self.show_fin_info("balance_sheet")
+        self.show_fin_info("info")
+
         self.setCentralWidget(central_widget)
 
 
@@ -126,41 +129,55 @@ class DetailsWindow(QMainWindow):
         button_layout.addItem(spacer)
         self.layout.addLayout(button_layout)
 
-    def show_financials(self):
-        self.layout.addWidget(QLabel("--- Financials ---"))
-        financials_df = get_financial_metrics(self.ticker_data[0]["ticker"])
-        if not financials_df.empty:
+    def make_buttons_v2(self, labels, func):
+        button_layout = QHBoxLayout()
+        for label in labels:
+            btn = QPushButton(label)
+            btn.clicked.connect(lambda _, t=label: func(t, [self.ticker_data[0]["ticker"], self.comp_ticker]))
+            button_layout.addWidget(btn)
+        spacer = QSpacerItem(40,20, QSizePolicy.Expanding)
+        button_layout.addItem(spacer)
+        self.layout.addLayout(button_layout)
+
+
+    def show_fin_info(self, metrics):
+        if metrics == "financials":
+            self.layout.addWidget(QLabel("--- Financials ---"))
+            df = get_financial_metrics(self.ticker_data[0]["ticker"])
+        elif metrics == "balance_sheet":
+            self.layout.addWidget(QLabel("--- Balance Sheet ---"))
+            df = get_balancesheet(self.ticker_data[0]["ticker"])
+        elif metrics == "info":
+            self.layout.addWidget(QLabel("--- Info ---"))
+            info = get_info(self.ticker_data[0]["ticker"])
+            df = pd.DataFrame(info.items(), columns=["Metric", "Value"])
+            table_widget = QTableWidget()
+            table_widget.setRowCount(df.shape[0])
+            table_widget.setColumnCount(df.shape[1])
+            for row_index in range(df.shape[0]):
+                for col_index in range(df.shape[1]):
+                    value = df.iloc[row_index, col_index]
+                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            self.layout.addWidget(table_widget)
+            return
+        else:
+            pass
+        if not df.empty:
             table_widget = QTableWidget()
 
-            table_widget.setRowCount(financials_df.shape[0])
-            table_widget.setColumnCount(financials_df.shape[1])
+            table_widget.setRowCount(df.shape[0])
+            table_widget.setColumnCount(df.shape[1])
 
-            table_widget.setHorizontalHeaderLabels([str(col.date()) for col in financials_df.columns])
-            table_widget.setVerticalHeaderLabels(financials_df.index)
+            table_widget.setHorizontalHeaderLabels([str(col.date()) for col in df.columns])
+            table_widget.setVerticalHeaderLabels(df.index)
 
-            for row_index in range(financials_df.shape[0]):
-                for col_index in range(financials_df.shape[1]):
-                    value = financials_df.iloc[row_index, col_index]
+            for row_index in range(df.shape[0]):
+                for col_index in range(df.shape[1]):
+                    value = df.iloc[row_index, col_index]
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
             self.layout.addWidget(table_widget)
 
-    def show_balancesheet(self):
-        self.layout.addWidget(QLabel("--- Balance Sheet ---"))
-        bs_df = get_financial_metrics(self.ticker_data[0]["ticker"])
-        if not financials_df.empty:
-            table_widget = QTableWidget()
 
-            table_widget.setRowCount(financials_df.shape[0])
-            table_widget.setColumnCount(financials_df.shape[1])
-
-            table_widget.setHorizontalHeaderLabels([str(col.date()) for col in financials_df.columns])
-            table_widget.setVerticalHeaderLabels(financials_df.index)
-
-            for row_index in range(financials_df.shape[0]):
-                for col_index in range(financials_df.shape[1]):
-                    value = financials_df.iloc[row_index, col_index]
-                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
-            self.layout.addWidget(table_widget)
 
     def update_status_message(self, message):
         pass

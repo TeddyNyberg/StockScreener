@@ -3,6 +3,8 @@ import mplfinance as mpf
 import pandas as pd
 from pandas.tseries.offsets import DateOffset, Day, MonthEnd, YearEnd
 
+_cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
+
 
 # returns 3 things, normally called result, chart, data
 # result = list of quaduple{ticker, price, currency, name}for each stock
@@ -45,9 +47,7 @@ def lookup_tickers(tickers):
 def get_chart(tickers, time):
     is_single_ticker = len(tickers) == 1 or tickers[1] is None
 
-    plot_data, second_data = get_yfdata(tickers, time)
-    print(plot_data)
-    print(second_data)
+    plot_data, second_data = get_yfdata_cache(tickers, time)
 
     title = get_title(tickers)
 
@@ -78,8 +78,9 @@ def get_chart(tickers, time):
 
 
 def rm_nm(df1, df2=None):
-    df1.columns = df1.columns.droplevel(1)
-    if df2 is not None:
+    if isinstance(df1.columns, pd.MultiIndex):
+        df1.columns = df1.columns.droplevel(1)
+    if df2 is not None and isinstance(df2.columns, pd.MultiIndex):
         df2.columns = df2.columns.droplevel(1)
     return df1, df2
 
@@ -90,14 +91,39 @@ def get_title(tickers):
         title = f"Price Comparison of {", ".join(tickers)}"
     return title
 
-
-def get_yfdata(tickers, time):
+def get_yfdata_cache(tickers, time):
     start_time, end_time = get_date_range(time)
-    df1 = yf.download(tickers[0], start=start_time, end=end_time, auto_adjust=True)
-    df2 = None
-    if len(tickers) == 2 and tickers[1] is not None:
-        df2 = yf.download(tickers[1], start=start_time, end=end_time, auto_adjust=True)
-    return rm_nm(df1, df2)
+    results = []
+
+    for ticker in tickers:
+        if ticker is None:
+            results.append(None)
+            continue
+
+        if ticker not in _cache:
+            df = yf.download(ticker, start=start_time, end=end_time, auto_adjust=True)
+            _cache[ticker] = {"range": (start_time, end_time),
+                              "data": df}
+        else:
+            cache_start, cache_end = _cache[ticker]["range"]
+            cached_df = _cache[ticker]["data"]
+
+            if start_time >= cache_start and end_time <= cache_end:
+                df = cached_df.loc[start_time:end_time]
+
+            else:
+                new_start = min(start_time, cache_start)
+                new_end = max(end_time, cache_end)
+
+                new_df = yf.download(ticker, start=new_start, end=new_end, auto_adjust=True)
+                _cache[ticker]["range"] = (new_start, new_end)
+                _cache[ticker]["data"] = new_df
+                df = new_df.loc[start_time:end_time]
+        results.append(df)
+
+    if len(results) == 1:
+        results.append(None)
+    return rm_nm(results[0], results[1])
 
 
 def normalize(df1, df2):
@@ -128,8 +154,8 @@ def get_date_range(time):  # must be all caps
         "1M": MonthEnd(1),
         "3M": MonthEnd(3),
         "6M": MonthEnd(6),
-        "1Y": YearEnd(1),
-        "5Y": YearEnd(5),
+        "1Y": DateOffset(years=1),
+        "5Y": DateOffset(years=5),
         "YTD": DateOffset(year=today.year, month=1, day=1)
     }
     if time == "MAX":
@@ -148,11 +174,14 @@ def get_financial_metrics(ticker):
     # TODO: remove things I dont care abt??
     return yf.Ticker(ticker).financials
 
+
 def get_balancesheet(ticker):
     return yf.Ticker(ticker).balancesheet
 
-def get_history_metadata(ticker):
-    return yf.Ticker(ticker).history_metadata
 
-def getxx(ticker):
-    return yf.Ticker(ticker).
+def get_info(ticker):
+    print(yf.Ticker(ticker).info)
+    return yf.Ticker(ticker).info
+
+# def getxx(ticker):
+#    return yf.Ticker(ticker).
