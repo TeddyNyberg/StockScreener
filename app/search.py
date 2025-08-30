@@ -91,6 +91,7 @@ def get_title(tickers):
         title = f"Price Comparison of {", ".join(tickers)}"
     return title
 
+
 def get_yfdata_cache(tickers, time):
     start_time, end_time = get_date_range(time)
     results = []

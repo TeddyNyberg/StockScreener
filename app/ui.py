@@ -61,6 +61,14 @@ class MainWindow(QWidget):
         self.result_label = QLabel(message)
 
 
+def clear_layout(layout):
+    while layout.count() > 0:
+        item = layout.takeAt(0)
+        widget = item.widget()
+        if widget:
+            widget.deleteLater()
+
+
 class DetailsWindow(QMainWindow):
     def __init__(self, name_and_price, pricing_data, chart):
         super().__init__()
@@ -95,12 +103,35 @@ class DetailsWindow(QMainWindow):
         self.canvas.setMaximumSize(900, 600)
         layout.addWidget(self.canvas)
 
-        #self.make_buttons()
-        self.make_buttons_v2(["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"], self.update_chart)
+        # self.make_buttons()
+        time_buttons = {
+            "1D": (self.update_chart, lambda: ["1D", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "5D": (self.update_chart, lambda: ["5D", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "1M": (self.update_chart, lambda: ["1M", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "3M": (self.update_chart, lambda: ["3M", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "6M": (self.update_chart, lambda: ["6M", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "YTD": (self.update_chart, lambda: ["YTD", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "1Y": (self.update_chart, lambda: ["1Y", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "5Y": (self.update_chart, lambda: ["5Y", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
+            "MAX": (self.update_chart, lambda: ["MAX", [self.ticker_data[0]["ticker"], self.comp_ticker]])
+        }
+
+        info_buttons = {
+            "Information": (self.show_fin_info, lambda: ["info", self.ticker_data[0]["ticker"]]),
+            "Financials": (self.show_fin_info, lambda: ["financials", self.ticker_data[0]["ticker"]]),
+            "Balance Sheet": (self.show_fin_info, lambda: ["balance_sheet", self.ticker_data[0]["ticker"]])
+        }
+
+        self.make_buttons_generic(time_buttons)
+        self.make_buttons_generic(info_buttons)
+        self.content_layout = QVBoxLayout()
+        self.layout.addLayout(self.content_layout)
+
+
         # TODO: make buttons for fin vs info vs inc
-        self.show_fin_info("financials")
-        self.show_fin_info("balance_sheet")
-        self.show_fin_info("info")
+        #self.show_fin_info("financials")
+        #self.show_fin_info("balance_sheet")
+        #self.show_fin_info("info")
 
         self.setCentralWidget(central_widget)
 
@@ -129,26 +160,26 @@ class DetailsWindow(QMainWindow):
         button_layout.addItem(spacer)
         self.layout.addLayout(button_layout)
 
-    def make_buttons_v2(self, labels, func):
+    def make_buttons_generic(self, button_map):
         button_layout = QHBoxLayout()
-        for label in labels:
+        for label, (func, get_args_func) in button_map.items():
             btn = QPushButton(label)
-            btn.clicked.connect(lambda _, t=label: func(t, [self.ticker_data[0]["ticker"], self.comp_ticker]))
+            btn.clicked.connect(lambda _, f=func, a_func=get_args_func: f(*a_func()))
             button_layout.addWidget(btn)
-        spacer = QSpacerItem(40,20, QSizePolicy.Expanding)
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
         button_layout.addItem(spacer)
         self.layout.addLayout(button_layout)
 
-
-    def show_fin_info(self, metrics):
+    def show_fin_info(self, metrics, _):
+        clear_layout(self.content_layout)
         if metrics == "financials":
-            self.layout.addWidget(QLabel("--- Financials ---"))
+            self.content_layout.addWidget(QLabel("--- Financials ---"))
             df = get_financial_metrics(self.ticker_data[0]["ticker"])
         elif metrics == "balance_sheet":
-            self.layout.addWidget(QLabel("--- Balance Sheet ---"))
+            self.content_layout.addWidget(QLabel("--- Balance Sheet ---"))
             df = get_balancesheet(self.ticker_data[0]["ticker"])
         elif metrics == "info":
-            self.layout.addWidget(QLabel("--- Info ---"))
+            self.content_layout.addWidget(QLabel("--- Info ---"))
             info = get_info(self.ticker_data[0]["ticker"])
             df = pd.DataFrame(info.items(), columns=["Metric", "Value"])
             table_widget = QTableWidget()
@@ -158,7 +189,7 @@ class DetailsWindow(QMainWindow):
                 for col_index in range(df.shape[1]):
                     value = df.iloc[row_index, col_index]
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
-            self.layout.addWidget(table_widget)
+            self.content_layout.addWidget(table_widget)
             return
         else:
             pass
@@ -175,7 +206,7 @@ class DetailsWindow(QMainWindow):
                 for col_index in range(df.shape[1]):
                     value = df.iloc[row_index, col_index]
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
-            self.layout.addWidget(table_widget)
+            self.content_layout.addWidget(table_widget)
 
 
 
