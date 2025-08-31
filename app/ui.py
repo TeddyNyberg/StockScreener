@@ -6,10 +6,10 @@ from .search import lookup_tickers, get_chart, get_financial_metrics, get_balanc
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 
-
 # just window stuff how it looks, buttons, etc.
 
 open_detail_windows = []
+
 
 # result is structured as name_and_price, chart, data
 def open_window_from_ticker(result):
@@ -103,41 +103,27 @@ class DetailsWindow(QMainWindow):
         self.canvas.setMaximumSize(900, 600)
         layout.addWidget(self.canvas)
 
-        # self.make_buttons()
+        timeframes = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"]
         time_buttons = {
-            "1D": (self.update_chart, lambda: ["1D", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "5D": (self.update_chart, lambda: ["5D", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "1M": (self.update_chart, lambda: ["1M", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "3M": (self.update_chart, lambda: ["3M", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "6M": (self.update_chart, lambda: ["6M", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "YTD": (self.update_chart, lambda: ["YTD", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "1Y": (self.update_chart, lambda: ["1Y", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "5Y": (self.update_chart, lambda: ["5Y", [self.ticker_data[0]["ticker"], self.comp_ticker]]),
-            "MAX": (self.update_chart, lambda: ["MAX", [self.ticker_data[0]["ticker"], self.comp_ticker]])
+            t: (self.update_chart, lambda t=t: [t, [self.ticker_data[0]["ticker"], self.comp_ticker]])
+            for t in timeframes
         }
 
         info_buttons = {
             "Information": (self.show_fin_info, lambda: ["info", self.ticker_data[0]["ticker"]]),
             "Financials": (self.show_fin_info, lambda: ["financials", self.ticker_data[0]["ticker"]]),
-            "Balance Sheet": (self.show_fin_info, lambda: ["balance_sheet", self.ticker_data[0]["ticker"]])
+            "Balance Sheet": (self.show_fin_info, lambda: ["balance_sheet", self.ticker_data[0]["ticker"]]),
+            "What I care About": (self.show_fin_info, lambda: ["my_chart", self.ticker_data[0]["ticker"]])
         }
 
-        self.make_buttons_generic(time_buttons)
-        self.make_buttons_generic(info_buttons)
+        self.make_buttons(time_buttons)
+        self.make_buttons(info_buttons)
         self.content_layout = QVBoxLayout()
         self.layout.addLayout(self.content_layout)
 
-
-        # TODO: make buttons for fin vs info vs inc
-        #self.show_fin_info("financials")
-        #self.show_fin_info("balance_sheet")
-        #self.show_fin_info("info")
-
         self.setCentralWidget(central_widget)
 
-
     def update_chart(self, time, tickers=None):
-        # TODO: implement cache
         if tickers is None:
             new_fig, data = get_chart([self.ticker_data[0]["ticker"]], time)
         else:
@@ -149,18 +135,7 @@ class DetailsWindow(QMainWindow):
         self.canvas.setMaximumSize(900, 600)
         self.layout.insertWidget(ind, self.canvas)
 
-    def make_buttons(self):
-        button_layout = QHBoxLayout()
-        timeframes = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"]
-        for tf in timeframes:
-            btn = QPushButton(tf)
-            btn.clicked.connect(lambda _, t=tf: self.update_chart(t, [self.ticker_data[0]["ticker"], self.comp_ticker]))
-            button_layout.addWidget(btn)
-        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
-        button_layout.addItem(spacer)
-        self.layout.addLayout(button_layout)
-
-    def make_buttons_generic(self, button_map):
+    def make_buttons(self, button_map):
         button_layout = QHBoxLayout()
         for label, (func, get_args_func) in button_map.items():
             btn = QPushButton(label)
@@ -191,6 +166,28 @@ class DetailsWindow(QMainWindow):
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
             self.content_layout.addWidget(table_widget)
             return
+        elif metrics == "my_chart":
+            info = {}
+            stock_info_dict = get_info(self.ticker_data[0]["ticker"])
+            lookup_stats = ["dividendYield", "beta", "trailingPE", "forwardPE", "volume", "averageVolume", "bid", "ask",
+                            "marketCap", "fiftyTwoWeekHigh", "fiftyTwoWeekLow", "priceToSalesTrailing12Months",
+                            "twoHundredDayAverage", "profitMargins", "heldPercentInsiders", "priceToBook",
+                            "earningsQuarterlyGrowth", "debtToEquity", "returnOnEquity", "earningsGrowth",
+                            "revenueGrowth", "grossMargins", "trailingPegRatio"]
+            for stat in lookup_stats:
+                info[stat] = stock_info_dict.get(stat)
+
+            df = pd.DataFrame(info.items(), columns=["Metric", "Value"])
+
+            table_widget = QTableWidget()
+            table_widget.setRowCount(df.shape[0])
+            table_widget.setColumnCount(df.shape[1])
+            for row_index in range(df.shape[0]):
+                for col_index in range(df.shape[1]):
+                    value = df.iloc[row_index, col_index]
+                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            self.content_layout.addWidget(table_widget)
+
         else:
             pass
         if not df.empty:
@@ -207,8 +204,6 @@ class DetailsWindow(QMainWindow):
                     value = df.iloc[row_index, col_index]
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
             self.content_layout.addWidget(table_widget)
-
-
 
     def update_status_message(self, message):
         pass
@@ -231,10 +226,6 @@ class DetailsWindow(QMainWindow):
 
         self.update_chart("1Y", tickers)
 
-
-    # TODO: show_balncesheet
-    # def show_balancesheet(self):
-    #    pass
 
 # chart figure is a list of charts??????
 # TODO: make it accept possible a list of pricing data, so it works for comparison too fml
@@ -291,7 +282,6 @@ class CustomChartCanvas(FigureCanvas):
 
 
 class SearchWidget(QWidget):
-
     search_requested = Signal(object)
     message_displayed = Signal(str)
 
@@ -326,6 +316,3 @@ class SearchWidget(QWidget):
             return
         self.search_bar_input.clear()
         self.search_requested.emit(result)
-
-
-

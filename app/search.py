@@ -1,7 +1,7 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
-from pandas.tseries.offsets import DateOffset, Day, MonthEnd, YearEnd
+from pandas.tseries.offsets import DateOffset, Day, MonthEnd
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
 
@@ -156,6 +156,7 @@ def get_date_range(time):  # must be all caps
         "3M": MonthEnd(3),
         "6M": MonthEnd(6),
         "1Y": DateOffset(years=1),
+        "3Y": DateOffset(years=3),
         "5Y": DateOffset(years=5),
         "YTD": DateOffset(year=today.year, month=1, day=1)
     }
