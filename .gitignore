@@ -4,3 +4,6 @@ dist/
 .venv/
 build/
 .env
+app/ai.notes.txt
+stock_model.pt
+ticker_to_id.pt

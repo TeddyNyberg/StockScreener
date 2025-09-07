@@ -1,10 +1,15 @@
+import os
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy)
-from .search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info
+from .search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
+from model import train_model, pred_next_day
+from data import DataHandler, feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data
+import torch
 
 # just window stuff how it looks, buttons, etc.
 
@@ -27,9 +32,13 @@ class MainWindow(QWidget):
         self.resize(800, 600)
 
         top_layout = QHBoxLayout()
+        self.model_window = None
+        make_buttons({"Model": (self.handle_model, lambda: [])}, top_layout)
 
         spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
         top_layout.addItem(spacer)
+
+
 
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_window_from_ticker)
@@ -60,6 +69,10 @@ class MainWindow(QWidget):
     def update_status_message(self, message):
         self.result_label = QLabel(message)
 
+    def handle_model(self):
+        if self.model_window is None:
+            self.model_window = ModelWindow()
+        self.model_window.show()
 
 def clear_layout(layout):
     while layout.count() > 0:
@@ -67,6 +80,17 @@ def clear_layout(layout):
         widget = item.widget()
         if widget:
             widget.deleteLater()
+
+
+def make_buttons(button_map, layout):
+    button_layout = QHBoxLayout()
+    for label, (func, get_args_func) in button_map.items():
+        btn = QPushButton(label)
+        btn.clicked.connect(lambda _, f=func, a_func=get_args_func: f(*a_func()))
+        button_layout.addWidget(btn)
+    spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
+    button_layout.addItem(spacer)
+    layout.addLayout(button_layout)
 
 
 class DetailsWindow(QMainWindow):
@@ -116,8 +140,8 @@ class DetailsWindow(QMainWindow):
             "What I care About": (self.show_fin_info, lambda: ["my_chart", self.ticker_data[0]["ticker"]])
         }
 
-        self.make_buttons(time_buttons)
-        self.make_buttons(info_buttons)
+        make_buttons(time_buttons, self.layout)
+        make_buttons(info_buttons, self.layout)
         self.content_layout = QVBoxLayout()
         self.layout.addLayout(self.content_layout)
 
@@ -134,16 +158,6 @@ class DetailsWindow(QMainWindow):
         self.canvas = CustomChartCanvas(data, new_fig)
         self.canvas.setMaximumSize(900, 600)
         self.layout.insertWidget(ind, self.canvas)
-
-    def make_buttons(self, button_map):
-        button_layout = QHBoxLayout()
-        for label, (func, get_args_func) in button_map.items():
-            btn = QPushButton(label)
-            btn.clicked.connect(lambda _, f=func, a_func=get_args_func: f(*a_func()))
-            button_layout.addWidget(btn)
-        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
-        button_layout.addItem(spacer)
-        self.layout.addLayout(button_layout)
 
     def show_fin_info(self, metrics, _):
         clear_layout(self.content_layout)
@@ -187,6 +201,7 @@ class DetailsWindow(QMainWindow):
                     value = df.iloc[row_index, col_index]
                     table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
             self.content_layout.addWidget(table_widget)
+            return
 
         else:
             pass
@@ -316,3 +331,57 @@ class SearchWidget(QWidget):
             return
         self.search_bar_input.clear()
         self.search_requested.emit(result)
+
+
+class ModelWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Model")
+
+        central_widget = QWidget()
+        layout = QVBoxLayout(central_widget)
+        self.layout = layout
+
+        top_row_layout = QHBoxLayout()
+        top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+
+        layout.addLayout(top_row_layout)
+
+        # TODO: add button to get data maybe?
+
+        middle_layout = QHBoxLayout()
+        d_hand = DataHandler()
+        make_buttons({"Train": (train_model, lambda: [d_hand.get_dfs_from_s3()])}, middle_layout)
+        self.search_bar_input = QLineEdit()
+        self.search_bar_input.setPlaceholderText("Enter ticker")
+        self.next_day_button = QPushButton("Next Day")
+        self.next_day_button.clicked.connect(self.get_next_day)
+        middle_layout.addWidget(self.next_day_button)
+        middle_layout.addWidget(self.search_bar_input)
+        layout.addLayout(middle_layout)
+
+        self.setCentralWidget(central_widget)
+
+    def update_status_message(self, message):
+        self.result_label = QLabel(message)
+
+    def get_next_day(self):
+        if os.path.exists("ticker_to_id.pt"):
+            global TICKER_TO_ID_MAP
+            TICKER_TO_ID_MAP = torch.load("ticker_to_id.pt")
+            print(TICKER_TO_ID_MAP)
+        else:
+            print("NOOO")
+        print("HHHHHEERE")
+        ticker = self.search_bar_input.text().strip().upper()
+        print(ticker)
+        start, end = get_date_range("6M")
+        df = fetch_stock_data(ticker, start, end)
+        print(df)
+        df_engr = feat_engr([df])
+        print(df_engr[0])
+        print(df_engr[0].columns)
+        tensor = df_to_tensor_with_dynamic_ids(df_engr, TICKER_TO_ID_MAP) # df_to_tensor return a list of tensors
+
+        pred_next_day(tensor[0].unsqueeze(0), TICKER_TO_ID_MAP)
