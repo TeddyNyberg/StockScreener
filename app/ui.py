@@ -7,9 +7,10 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
 from .search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-from model import train_model, pred_next_day
-from data import DataHandler, feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data
+from model import pred_next_day
+from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data
 import torch
+import subprocess
 
 # just window stuff how it looks, buttons, etc.
 
@@ -351,8 +352,11 @@ class ModelWindow(QMainWindow):
         # TODO: add button to get data maybe?
 
         middle_layout = QHBoxLayout()
-        d_hand = DataHandler()
-        make_buttons({"Train": (train_model, lambda: [d_hand.get_dfs_from_s3()])}, middle_layout)
+
+        train_button = QPushButton("Train on Cloud")
+        train_button.clicked.connect(self.train_on_cloud)
+        middle_layout.addWidget(train_button)
+
         self.search_bar_input = QLineEdit()
         self.search_bar_input.setPlaceholderText("Enter ticker")
         self.next_day_button = QPushButton("Next Day")
@@ -373,15 +377,19 @@ class ModelWindow(QMainWindow):
             print(TICKER_TO_ID_MAP)
         else:
             print("NOOO")
-        print("HHHHHEERE")
         ticker = self.search_bar_input.text().strip().upper()
-        print(ticker)
         start, end = get_date_range("6M")
         df = fetch_stock_data(ticker, start, end)
-        print(df)
         df_engr = feat_engr([df])
-        print(df_engr[0])
-        print(df_engr[0].columns)
         tensor = df_to_tensor_with_dynamic_ids(df_engr, TICKER_TO_ID_MAP) # df_to_tensor return a list of tensors
 
         pred_next_day(tensor[0].unsqueeze(0), TICKER_TO_ID_MAP)
+
+    def train_on_cloud(self):
+        try:
+            subprocess.Popen(['python', 'sage.py'], cwd=os.getcwd())
+            print("SageMaker training job started. Check your AWS console for progress.")
+        except FileNotFoundError:
+            print("Error: sage.py not found. Make sure the file exists.")
+        except Exception as e:
+            print(f"An error occurred: {e}")

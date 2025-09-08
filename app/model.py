@@ -4,7 +4,7 @@ from torch import nn as nn
 from torch import optim as optim
 import torch.utils.data as data
 import math
-from data import feat_engr, df_to_tensor_with_dynamic_ids, StockDataset
+from data import feat_engr, df_to_tensor_with_dynamic_ids, StockDataset, DataHandler
 from torch.utils.data import DataLoader
 import copy
 
@@ -73,7 +73,11 @@ class PositionalEncoding(nn.Module):
         return x + self.pe[:, :x.size(1)]
 
 
-def train_model(list_of_dfs):
+def train_model():
+
+    data_handler = DataHandler()
+
+    list_of_dfs = data_handler.get_dfs_from_s3(prefix='historical_data/')
 
     processed_dfs = feat_engr(list_of_dfs)
 
@@ -96,8 +100,6 @@ def train_model(list_of_dfs):
     training_tensors = df_to_tensor_with_dynamic_ids(training_dfs, TICKER_TO_ID_MAP)
     test_tensors = df_to_tensor_with_dynamic_ids(test_dfs, TICKER_TO_ID_MAP)
 
-
-    """
     train_dataset = StockDataset(training_tensors)
     test_dataset = StockDataset(test_tensors)
     
@@ -157,7 +159,7 @@ def train_model(list_of_dfs):
     print(f"Average Test Loss: {avg_test_loss:.4f}")
 
     torch.save(model.state_dict(), "stock_model.pt")
-    print("Finished")"""
+    print("Finished")
 
 
 def pred_next_day(tensor, TICKER_TO_ID_MAP):
