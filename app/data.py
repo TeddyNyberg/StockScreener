@@ -1,21 +1,12 @@
-from dotenv import load_dotenv
-import os
 import io
 import torch
-from pandas import MultiIndex
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import pandas as pd
 import boto3
 import yfinance as yf
 import requests
 import numpy as np
 
-from search import get_yfdata_cache
-
-load_dotenv()  # This loads the variables from the .env file
-
-access_key = os.getenv("AWS_ACCESS_KEY_ID")
-secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 S3_BUCKET_NAME = "stock-screener-bucker"
 
 
@@ -55,6 +46,8 @@ def feat_engr(list_of_df):
         data['RSI'] = 100 - (100 / (1 + rs)).fillna(50)
         data['Overbought_RSI'] = (data['RSI'] > 70).astype(int)
         data['Oversold_RSI'] = (data['RSI'] < 30).astype(int)
+
+        data["Average_Move"] = data["Delta"].rolling(window=20).mean()
 
         data.dropna(inplace=True)
 
@@ -135,13 +128,7 @@ def get_sp500_tickers():
 
 class DataHandler:
     def __init__(self):
-        if not access_key or not secret_key:
-            raise ValueError("AWS credentials not found in environment variables.")
-        self.s3_client = boto3.client(
-            's3',
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key
-        )
+        self.s3_client = boto3.client('s3')
 
     def save_to_s3(self, df, file_path):
         if df is None or df.empty:

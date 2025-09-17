@@ -1,16 +1,28 @@
+import io
 import os
+import tarfile
 
+import boto3
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy)
-from .search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
+from app.search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from model import pred_next_day
 from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data
 import torch
 import subprocess
+import sys
+
+MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-09-12-15-43-24-377/source/sourcedir.tar.gz'
+S3_BUCKET_NAME = "stock-screener-bucker"
+s3_client = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+    )
 
 # just window stuff how it looks, buttons, etc.
 
@@ -371,23 +383,51 @@ class ModelWindow(QMainWindow):
         self.result_label = QLabel(message)
 
     def get_next_day(self):
-        if os.path.exists("ticker_to_id.pt"):
-            global TICKER_TO_ID_MAP
-            TICKER_TO_ID_MAP = torch.load("ticker_to_id.pt")
-            print(TICKER_TO_ID_MAP)
-        else:
-            print("NOOO")
+        print("Fetching model artifacts from S3...")
+
+
+        MODEL_ARCHIVE_KEY = "pytorch-training-2025-09-16-13-13-53-109/output/model.tar.gz"
+
+        model_buffer = io.BytesIO()
+
+        # Download the entire model.tar.gz archive into the buffer
+        s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARCHIVE_KEY, model_buffer)
+        model_buffer.seek(0)
+        print("Downloaded entire model archive to memory.")
+
+        # Now open the archive and extract the individual files
+        with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
+            # Get the file objects for the model state and ticker map
+            model_file = tar.extractfile('model.pth')
+            ticker_map_file = tar.extractfile('ticker_to_id.pt')
+
+            if model_file is None or ticker_map_file is None:
+                raise FileNotFoundError("Model files not found in the archive.")
+
+            # Load the contents of the file objects
+            model_state = torch.load(io.BytesIO(model_file.read()))
+            ticker_to_id_map = torch.load(io.BytesIO(ticker_map_file.read()))
+            print("Extracted model files from archive.")
+
+            model_state_dict = model_state.get("model_state", model_state)
+            if model_state_dict is None:
+                raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+
         ticker = self.search_bar_input.text().strip().upper()
         start, end = get_date_range("6M")
         df = fetch_stock_data(ticker, start, end)
         df_engr = feat_engr([df])
-        tensor = df_to_tensor_with_dynamic_ids(df_engr, TICKER_TO_ID_MAP) # df_to_tensor return a list of tensors
+        tensor = df_to_tensor_with_dynamic_ids(df_engr, ticker_to_id_map)
 
-        pred_next_day(tensor[0].unsqueeze(0), TICKER_TO_ID_MAP)
+        if tensor:
+            # Call the pred_next_day function with the loaded data
+            pred_next_day(tensor[0].unsqueeze(0), ticker_to_id_map, model_state_dict)
+        else:
+            print("Could not generate a valid tensor for the given ticker.")
 
     def train_on_cloud(self):
         try:
-            subprocess.Popen(['python', 'sage.py'], cwd=os.getcwd())
+            subprocess.Popen([sys.executable, os.path.join('app', 'sage.py')], cwd=os.getcwd())
             print("SageMaker training job started. Check your AWS console for progress.")
         except FileNotFoundError:
             print("Error: sage.py not found. Make sure the file exists.")

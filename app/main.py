@@ -1,8 +1,7 @@
-from PySide6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QApplication
 from app.ui import MainWindow
-from search import get_date_range, get_yfdata_cache
-from data import DataHandler, get_sp500_tickers, fetch_stock_data
-import torch
+
+
 ## pyinstaller app/main.py --onedir --name stock_screener
 
 ## alt do --onefile for cleaner exp but slowwwwwwwwwwww

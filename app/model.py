@@ -1,18 +1,22 @@
-
+import os, io
+import argparse
 import torch
 from torch import nn as nn
 from torch import optim as optim
-import torch.utils.data as data
 import math
 from data import feat_engr, df_to_tensor_with_dynamic_ids, StockDataset, DataHandler
 from torch.utils.data import DataLoader
-import copy
+import boto3
 
 batch_size = 64
 sequence_length = 0
 num_features = 0
+
+
 class StockTransformerModel(nn.Module):
+
     def __init__(self, num_features_in, embedding_dim, num_tickers, max_len=1000):
+        print("MAKING MODEL INIT")
         super().__init__()
         sequence_length = max_len
         num_features = num_features_in
@@ -58,7 +62,9 @@ class StockTransformerModel(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
+
     def __init__(self, d_model, max_len=5000):
+        print("POS ENCODING INIT")
         super().__init__()
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
@@ -73,8 +79,25 @@ class PositionalEncoding(nn.Module):
         return x + self.pe[:, :x.size(1)]
 
 
-def train_model():
 
+def train_model():
+    parser = argparse.ArgumentParser()
+
+    # hyperparameters sent by the client are passed as command-line arguments to the script.
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--learning-rate', type=float, default=0.001)
+    parser.add_argument('--use-cuda', type=bool, default=False)
+
+    # Data, model, and output directories
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
+
+    args, _ = parser.parse_known_args()
+
+    print("CALLED TRAIN MODEL")
     data_handler = DataHandler()
 
     list_of_dfs = data_handler.get_dfs_from_s3(prefix='historical_data/')
@@ -85,24 +108,22 @@ def train_model():
     training_dfs = processed_dfs[:split_idx]
     test_dfs = processed_dfs[split_idx:]
 
-    global TICKER_TO_ID_MAP, MAP_IND
+    global TICKER_TO_ID_MAP, map_ind
 
     TICKER_TO_ID_MAP = {}
-    MAP_IND = 0
+    map_ind = 0
 
     for df in processed_dfs:
         if df["Ticker"].iloc[0] not in TICKER_TO_ID_MAP.keys():
-            TICKER_TO_ID_MAP[df["Ticker"].iloc[0]] = MAP_IND
-            MAP_IND += 1
-
-    torch.save(TICKER_TO_ID_MAP, "ticker_to_id.pt")
+            TICKER_TO_ID_MAP[df["Ticker"].iloc[0]] = map_ind
+            map_ind += 1
 
     training_tensors = df_to_tensor_with_dynamic_ids(training_dfs, TICKER_TO_ID_MAP)
     test_tensors = df_to_tensor_with_dynamic_ids(test_dfs, TICKER_TO_ID_MAP)
 
     train_dataset = StockDataset(training_tensors)
     test_dataset = StockDataset(test_tensors)
-    
+
     batch_size = 64
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)  # No need to shuffle test data
@@ -119,7 +140,6 @@ def train_model():
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-
     print("Starting training...")
 
     for epoch in range(num_epochs):
@@ -127,7 +147,6 @@ def train_model():
         model.train()
         print(train_dataloader)
         for batch_data in train_dataloader:
-
             inputs = batch_data[:, :-1, :]
             targets = batch_data[:, -1, 0].unsqueeze(1)
 
@@ -158,19 +177,33 @@ def train_model():
     avg_test_loss = test_loss / len(test_dataloader)
     print(f"Average Test Loss: {avg_test_loss:.4f}")
 
-    torch.save(model.state_dict(), "stock_model.pt")
-    print("Finished")
+    with open(os.path.join(args.model_dir, 'model.pth'), 'wb') as f:
+        torch.save(model.state_dict(), f)
+
+    with open(os.path.join(args.model_dir, 'ticker_to_id.pt'), 'wb') as f:
+        torch.save(TICKER_TO_ID_MAP, f)
 
 
-def pred_next_day(tensor, TICKER_TO_ID_MAP):
+    print("Finished training.")
+
+
+def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict):
+    print("CALLED PREDICT NEXT DAY FROM S3")
+
     embedding_dim = 256
-    num_tickers = len(TICKER_TO_ID_MAP)
+    num_tickers = len(ticker_to_id_map)
     max_len = 1000
-    print("pred_next_day in model.py")
-    print(TICKER_TO_ID_MAP)
-    print(num_tickers)
-    print(tensor.shape)
-    model = StockTransformerModel(tensor.shape[-1], embedding_dim, num_tickers, max_len)
-    model.load_state_dict(torch.load("stock_model.pt"))
+
+    # Replace this with your actual model class
+    model = StockTransformerModel(input_tensor.shape[-1], embedding_dim, num_tickers, max_len)
+    model.load_state_dict(model_state_dict)
     model.eval()
-    print(model(tensor))
+    print("Model loaded successfully.")
+
+    # Step 4: Perform the prediction
+    with torch.no_grad():
+        prediction = model(input_tensor)
+
+    print(f"Predicted next day value: {prediction.item()}")
+    return prediction.item()
+
