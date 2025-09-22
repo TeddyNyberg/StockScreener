@@ -5,6 +5,9 @@ from torch import nn, optim
 import math
 from torch.utils.data import DataLoader
 from data import feat_engr, df_to_tensor_with_dynamic_ids, StockDataset, DataHandler
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+import joblib
 
 class StockTransformerModel(nn.Module):
     def __init__(self, num_features_in, embedding_dim, num_tickers, max_len=1000):
@@ -73,6 +76,21 @@ def model_fn(model_dir):
     return model.to(device)
 
 
+feature_columns = ['Close', 'Volume', 'Open', 'High', "Low", "Range", "Delta", "Delta_Percent",
+                       "Vol_vs_Avg", "Large_Move", "Large_Up", "Large_Down", "Trend_Up", "Trend_Down",
+                       "Break_Up", "Break_Down", "BB_Upper", "BB_Lower", "Cross_BB_Upper",
+                       "Cross_BB_Lower", "RSI", "Overbought_RSI", "Oversold_RSI", "Average_Move"]
+
+def get_scaler(list_of_dfs):
+    scaler = MinMaxScaler()
+    processed_dfs = feat_engr(list_of_dfs)
+    split_idx = int(len(processed_dfs) * 0.8)
+    train_dfs = processed_dfs[:split_idx]
+    all_train_dfs = pd.concat(train_dfs)
+    scaler.fit(all_train_dfs[feature_columns])
+    return scaler
+
+
 def train_fn(args):
     """Custom training loop for SageMaker training container."""
 
@@ -86,6 +104,16 @@ def train_fn(args):
     split_idx = int(len(processed_dfs) * 0.8)
     training_dfs = processed_dfs[:split_idx]
     test_dfs = processed_dfs[split_idx:]
+
+    scaler = get_scaler(list_of_dfs)
+
+    # Transform the data using the same feature_columns list
+    def transform_df(df):
+        df[feature_columns] = scaler.transform(df[feature_columns])
+        return df
+
+    training_dfs = [transform_df(df) for df in training_dfs]
+    test_dfs = [transform_df(df) for df in test_dfs]
 
     # Map tickers to IDs
     ticker_to_id_map = {}
@@ -163,9 +191,17 @@ def train_fn(args):
             "max_len": max_len,
         },
     }
+
+    print(scaler)
+    print(scaler.data_min_)
+    scaler_path = os.path.join(args.model_dir, "scaler.pt")
+    torch.save(scaler, scaler_path)
+    print(f"scaler to {scaler_path}")
+
     path = os.path.join(args.model_dir, "model.pth")
     torch.save(checkpoint, path)
     print(f"Model saved to {path}")
+
 
 
 # =====================================================

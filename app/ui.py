@@ -1,8 +1,10 @@
 import io
 import os
 import tarfile
-
 import boto3
+import numpy
+import sklearn
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
@@ -11,8 +13,10 @@ from app.search import lookup_tickers, get_chart, get_financial_metrics, get_bal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from model import pred_next_day
-from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data
+from modeltosm import get_scaler
+from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler
 import torch
+import torch.serialization
 import subprocess
 import sys
 
@@ -385,8 +389,7 @@ class ModelWindow(QMainWindow):
     def get_next_day(self):
         print("Fetching model artifacts from S3...")
 
-
-        MODEL_ARCHIVE_KEY = "pytorch-training-2025-09-16-13-13-53-109/output/model.tar.gz"
+        MODEL_ARCHIVE_KEY = "pytorch-training-2025-09-22-13-33-36-262/output/model.tar.gz"
 
         model_buffer = io.BytesIO()
 
@@ -395,33 +398,58 @@ class ModelWindow(QMainWindow):
         model_buffer.seek(0)
         print("Downloaded entire model archive to memory.")
 
+        #torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct, sklearn.preprocessing.MinMaxScaler, numpy.ndarray])
+
         # Now open the archive and extract the individual files
         with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
-            # Get the file objects for the model state and ticker map
-            model_file = tar.extractfile('model.pth')
-            ticker_map_file = tar.extractfile('ticker_to_id.pt')
 
-            if model_file is None or ticker_map_file is None:
-                raise FileNotFoundError("Model files not found in the archive.")
+            for member in tar.getmembers():
+                print(member.name)
+            # Load the PyTorch model state dict
+            with tar.extractfile('model.pth') as f:
+                model_state_dict = torch.load(io.BytesIO(f.read()))
+                print("Model state dict loaded successfully.")
 
-            # Load the contents of the file objects
-            model_state = torch.load(io.BytesIO(model_file.read()))
-            ticker_to_id_map = torch.load(io.BytesIO(ticker_map_file.read()))
-            print("Extracted model files from archive.")
+            # Load the ticker map
+            with tar.extractfile('ticker_to_id.pt') as f:
+                ticker_to_id_map = torch.load(io.BytesIO(f.read()))
+                print("Ticker map loaded successfully.")
 
-            model_state_dict = model_state.get("model_state", model_state)
-            if model_state_dict is None:
-                raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+            # Load the scikit-learn scaler object using joblib
+            with tar.extractfile("scaler.pt") as f:
+                scaler = torch.load(io.BytesIO(f.read()), weights_only=False)
+                print("Scaler loaded successfully.")
+        #data_handler = DataHandler()
+        #list_of_dfs = data_handler.get_dfs_from_s3(prefix="historical_data/")
+        #scaler = get_scaler(list_of_dfs)
+        # Check for the model's structure. If it's a checkpoint dict, get the state.
+        model_state_dict = model_state_dict.get("model_state", model_state_dict)
+        if model_state_dict is None:
+            raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
 
+        # --- Data fetching and preprocessing for prediction ---
         ticker = self.search_bar_input.text().strip().upper()
         start, end = get_date_range("6M")
         df = fetch_stock_data(ticker, start, end)
         df_engr = feat_engr([df])
+
+        # Scale the input data using the loaded scaler
+        feature_columns = ['Close', 'Volume', 'Open', 'High', "Low", "Range", "Delta", "Delta_Percent",
+                           "Vol_vs_Avg", "Large_Move", "Large_Up", "Large_Down", "Trend_Up", "Trend_Down",
+                           "Break_Up", "Break_Down", "BB_Upper", "BB_Lower", "Cross_BB_Upper",
+                           "Cross_BB_Lower", "RSI", "Overbought_RSI", "Oversold_RSI", "Average_Move"]
+
+        print(df_engr)
+        df_engr[0][feature_columns] = scaler.transform(df_engr[0][feature_columns])
+        #df_engr[feature_columns] = scaler.transform(df_engr[feature_columns])
+
         tensor = df_to_tensor_with_dynamic_ids(df_engr, ticker_to_id_map)
 
         if tensor:
-            # Call the pred_next_day function with the loaded data
-            pred_next_day(tensor[0].unsqueeze(0), ticker_to_id_map, model_state_dict)
+            print(f"predicting {ticker.upper()}...")
+            # Make sure pred_next_day can handle the scaler
+            pred_next_day(tensor[0].unsqueeze(0), ticker_to_id_map, model_state_dict, scaler)
+
         else:
             print("Could not generate a valid tensor for the given ticker.")
 

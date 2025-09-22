@@ -6,7 +6,9 @@ from torch import optim as optim
 import math
 from data import feat_engr, df_to_tensor_with_dynamic_ids, StockDataset, DataHandler
 from torch.utils.data import DataLoader
-import boto3
+import joblib
+import numpy as np
+
 
 batch_size = 64
 sequence_length = 0
@@ -124,7 +126,7 @@ def train_model():
     train_dataset = StockDataset(training_tensors)
     test_dataset = StockDataset(test_tensors)
 
-    batch_size = 64
+    batch_size = args.batch_size
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)  # No need to shuffle test data
 
@@ -134,11 +136,11 @@ def train_model():
     num_tickers = len(TICKER_TO_ID_MAP)
     embedding_dim = 256
     max_len = 1000
-    num_epochs = 10
+    num_epochs = args.epochs
 
     model = StockTransformerModel(num_features, embedding_dim, num_tickers, max_len)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
     print("Starting training...")
 
@@ -157,6 +159,15 @@ def train_model():
             # Backpropagation
             optimizer.zero_grad()
             loss.backward()
+            print("Checking gradients for feature embedding...")
+            for name, param in model.named_parameters():
+                if 'feature_embedding' in name and param.grad is not None:
+                    print(f"Gradient norm for {name}: {param.grad.norm()}")
+
+            print("Checking gradients for ticker embedding...")
+            for name, param in model.named_parameters():
+                if 'ticker_embedding' in name and param.grad is not None:
+                    print(f"Gradient norm for {name}: {param.grad.norm()}")
             optimizer.step()
 
         print(f"Epoch [{epoch + 1}/{num_epochs}], Training Loss: {loss.item():.4f}")
@@ -187,7 +198,7 @@ def train_model():
     print("Finished training.")
 
 
-def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict):
+def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict, scaler):
     print("CALLED PREDICT NEXT DAY FROM S3")
 
     embedding_dim = 256
@@ -200,10 +211,17 @@ def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict):
     model.eval()
     print("Model loaded successfully.")
 
-    # Step 4: Perform the prediction
-    with torch.no_grad():
-        prediction = model(input_tensor)
 
-    print(f"Predicted next day value: {prediction.item()}")
-    return prediction.item()
+    with torch.no_grad():
+        normalized_prediction = model(input_tensor)
+
+    dummy_array = np.zeros((1, scaler.n_features_in_))
+    dummy_array[0, 0] = normalized_prediction.item()
+
+    prediction = scaler.inverse_transform(dummy_array)[0, 0]
+
+    print(f"Predicted next day value: {prediction}")
+    print(prediction.item())
+    return prediction
+
 

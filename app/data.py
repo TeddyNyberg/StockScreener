@@ -47,9 +47,12 @@ def feat_engr(list_of_df):
         data['Overbought_RSI'] = (data['RSI'] > 70).astype(int)
         data['Oversold_RSI'] = (data['RSI'] < 30).astype(int)
 
-        data["Average_Move"] = data["Delta"].rolling(window=20).mean()
+        data["Average_Move"] = data["Delta_Percent"].rolling(window=20).mean()
 
         data.dropna(inplace=True)
+
+
+
 
     return list_of_df
 
