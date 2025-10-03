@@ -8,6 +8,7 @@ from data import feat_engr, df_to_tensor_with_dynamic_ids, StockDataset, DataHan
 from torch.utils.data import DataLoader
 import joblib
 import numpy as np
+from newattemptmodel import StockTransformerModel
 
 
 batch_size = 64
@@ -15,7 +16,7 @@ sequence_length = 0
 num_features = 0
 
 
-class StockTransformerModel(nn.Module):
+class StockTransformerModelNull(nn.Module):
 
     def __init__(self, num_features_in, embedding_dim, num_tickers, max_len=1000):
         print("MAKING MODEL INIT")
@@ -138,7 +139,7 @@ def train_model():
     max_len = 1000
     num_epochs = args.epochs
 
-    model = StockTransformerModel(num_features, embedding_dim, num_tickers, max_len)
+    model = StockTransformerModelNull(num_features, embedding_dim, num_tickers, max_len)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
@@ -203,7 +204,7 @@ def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict, scaler):
 
     embedding_dim = 256
     num_tickers = len(ticker_to_id_map)
-    max_len = 1000
+    max_len = 50
 
     # Replace this with your actual model class
     model = StockTransformerModel(input_tensor.shape[-1], embedding_dim, num_tickers, max_len)
@@ -211,17 +212,56 @@ def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict, scaler):
     model.eval()
     print("Model loaded successfully.")
 
+    print("Shape of the input tensor:", input_tensor.shape, flush=True)
+    print("Example of the first sequence's data:", flush=True)
+    print(input_tensor[0], flush=True)
+    print("\n--- Assumptions vs. Reality ---", flush=True)
+    print("First few numerical features (excluding ticker ID):", flush=True)
+    print(input_tensor[0, 0, :-1], flush=True)
+    print("Ticker ID (at time step 0, last column):", flush=True)
+    print(input_tensor[0, 0, -1].item(), flush=True)
 
     with torch.no_grad():
+
         normalized_prediction = model(input_tensor)
 
-    dummy_array = np.zeros((1, scaler.n_features_in_))
-    dummy_array[0, 0] = normalized_prediction.item()
+    close_idx = 0  # Assuming 'Close' is the first feature
+    close_min = scaler.data_min_[close_idx]
+    close_max = scaler.data_max_[close_idx]
 
-    prediction = scaler.inverse_transform(dummy_array)[0, 0]
+    prediction = normalized_prediction.item() * (close_max - close_min) + close_min
 
     print(f"Predicted next day value: {prediction}")
     print(prediction.item())
     return prediction
 
 
+def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
+    print("CALLED PREDICT NEXT DAY FROM S3")
+
+    model = StockTransformerModel(
+        num_features_in=config["num_features_in"],
+        embedding_dim=config["embedding_dim"],
+        max_len=config["max_len"]
+    )
+
+    model.load_state_dict(model_state_dict)
+    model.eval()
+    print("Model loaded successfully.")
+
+    with torch.no_grad():
+        print("Shape of the input tensor:", input_tensor.shape)
+        normalized_prediction = model(input_tensor)
+
+    print(f"model raw out: {normalized_prediction}")
+    last_prediction = normalized_prediction[-1][0]
+    print(f"last prediction: {last_prediction}")
+
+    prediction_np = np.array(last_prediction.item()).reshape(1, -1)
+
+
+    prediction = (prediction_np[0][0] * std) + mean
+
+
+    print(f"Predicted next day value: {prediction}")
+    return prediction

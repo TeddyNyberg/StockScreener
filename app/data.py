@@ -51,11 +51,14 @@ def feat_engr(list_of_df):
 
         data.dropna(inplace=True)
 
-
-
-
     return list_of_df
 
+def create_sequences(data, sequence_length):
+    x, y = [], []
+    for i in range(len(data) - sequence_length):
+        x.append(data[i:(i + sequence_length)])
+        y.append(data[i + sequence_length, 0])
+    return np.array(x), np.array(y)
 
 def df_to_tensor_with_dynamic_ids(list_of_df, ticker_map, window_size=50):
     tensor_list = []
@@ -75,6 +78,7 @@ def df_to_tensor_with_dynamic_ids(list_of_df, ticker_map, window_size=50):
         df_copy = df_copy.select_dtypes(include=[np.number])
 
         values = df_copy.to_numpy(dtype='float32')
+        values[:, -1] = values[:, -1].astype('int64')
 
         # Generate sliding windows
         for i in range(len(values) - window_size + 1):
@@ -84,19 +88,26 @@ def df_to_tensor_with_dynamic_ids(list_of_df, ticker_map, window_size=50):
     return tensor_list
 
 
+def to_sequences(seq_size, feature_data, target_data):
 
+    x = []
+    y = []
+    for i in range(len(feature_data) - seq_size):
+        x.append(feature_data[i:i + seq_size])
+        y.append(target_data[i + seq_size])
 
+    return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
+def to_seq(seq_size, obs):
+    x = []
+    y = []
+    for i in range(len(obs) - seq_size):
+        window = obs[i: (i+seq_size)]
+        after_window = obs[i+ seq_size]
+        x.append(window)
+        y.append(after_window)
+    return torch.tensor(x, dtype=torch.float32).view(-1, seq_size, 1), torch.tensor(y, dtype=torch.float32).view(-1,1)
 
-
-# to use
-# stock_dataset = StockDataset(data_tensors)
-# dataloader = DataLoader(stock_dataset, batch_size=500, shuffle=True)
-# num_feat = 23 rn
-# embedding dim = 256 or 512 or 718
-# seq_len = days of hist to use = 50
-# linear_projection = nn.Linear(in_features=num_features, out_features=embedding_dim)
-# embedded_data = linear_projection(what dataloader gives)
 class StockDataset(Dataset): # make iterable instead?
     def __init__(self, data_list):
         self.data = data_list
@@ -157,7 +168,7 @@ class DataHandler:
     def get_dfs_from_s3(self, prefix=''):
 
         if self.s3_client is None:
-            s3_client = boto3.client('s3')
+            self.s3_client = boto3.client('s3')
 
         list_of_dfs = []
 

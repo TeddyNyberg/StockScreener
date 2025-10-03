@@ -20,14 +20,14 @@ hyperparameter_ranges = {
 # Define the PyTorch estimator
 estimator = PyTorch(
     source_dir='app',
-    entry_point='modeltosm.py',
+    entry_point='newattemptmodel.py',
     role=sagemaker_role,
     session=sagemaker_session,
     instance_count=1,
     instance_type='ml.m5.4xlarge',
     framework_version='1.13',
     py_version='py39',
-    hyperparameters={'epochs': "10", 'batch_size': "64", "learning_rate": "0.001"}
+    hyperparameters={'epochs': "50", 'batch_size': "64", "learning_rate": "0.001"}
 )
 estimator.fit({'training': data_location})
 

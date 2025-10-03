@@ -2,7 +2,8 @@ import io
 import os
 import tarfile
 import boto3
-import numpy
+import joblib
+import numpy as np
 import sklearn
 
 from PySide6.QtCore import Signal
@@ -12,9 +13,8 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
 from app.search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-from model import pred_next_day
-from modeltosm import get_scaler
-from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler
+from model import pred_next_day, pred_next_day_no_ticker
+from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq
 import torch
 import torch.serialization
 import subprocess
@@ -389,7 +389,7 @@ class ModelWindow(QMainWindow):
     def get_next_day(self):
         print("Fetching model artifacts from S3...")
 
-        MODEL_ARCHIVE_KEY = "pytorch-training-2025-09-22-13-33-36-262/output/model.tar.gz"
+        MODEL_ARCHIVE_KEY = "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
 
         model_buffer = io.BytesIO()
 
@@ -407,23 +407,22 @@ class ModelWindow(QMainWindow):
                 print(member.name)
             # Load the PyTorch model state dict
             with tar.extractfile('model.pth') as f:
-                model_state_dict = torch.load(io.BytesIO(f.read()))
+                checkpoint = torch.load(io.BytesIO(f.read()))
                 print("Model state dict loaded successfully.")
 
-            # Load the ticker map
-            with tar.extractfile('ticker_to_id.pt') as f:
-                ticker_to_id_map = torch.load(io.BytesIO(f.read()))
-                print("Ticker map loaded successfully.")
-
             # Load the scikit-learn scaler object using joblib
-            with tar.extractfile("scaler.pt") as f:
-                scaler = torch.load(io.BytesIO(f.read()), weights_only=False)
-                print("Scaler loaded successfully.")
-        #data_handler = DataHandler()
-        #list_of_dfs = data_handler.get_dfs_from_s3(prefix="historical_data/")
-        #scaler = get_scaler(list_of_dfs)
+            #with tar.extractfile("scaler.joblib") as f:
+            #    scaler = joblib.load(f)
+            #    print("Feat Scaler loaded successfully.")
+
+            #with tar.extractfile("t_scaler.joblib") as f:
+            #    t_scaler = joblib.load(f)
+            #    print("Target Scaler loaded successfully.")
+
+
         # Check for the model's structure. If it's a checkpoint dict, get the state.
-        model_state_dict = model_state_dict.get("model_state", model_state_dict)
+        model_state_dict = checkpoint.get("model_state")
+        config = checkpoint.get("config")
         if model_state_dict is None:
             raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
 
@@ -431,27 +430,40 @@ class ModelWindow(QMainWindow):
         ticker = self.search_bar_input.text().strip().upper()
         start, end = get_date_range("6M")
         df = fetch_stock_data(ticker, start, end)
-        df_engr = feat_engr([df])
+        #df_engr = feat_engr([df])
+        data = df["Close"]
 
-        # Scale the input data using the loaded scaler
-        feature_columns = ['Close', 'Volume', 'Open', 'High', "Low", "Range", "Delta", "Delta_Percent",
-                           "Vol_vs_Avg", "Large_Move", "Large_Up", "Large_Down", "Trend_Up", "Trend_Down",
-                           "Break_Up", "Break_Down", "BB_Upper", "BB_Lower", "Cross_BB_Upper",
-                           "Cross_BB_Lower", "RSI", "Overbought_RSI", "Oversold_RSI", "Average_Move"]
+        seq_size = 50
+        input_sequence = data[-seq_size:]
 
-        print(df_engr)
-        df_engr[0][feature_columns] = scaler.transform(df_engr[0][feature_columns])
-        #df_engr[feature_columns] = scaler.transform(df_engr[feature_columns])
+        def normalize_window(window):
+            mean = window.mean()
+            std = window.std() + 1e-8
+            return (window - mean) / std, mean, std
 
-        tensor = df_to_tensor_with_dynamic_ids(df_engr, ticker_to_id_map)
+        normalized_window, mean, std = normalize_window(input_sequence)
 
-        if tensor:
-            print(f"predicting {ticker.upper()}...")
-            # Make sure pred_next_day can handle the scaler
-            pred_next_day(tensor[0].unsqueeze(0), ticker_to_id_map, model_state_dict, scaler)
+        #data_scaled = scaler.transform(data.to_numpy().reshape(-1, 1))
 
-        else:
-            print("Could not generate a valid tensor for the given ticker.")
+        #print(scaler.inverse_transform(data_scaled))
+
+        #data = data.drop("Ticker", axis=1)
+
+        #data_np = data.to_numpy()
+
+        #data_scaled = feat_scaler.transform(data_np)
+
+        input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
+        pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+
+        #if len(data_scaled) >= seq_size:
+        #    input_sequence = data_scaled[-seq_size:]
+        #    input_tensor = torch.tensor(input_sequence, dtype=torch.float32).unsqueeze(0)
+        #    print(f"predicting {ticker.upper()}...")
+        #    print(f"input tensor: {input_tensor}")
+        #    pred_next_day_no_ticker(input_tensor, model_state_dict, scaler, config)
+        #else:
+        #    print("Could not generate a valid tensor for the given ticker.")
 
     def train_on_cloud(self):
         try:
