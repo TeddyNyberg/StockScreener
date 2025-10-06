@@ -11,7 +11,7 @@ import sklearn
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
-                               QSizePolicy)
+                               QSizePolicy, QGridLayout)
 from app.search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
@@ -448,6 +448,14 @@ def optimal_picks():
 
     return sorted_predictions, all_predictions[-1]
 
+
+def get_historical_volatility(ticker, start, end):
+    df = fetch_stock_data(ticker, start, end)
+    df['Returns'] = df['Close'].pct_change().dropna()
+    daily_variance = df['Returns'].var()
+    annualized_variance = daily_variance * 252
+    return annualized_variance
+
 class ModelWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -462,7 +470,7 @@ class ModelWindow(QMainWindow):
         top_row_layout.addItem(QSpacerItem(90, 0))
 
         next_day_picks = QPushButton("Next Day Picks")
-        next_day_picks.clicked.connect(optimal_picks)
+        next_day_picks.clicked.connect(self.show_kelly_bet)
         top_row_layout.addWidget(next_day_picks)
 
 
@@ -483,6 +491,8 @@ class ModelWindow(QMainWindow):
         middle_layout.addWidget(self.next_day_button)
         middle_layout.addWidget(self.search_bar_input)
         layout.addLayout(middle_layout)
+
+        self.third_layout = QGridLayout()
 
         self.setCentralWidget(central_widget)
 
@@ -573,6 +583,76 @@ class ModelWindow(QMainWindow):
         except Exception as e:
             print(f"An error occurred: {e}")
 
+    def show_kelly_bet(self):
+
+        start, end = get_date_range("6M")
+
+        sorted_predictions, spy_delta = optimal_picks()
+
+        if not sorted_predictions:
+            print("No predictions available to calculate Kelly bets.")
+            return
+
+        RISK_FREE_RATE = 0.005  # Assuming 0.5% annualized risk-free rate (r)
+
+        kelly_allocations = []
+
+        for ticker, predicted_delta in sorted_predictions:
+            mu = predicted_delta
+
+            sigma_squared = get_historical_volatility(ticker, start, end)
+
+            # Ensure variance is positive to avoid division by zero or errors
+            if sigma_squared <= 0:
+                print(f"Skipping {ticker}: Volatility (sigma^2) is zero or negative.")
+                continue
+
+            kelly_fraction = (mu - RISK_FREE_RATE) / sigma_squared
+
+            # WE GOING FULL KELLY
+            HALF_KELLY_MULTIPLIER = 1
+            allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+
+            if allocation < 0:
+                allocation = 0.0
+            elif allocation > 1.0:
+                allocation = 1.0
+
+            kelly_allocations.append((ticker, allocation, mu, sigma_squared))
+
+        total_allocation = sum(allocation for _, allocation, _, _ in kelly_allocations)
+
+        normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
+
+        print("\n--- Continuous Kelly-Based Position Sizing ---")
+        print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+        print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
+
+        final_allocations_unsorted = []
+        for ticker, allocation, mu, sigma_squared in kelly_allocations:
+            normalized_allocation = allocation * normalization_factor
+            if normalized_allocation > 0:
+                final_allocations_unsorted.append((ticker, normalized_allocation, mu))
+                print(
+                    f"Stock: {ticker}, μ: {mu:+.4f}, σ²: {sigma_squared:.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+
+        final_allocations = sorted(final_allocations_unsorted, key=lambda x: x[1], reverse=True)
+
+        self.third_layout.addWidget(QLabel("Ticker"), 0, 0)
+        self.third_layout.addWidget(QLabel("Allocation"), 0, 1)
+        self.third_layout.addWidget(QLabel("Proj Return"), 0, 2)
+        i = 1
+        for ticker, normalized_allocation, mu in final_allocations:
+            allocation_text = f"{normalized_allocation * 100:.2f}%"
+            mu_text = f"{mu:+.4f}%"
+            self.third_layout.addWidget(QLabel(ticker), i, 0)
+            self.third_layout.addWidget(QLabel(allocation_text), i, 1)
+            self.third_layout.addWidget(QLabel(mu_text), i, 2)
+
+            i += 1
+        self.layout.addLayout(self.third_layout)
+
+        print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a in final_allocations) * 100:.2f}%")
 
 
 
