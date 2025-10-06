@@ -52,13 +52,14 @@ class MainWindow(QWidget):
 
         top_layout = QHBoxLayout()
         self.model_window = None
+        self.watch_window = None
         make_buttons({"Model": (self.handle_model, lambda: [])}, top_layout)
 
         spacer = QSpacerItem(400, 20, QSizePolicy.Expanding)
         top_layout.addItem(spacer)
 
         btn = QPushButton("Watchlist")
-        btn.clicked.connect(lambda _: open_watchlist())
+        btn.clicked.connect(lambda _: open_watchlist(self))
         top_layout.addWidget(btn)
 
         self.search_widget = SearchWidget()
@@ -102,8 +103,11 @@ def clear_layout(layout):
         if widget:
             widget.deleteLater()
 
-def open_watchlist():
-    pass
+def open_watchlist(self):
+    if self.watch_window is None:
+        self.watch_window = WatchlistWindow()
+    self.watch_window.show()
+
 
 def add_watchlist(ticker):
     pass
@@ -124,6 +128,7 @@ class DetailsWindow(QMainWindow):
         super().__init__()
 
         self.comp_ticker = None
+        self.watch_window = None
         self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
         self.ticker_data = name_and_price
 
@@ -493,3 +498,25 @@ class ModelWindow(QMainWindow):
             print("Error: sage.py not found. Make sure the file exists.")
         except Exception as e:
             print(f"An error occurred: {e}")
+
+
+
+
+class WatchlistWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.comp_ticker = None
+        self.setWindowTitle("Watchlist")
+
+        central_widget = QWidget()
+        layout = QVBoxLayout(central_widget)
+        self.layout = layout
+
+        second_row_layout = QHBoxLayout()
+        second_row_layout.addWidget(QLabel("Watchlist will go here"))
+        layout.addLayout(second_row_layout)
+
+        self.setCentralWidget(central_widget)
+
+
