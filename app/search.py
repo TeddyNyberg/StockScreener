@@ -152,9 +152,9 @@ def get_date_range(time):  # must be all caps
     offsets = {
         "1D": Day(1),
         "5D": Day(5),
-        "1M": MonthEnd(1),
-        "3M": MonthEnd(3),
-        "6M": MonthEnd(6),
+        "1M": DateOffset(months=1),
+        "3M": DateOffset(months=3),
+        "6M": DateOffset(months=6),
         "1Y": DateOffset(years=1),
         "3Y": DateOffset(years=3),
         "5Y": DateOffset(years=5),

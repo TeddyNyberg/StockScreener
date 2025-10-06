@@ -1,6 +1,8 @@
 import io
 import os
 import tarfile
+from urllib.response import addinfo
+
 import boto3
 import joblib
 import numpy as np
@@ -52,10 +54,12 @@ class MainWindow(QWidget):
         self.model_window = None
         make_buttons({"Model": (self.handle_model, lambda: [])}, top_layout)
 
-        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
+        spacer = QSpacerItem(400, 20, QSizePolicy.Expanding)
         top_layout.addItem(spacer)
 
-
+        btn = QPushButton("Watchlist")
+        btn.clicked.connect(lambda _: open_watchlist())
+        top_layout.addWidget(btn)
 
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_window_from_ticker)
@@ -98,6 +102,11 @@ def clear_layout(layout):
         if widget:
             widget.deleteLater()
 
+def open_watchlist():
+    pass
+
+def add_watchlist(ticker):
+    pass
 
 def make_buttons(button_map, layout):
     button_layout = QHBoxLayout()
@@ -124,11 +133,22 @@ class DetailsWindow(QMainWindow):
 
         top_row_layout = QHBoxLayout()
         top_row_layout.addWidget(QLabel(f"Name: {name_and_price[0]["name"]}"))
+
+        btn = QPushButton("Add to Watchlist")
+        btn.clicked.connect(lambda _: add_watchlist(name_and_price[0]))
+        top_row_layout.addWidget(btn)
+
         top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+
+        btn = QPushButton("Watchlist")
+        btn.clicked.connect(lambda _: open_watchlist())
+        top_row_layout.addWidget(btn)
+
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_window_from_ticker)
         self.search_widget.message_displayed.connect(self.update_status_message)
         top_row_layout.addWidget(self.search_widget)
+
         layout.addLayout(top_row_layout)
 
         second_row_layout = QHBoxLayout()
@@ -432,7 +452,7 @@ class ModelWindow(QMainWindow):
         df = fetch_stock_data(ticker, start, end)
         #df_engr = feat_engr([df])
         data = df["Close"]
-
+        print(f"most recent day {df["Close"].iloc[-1]}")
         seq_size = 50
         input_sequence = data[-seq_size:]
 

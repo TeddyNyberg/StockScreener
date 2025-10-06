@@ -73,7 +73,7 @@ def model_fn(model_dir):
 
     return model.to(device)
 
-
+# TODO: maybe add unequal weighting, like thesandp??????
 def train_fn(args):
     print("CALLED NEW ATTEMPT TRAIN FN")
 
