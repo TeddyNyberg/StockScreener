@@ -644,7 +644,7 @@ class ModelWindow(QMainWindow):
         i = 1
         for ticker, normalized_allocation, mu in final_allocations:
             allocation_text = f"{normalized_allocation * 100:.2f}%"
-            mu_text = f"{mu:+.4f}%"
+            mu_text = f"{(mu * 100):+.4f}%"
             self.third_layout.addWidget(QLabel(ticker), i, 0)
             self.third_layout.addWidget(QLabel(allocation_text), i, 1)
             self.third_layout.addWidget(QLabel(mu_text), i, 2)
@@ -652,7 +652,7 @@ class ModelWindow(QMainWindow):
             i += 1
         self.layout.addLayout(self.third_layout)
 
-        print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a in final_allocations) * 100:.2f}%")
+        print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a, _ in final_allocations) * 100:.2f}%")
 
 
 
