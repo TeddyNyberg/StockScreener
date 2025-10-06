@@ -263,5 +263,5 @@ def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
     prediction = (prediction_np[0][0] * std) + mean
 
 
-    print(f"Predicted next day value: {prediction}")
+    print(f"Predicted next day value: {prediction.item()}")
     return prediction

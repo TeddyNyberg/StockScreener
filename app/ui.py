@@ -16,7 +16,7 @@ from app.search import lookup_tickers, get_chart, get_financial_metrics, get_bal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from model import pred_next_day, pred_next_day_no_ticker
-from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq
+from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq, get_sp500_tickers
 import torch
 import torch.serialization
 import subprocess
@@ -374,6 +374,79 @@ class SearchWidget(QWidget):
         self.search_bar_input.clear()
         self.search_requested.emit(result)
 
+def normalize_window(window):
+    mean = window.mean()
+    std = window.std() + 1e-8
+    return (window - mean) / std, mean, std
+
+def optimal_picks():
+    print("Fetching model artifacts from S3...")
+
+    MODEL_ARCHIVE_KEY = "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
+
+    model_buffer = io.BytesIO()
+
+    # Download the entire model.tar.gz archive into the buffer
+    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARCHIVE_KEY, model_buffer)
+    model_buffer.seek(0)
+    print("Downloaded entire model archive to memory.")
+
+    # Now open the archive and extract the individual files
+    with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
+        # Load the PyTorch model state dict
+        with tar.extractfile('model.pth') as f:
+            checkpoint = torch.load(io.BytesIO(f.read()))
+            print("Model state dict loaded successfully.")
+
+    # Check for the model's structure. If it's a checkpoint dict, get the state.
+    model_state_dict = checkpoint.get("model_state")
+    config = checkpoint.get("config")
+    if model_state_dict is None:
+        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+
+    # --- Data fetching and preprocessing for prediction ---
+
+    start, end = get_date_range("6M")
+    sp_tickers = get_sp500_tickers()
+    sp_tickers.append("^SPX")
+
+    all_predictions = []
+    for ticker in sp_tickers:
+        if "." in ticker:
+            ticker = ticker.replace(".", "-")
+        df = fetch_stock_data(ticker, start, end)
+        data = df["Close"]
+        seq_size = 50
+        input_sequence = data[-seq_size:]
+
+        normalized_window, mean, std = normalize_window(input_sequence)
+
+        input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
+        prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+
+        delta = ((prediction - df["Close"].iloc[-1]) / df["Close"].iloc[-1]).item()
+
+        all_predictions.append((ticker, delta))
+
+    sorted_predictions = sorted(all_predictions, key=lambda x: x[1], reverse=True)
+
+    print("\n--- Sorted Predictions (Highest Predicted Return First) ---")
+
+    for ticker, delta in sorted_predictions[:10]:
+        print(f"Stock: {ticker}, Predicted Delta: {delta:+.4f}")
+
+    print("\n--- Lowest Predictions ---")
+    for ticker, delta in sorted_predictions[-5:]:
+        print(f"Stock: {ticker}, Predicted Delta: {delta:+.4f}")
+
+    if sorted_predictions:
+        best_stock, best_value = sorted_predictions[0]
+        print(f"\nOverall Best Stock Pick: {best_stock}")
+        print(f"Predicted Value: {best_value:+.4f}")
+    else:
+        print("No predictions were successfully generated.")
+
+    return sorted_predictions, all_predictions[-1]
 
 class ModelWindow(QMainWindow):
     def __init__(self):
@@ -386,7 +459,12 @@ class ModelWindow(QMainWindow):
         self.layout = layout
 
         top_row_layout = QHBoxLayout()
-        top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        top_row_layout.addItem(QSpacerItem(90, 0))
+
+        next_day_picks = QPushButton("Next Day Picks")
+        next_day_picks.clicked.connect(optimal_picks)
+        top_row_layout.addWidget(next_day_picks)
+
 
         layout.addLayout(top_row_layout)
 
@@ -410,6 +488,7 @@ class ModelWindow(QMainWindow):
 
     def update_status_message(self, message):
         self.result_label = QLabel(message)
+
 
     def get_next_day(self):
         print("Fetching model artifacts from S3...")
@@ -460,11 +539,6 @@ class ModelWindow(QMainWindow):
         print(f"most recent day {df["Close"].iloc[-1]}")
         seq_size = 50
         input_sequence = data[-seq_size:]
-
-        def normalize_window(window):
-            mean = window.mean()
-            std = window.std() + 1e-8
-            return (window - mean) / std, mean, std
 
         normalized_window, mean, std = normalize_window(input_sequence)
 
