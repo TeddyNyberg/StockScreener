@@ -2,7 +2,7 @@ import io
 import os
 import tarfile
 from urllib.response import addinfo
-
+import psycopg2
 import boto3
 import joblib
 import numpy as np
@@ -21,6 +21,10 @@ import torch
 import torch.serialization
 import subprocess
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-09-12-15-43-24-377/source/sourcedir.tar.gz'
 S3_BUCKET_NAME = "stock-screener-bucker"
@@ -29,6 +33,12 @@ s3_client = boto3.client(
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
     )
+
+DB_NAME = os.environ.get("RDS_DB_NAME")
+DB_USERNAME = os.environ.get("RDS_USERNAME")
+DB_PASSWORD = os.environ.get("RDS_PASSWORD")
+DB_HOST = os.environ.get("RDS_HOST")
+DB_PORT = os.environ.get("PORT")
 
 # just window stuff how it looks, buttons, etc.
 
@@ -660,6 +670,11 @@ class WatchlistWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        connection = get_db_connection()
+        if connection:
+            print("Database connection successful!")
+            connection.close()
+
         self.comp_ticker = None
         self.setWindowTitle("Watchlist")
 
@@ -674,3 +689,17 @@ class WatchlistWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
 
+def get_db_connection():
+    """Establishes and returns a connection to the PostgreSQL database."""
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USERNAME,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        return conn
+    except psycopg2.Error as e:
+        print(f"Error connecting to the database: {e}")
+        return None
