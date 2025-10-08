@@ -200,26 +200,16 @@ def train_model():
 
 
 def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict, scaler):
-    print("CALLED PREDICT NEXT DAY FROM S3")
 
     embedding_dim = 256
     num_tickers = len(ticker_to_id_map)
     max_len = 50
 
-    # Replace this with your actual model class
+    # TODO: change this so it takes in model is an arg then you can pred next day w any model
+    # also this would allow for when i call it 500 times, i dont need to load it 500 times.
     model = StockTransformerModel(input_tensor.shape[-1], embedding_dim, num_tickers, max_len)
     model.load_state_dict(model_state_dict)
     model.eval()
-    print("Model loaded successfully.")
-
-    print("Shape of the input tensor:", input_tensor.shape, flush=True)
-    print("Example of the first sequence's data:", flush=True)
-    print(input_tensor[0], flush=True)
-    print("\n--- Assumptions vs. Reality ---", flush=True)
-    print("First few numerical features (excluding ticker ID):", flush=True)
-    print(input_tensor[0, 0, :-1], flush=True)
-    print("Ticker ID (at time step 0, last column):", flush=True)
-    print(input_tensor[0, 0, -1].item(), flush=True)
 
     with torch.no_grad():
 
@@ -231,37 +221,25 @@ def pred_next_day(input_tensor, ticker_to_id_map, model_state_dict, scaler):
 
     prediction = normalized_prediction.item() * (close_max - close_min) + close_min
 
-    print(f"Predicted next day value: {prediction}")
-    print(prediction.item())
-    return prediction
+    return prediction.item()
 
 
 def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
-    print("CALLED PREDICT NEXT DAY FROM S3")
-
     model = StockTransformerModel(
         num_features_in=config["num_features_in"],
         embedding_dim=config["embedding_dim"],
         max_len=config["max_len"]
     )
 
+    # TODO: change this so it takes in model is an arg then you can pred next day w any model
+    #      also this would allow for when i call it 500 times, i dont need to load it 500 times.
     model.load_state_dict(model_state_dict)
     model.eval()
-    print("Model loaded successfully.")
 
     with torch.no_grad():
-        print("Shape of the input tensor:", input_tensor.shape)
         normalized_prediction = model(input_tensor)
-
-    print(f"model raw out: {normalized_prediction}")
     last_prediction = normalized_prediction[-1][0]
-    print(f"last prediction: {last_prediction}")
-
     prediction_np = np.array(last_prediction.item()).reshape(1, -1)
-
-
     prediction = (prediction_np[0][0] * std) + mean
 
-
-    print(f"Predicted next day value: {prediction.item()}")
-    return prediction
+    return prediction.item()

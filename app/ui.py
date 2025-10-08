@@ -120,7 +120,33 @@ def open_watchlist(self):
 
 
 def add_watchlist(ticker):
-    pass
+    conn = get_db_connection()
+    if conn is None:
+        print("Could not establish a database connection.")
+        return
+    try:
+        with conn.cursor() as cur:
+            create_table_query = """
+                                 CREATE TABLE IF NOT EXISTS watchlist ( 
+                                     ticker VARCHAR(10) PRIMARY KEY
+                                 ); 
+                                 """
+            cur.execute(create_table_query)
+
+            insert_ticker_query = """
+                                  INSERT INTO watchlist (ticker) 
+                                  VALUES (%s) ON CONFLICT (ticker) DO NOTHING; 
+                                  """
+            cur.execute(insert_ticker_query, (ticker,))
+            conn.commit()
+            print(f"Successfully processed ticker: {ticker}. Table 'watchlist' ensured to exist.")
+
+    except psycopg2.Error as e:
+        print(f"Database error during add_watchlist: {e}")
+        conn.rollback()
+    finally:
+        if conn:
+            conn.close()
 
 def make_buttons(button_map, layout):
     button_layout = QHBoxLayout()
@@ -150,13 +176,13 @@ class DetailsWindow(QMainWindow):
         top_row_layout.addWidget(QLabel(f"Name: {name_and_price[0]["name"]}"))
 
         btn = QPushButton("Add to Watchlist")
-        btn.clicked.connect(lambda _: add_watchlist(name_and_price[0]))
+        btn.clicked.connect(lambda _: add_watchlist(name_and_price[0]["ticker"]))
         top_row_layout.addWidget(btn)
 
         top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         btn = QPushButton("Watchlist")
-        btn.clicked.connect(lambda _: open_watchlist())
+        btn.clicked.connect(lambda _: open_watchlist(self))
         top_row_layout.addWidget(btn)
 
         self.search_widget = SearchWidget()
@@ -573,7 +599,9 @@ class ModelWindow(QMainWindow):
         #data_scaled = feat_scaler.transform(data_np)
 
         input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
-        pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+        prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+
+        print(f"Predicted next day value: {prediction}")
 
         #if len(data_scaled) >= seq_size:
         #    input_sequence = data_scaled[-seq_size:]
@@ -663,6 +691,10 @@ class ModelWindow(QMainWindow):
         self.layout.addLayout(self.third_layout)
 
         print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a, _ in final_allocations) * 100:.2f}%")
+
+        start, end = get_date_range("6M")
+        goog = fetch_stock_data("GOOG", start, end)
+        print(goog.tail(1))
 
 
 
