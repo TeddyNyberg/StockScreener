@@ -6,3 +6,4 @@ build/
 .env
 stock_model.pt
 ticker_to_id.pt
+.idea/
