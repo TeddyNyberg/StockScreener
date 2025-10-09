@@ -148,6 +148,31 @@ def add_watchlist(ticker):
         if conn:
             conn.close()
 
+
+def get_watchlist():
+    conn = get_db_connection()
+    if conn is None:
+        print("Could not establish a database connection.")
+        return
+
+    watchlist = []
+    try:
+        with conn.cursor() as cur:
+            get_table_query = """
+                              SELECT * FROM watchlist
+                              """
+            cur.execute(get_table_query)
+            watchlist = cur.fetchall()
+    except psycopg2.Error as e:
+        print(f"Database error during get_watchlist: {e}")
+        watchlist = []
+    finally:
+        if conn:
+            conn.close()
+
+    return watchlist
+
+
 def make_buttons(button_map, layout):
     button_layout = QHBoxLayout()
     for label, (func, get_args_func) in button_map.items():
@@ -702,10 +727,8 @@ class WatchlistWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        connection = get_db_connection()
-        if connection:
-            print("Database connection successful!")
-            connection.close()
+        watchlist = get_watchlist()
+        print(watchlist)
 
         self.comp_ticker = None
         self.setWindowTitle("Watchlist")
@@ -714,8 +737,13 @@ class WatchlistWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         self.layout = layout
 
-        second_row_layout = QHBoxLayout()
-        second_row_layout.addWidget(QLabel("Watchlist will go here"))
+        second_row_layout = QGridLayout()
+        second_row_layout.addWidget(QLabel("Ticker"), 0, 0)
+        # second_row_layout.addWidget(QLabel("Price"), 0, 1)
+        i=1
+        for entry in watchlist:
+            second_row_layout.addWidget(QLabel(entry[0]), i, 0)
+            i+=1
         layout.addLayout(second_row_layout)
 
         self.setCentralWidget(central_widget)
