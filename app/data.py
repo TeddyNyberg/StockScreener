@@ -6,8 +6,8 @@ import boto3
 import yfinance as yf
 import requests
 import numpy as np
+from settings import *
 
-S3_BUCKET_NAME = "stock-screener-bucker"
 
 
 

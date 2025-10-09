@@ -22,23 +22,14 @@ import torch.serialization
 import subprocess
 import sys
 from dotenv import load_dotenv
+from settings import *
 
-load_dotenv()
-
-
-MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-09-12-15-43-24-377/source/sourcedir.tar.gz'
-S3_BUCKET_NAME = "stock-screener-bucker"
 s3_client = boto3.client(
         's3',
-        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_access_key_id = AWS_ACC_KEY_ID,
+        aws_secret_access_key= AWS_SCR_ACC_KEY
     )
 
-DB_NAME = os.environ.get("RDS_DB_NAME")
-DB_USERNAME = os.environ.get("RDS_USERNAME")
-DB_PASSWORD = os.environ.get("RDS_PASSWORD")
-DB_HOST = os.environ.get("RDS_HOST")
-DB_PORT = os.environ.get("PORT")
 
 # just window stuff how it looks, buttons, etc.
 
