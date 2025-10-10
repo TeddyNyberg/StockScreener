@@ -2,7 +2,7 @@ from settings import *
 import psycopg2
 
 def get_db_connection():
-    """Establishes and returns a connection to the PostgreSQL database."""
+    # Establishes and returns a connection to the PostgreSQL database.
     try:
         conn = psycopg2.connect(
             dbname=DB_NAME,

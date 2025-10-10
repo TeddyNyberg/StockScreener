@@ -108,6 +108,11 @@ def to_seq(seq_size, obs):
         y.append(after_window)
     return torch.tensor(x, dtype=torch.float32).view(-1, seq_size, 1), torch.tensor(y, dtype=torch.float32).view(-1,1)
 
+def normalize_window(window):
+    mean = window.mean()
+    std = window.std() + 1e-8
+    return (window - mean) / std, mean, std
+
 class StockDataset(Dataset): # make iterable instead?
     def __init__(self, data_list):
         self.data = data_list
@@ -194,6 +199,5 @@ class DataHandler:
             return []
 
         return list_of_dfs
-
 
 

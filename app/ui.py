@@ -16,19 +16,15 @@ from app.search import lookup_tickers, get_chart, get_financial_metrics, get_bal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from model import pred_next_day, pred_next_day_no_ticker
-from data import feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq, get_sp500_tickers
+from data import (feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq,
+                  get_sp500_tickers, normalize_window)
+
+from ml_logic import get_historical_volatility, optimal_picks, predict_single_ticker
 import torch
 import torch.serialization
 import subprocess
 import sys
-from dotenv import load_dotenv
 from settings import *
-
-s3_client = boto3.client(
-        's3',
-        aws_access_key_id = AWS_ACC_KEY_ID,
-        aws_secret_access_key= AWS_SCR_ACC_KEY
-    )
 
 
 # just window stuff how it looks, buttons, etc.
@@ -108,11 +104,6 @@ def open_watchlist(self):
     if self.watch_window is None:
         self.watch_window = WatchlistWindow()
     self.watch_window.show()
-
-
-
-
-
 
 
 def make_buttons(button_map, layout):
@@ -377,87 +368,6 @@ class SearchWidget(QWidget):
         self.search_bar_input.clear()
         self.search_requested.emit(result)
 
-def normalize_window(window):
-    mean = window.mean()
-    std = window.std() + 1e-8
-    return (window - mean) / std, mean, std
-
-def optimal_picks():
-    print("Fetching model artifacts from S3...")
-
-    MODEL_ARCHIVE_KEY = "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
-
-    model_buffer = io.BytesIO()
-
-    # Download the entire model.tar.gz archive into the buffer
-    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARCHIVE_KEY, model_buffer)
-    model_buffer.seek(0)
-    print("Downloaded entire model archive to memory.")
-
-    # Now open the archive and extract the individual files
-    with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
-        # Load the PyTorch model state dict
-        with tar.extractfile('model.pth') as f:
-            checkpoint = torch.load(io.BytesIO(f.read()))
-            print("Model state dict loaded successfully.")
-
-    # Check for the model's structure. If it's a checkpoint dict, get the state.
-    model_state_dict = checkpoint.get("model_state")
-    config = checkpoint.get("config")
-    if model_state_dict is None:
-        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
-
-    # --- Data fetching and preprocessing for prediction ---
-
-    start, end = get_date_range("6M")
-    sp_tickers = get_sp500_tickers()
-    sp_tickers.append("^SPX")
-
-    all_predictions = []
-    for ticker in sp_tickers:
-        if "." in ticker:
-            ticker = ticker.replace(".", "-")
-        df = fetch_stock_data(ticker, start, end)
-        data = df["Close"]
-        seq_size = 50
-        input_sequence = data[-seq_size:]
-
-        normalized_window, mean, std = normalize_window(input_sequence)
-
-        input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
-        prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
-
-        delta = ((prediction - df["Close"].iloc[-1]) / df["Close"].iloc[-1]).item()
-
-        all_predictions.append((ticker, delta))
-
-    sorted_predictions = sorted(all_predictions, key=lambda x: x[1], reverse=True)
-
-    print("\n--- Sorted Predictions (Highest Predicted Return First) ---")
-
-    for ticker, delta in sorted_predictions[:10]:
-        print(f"Stock: {ticker}, Predicted Delta: {delta:+.4f}")
-
-    print("\n--- Lowest Predictions ---")
-    for ticker, delta in sorted_predictions[-5:]:
-        print(f"Stock: {ticker}, Predicted Delta: {delta:+.4f}")
-
-    if sorted_predictions:
-        best_stock, best_value = sorted_predictions[0]
-        print(f"\nOverall Best Stock Pick: {best_stock}")
-        print(f"Predicted Value: {best_value:+.4f}")
-    else:
-        print("No predictions were successfully generated.")
-
-    return sorted_predictions, all_predictions[-1]
-
-
-def get_historical_volatility(ticker, start, end):
-    df = fetch_stock_data(ticker, start, end)
-    df['Returns'] = df['Close'].pct_change().dropna()
-    daily_variance = df['Returns'].var()
-    annualized_variance = daily_variance * 252
-    return annualized_variance
 
 class ModelWindow(QMainWindow):
     def __init__(self):
@@ -504,80 +414,26 @@ class ModelWindow(QMainWindow):
 
 
     def get_next_day(self):
-        print("Fetching model artifacts from S3...")
-
-        MODEL_ARCHIVE_KEY = "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
-
-        model_buffer = io.BytesIO()
-
-        # Download the entire model.tar.gz archive into the buffer
-        s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARCHIVE_KEY, model_buffer)
-        model_buffer.seek(0)
-        print("Downloaded entire model archive to memory.")
-
-        #torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct, sklearn.preprocessing.MinMaxScaler, numpy.ndarray])
-
-        # Now open the archive and extract the individual files
-        with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
-
-            for member in tar.getmembers():
-                print(member.name)
-            # Load the PyTorch model state dict
-            with tar.extractfile('model.pth') as f:
-                checkpoint = torch.load(io.BytesIO(f.read()))
-                print("Model state dict loaded successfully.")
-
-            # Load the scikit-learn scaler object using joblib
-            #with tar.extractfile("scaler.joblib") as f:
-            #    scaler = joblib.load(f)
-            #    print("Feat Scaler loaded successfully.")
-
-            #with tar.extractfile("t_scaler.joblib") as f:
-            #    t_scaler = joblib.load(f)
-            #    print("Target Scaler loaded successfully.")
-
-
-        # Check for the model's structure. If it's a checkpoint dict, get the state.
-        model_state_dict = checkpoint.get("model_state")
-        config = checkpoint.get("config")
-        if model_state_dict is None:
-            raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
-
-        # --- Data fetching and preprocessing for prediction ---
         ticker = self.search_bar_input.text().strip().upper()
-        start, end = get_date_range("6M")
-        df = fetch_stock_data(ticker, start, end)
-        #df_engr = feat_engr([df])
-        data = df["Close"]
-        print(f"most recent day {df["Close"].iloc[-1]}")
-        seq_size = 50
-        input_sequence = data[-seq_size:]
+        if not ticker:
+            self.update_status_message("Please enter a ticker symbol.")
+            return
+        try:
+            prediction = predict_single_ticker(ticker)
 
-        normalized_window, mean, std = normalize_window(input_sequence)
+            current_price = fetch_stock_data(ticker, "1M", "1D")["Close"].iloc[-1]
+            message = f"Prediction for {ticker}: {prediction:.2f} (Current: {current_price:.2f})"
+            self.update_status_message(message)
 
-        #data_scaled = scaler.transform(data.to_numpy().reshape(-1, 1))
+            start, end = get_date_range("1M")
+            df = fetch_stock_data(ticker, start, end)
+            print(f"most recent day {df["Close"].iloc[-1]}")
+            print(f"Predicted next day value: {prediction}")
 
-        #print(scaler.inverse_transform(data_scaled))
+        except Exception as e:
+            self.update_status_message(f"Error predicting for {ticker}: {e}")
+            print(f"Prediction error: {e}")
 
-        #data = data.drop("Ticker", axis=1)
-
-        #data_np = data.to_numpy()
-
-        #data_scaled = feat_scaler.transform(data_np)
-
-        input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
-        prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
-
-        print(f"Predicted next day value: {prediction}")
-
-        #if len(data_scaled) >= seq_size:
-        #    input_sequence = data_scaled[-seq_size:]
-        #    input_tensor = torch.tensor(input_sequence, dtype=torch.float32).unsqueeze(0)
-        #    print(f"predicting {ticker.upper()}...")
-        #    print(f"input tensor: {input_tensor}")
-        #    pred_next_day_no_ticker(input_tensor, model_state_dict, scaler, config)
-        #else:
-        #    print("Could not generate a valid tensor for the given ticker.")
 
     def train_on_cloud(self):
         try:

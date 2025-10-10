@@ -5,7 +5,7 @@ from torch import nn, optim
 import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
-from data import DataHandler, to_seq
+from data import DataHandler, to_seq, normalize_window
 from sklearn.preprocessing import StandardScaler
 import joblib
 import numpy as np
@@ -98,11 +98,6 @@ def train_fn(args):
         list_close_test.append(df["Close"].to_numpy().reshape(-1, 1))
 
     #all_train = np.concatenate(list_close_train, axis=0)
-
-    def normalize_window(window):
-        mean = window.mean()
-        std = window.std() + 1e-8
-        return (window - mean) / std, mean, std
 
     # --- 5. Build Training Data ---
     SEQUENCE_SIZE = 50

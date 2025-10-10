@@ -3,7 +3,6 @@ import os
 
 load_dotenv()
 
-
 MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-09-12-15-43-24-377/source/sourcedir.tar.gz'
 S3_BUCKET_NAME = "stock-screener-bucker"
 
