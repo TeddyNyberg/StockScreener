@@ -13,26 +13,12 @@ s3_client = boto3.client(
         aws_secret_access_key= AWS_SCR_ACC_KEY
     )
 
+_MODEL_STATE_DICT = None
+_CONFIG = None
 
 def optimal_picks():
-    print("Fetching model artifacts from S3...")
 
-    model_buffer = io.BytesIO()
-
-    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARTIFACTS_PREFIX, model_buffer)
-    model_buffer.seek(0)
-    print("Downloaded entire model archive to memory.")
-
-    with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
-        # Load the PyTorch model state dict
-        with tar.extractfile('model.pth') as f:
-            checkpoint = torch.load(io.BytesIO(f.read()))
-            print("Model state dict loaded successfully.")
-
-    model_state_dict = checkpoint.get("model_state")
-    config = checkpoint.get("config")
-    if model_state_dict is None:
-        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+    model_state_dict, config = _load_model_artifacts()
 
     start, end = get_date_range("3M")
     sp_tickers = get_sp500_tickers()
@@ -72,21 +58,8 @@ def optimal_picks():
 
 
 def predict_single_ticker(ticker):
-    print(f"Fetching model artifacts for {ticker} from S3...")
 
-    model_buffer = io.BytesIO()
-
-    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARTIFACTS_PREFIX, model_buffer)
-    model_buffer.seek(0)
-
-    with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
-        with tar.extractfile('model.pth') as f:
-            checkpoint = torch.load(io.BytesIO(f.read()))
-
-    model_state_dict = checkpoint.get("model_state")
-    config = checkpoint.get("config")
-    if model_state_dict is None:
-        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+    model_state_dict, config = _load_model_artifacts()
 
     start, end = get_date_range("3M")
     input_tensor, _, mean, std = _prepare_data_for_prediction(ticker, start, end)
@@ -119,3 +92,32 @@ def _prepare_data_for_prediction(ticker, start, end):
     input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
 
     return input_tensor, latest_close_price, mean, std
+
+
+def _load_model_artifacts():
+    global _MODEL_STATE_DICT, _CONFIG
+
+    if _MODEL_STATE_DICT is not None and _CONFIG is not None:
+        print("Using cached model artifacts.")
+        return _MODEL_STATE_DICT, _CONFIG
+
+    print("Loading model artifacts from S3...")
+
+    model_buffer = io.BytesIO()
+
+    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARTIFACTS_PREFIX, model_buffer)
+    model_buffer.seek(0)
+    print("Downloaded entire model archive to memory.")
+
+    with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
+        with tar.extractfile('model.pth') as f:
+            checkpoint = torch.load(io.BytesIO(f.read()))
+
+    _MODEL_STATE_DICT = checkpoint.get("model_state")
+    _CONFIG = checkpoint.get("config")
+
+    if _MODEL_STATE_DICT is None:
+        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+
+    print("Model state dict and config loaded successfully.")
+    return _MODEL_STATE_DICT, _CONFIG

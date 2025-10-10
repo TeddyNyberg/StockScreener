@@ -1,11 +1,6 @@
-import io
 import os
-import tarfile
 from urllib.response import addinfo
 from db import get_watchlist, add_watchlist
-import boto3
-import joblib
-import numpy as np
 import sklearn
 
 from PySide6.QtCore import Signal
@@ -15,7 +10,7 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
 from app.search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-from model import pred_next_day, pred_next_day_no_ticker
+
 from data import (feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq,
                   get_sp500_tickers, normalize_window)
 
