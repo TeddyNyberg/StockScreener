@@ -14,5 +14,5 @@ DB_PASSWORD = os.getenv("RDS_PASSWORD")
 DB_HOST = os.getenv("RDS_HOST")
 DB_PORT = os.getenv("PORT")
 
-AWS_ACC_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID"),
+AWS_ACC_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SCR_ACC_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
