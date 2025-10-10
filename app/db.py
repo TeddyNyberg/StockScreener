@@ -66,3 +66,50 @@ def add_watchlist(ticker):
     finally:
         if conn:
             conn.close()
+
+
+def rm_watchlist(ticker):
+    """
+    Removes a given ticker symbol from the 'watchlist' table.
+
+    Args:
+        ticker (str): The stock ticker symbol to remove.
+    """
+    conn = get_db_connection()  # Assuming this function is defined elsewhere
+    if conn is None:
+        print("Could not establish a database connection.")
+        return
+
+    try:
+        with conn.cursor() as cur:
+            create_table_query = """
+                                 CREATE TABLE IF NOT EXISTS watchlist
+                                 (
+                                     ticker VARCHAR(10) PRIMARY KEY
+                                 );
+                                 """
+            cur.execute(create_table_query)
+
+            delete_ticker_query = """
+                                  DELETE FROM watchlist
+                                  WHERE ticker = %s;
+                                  """
+            cur.execute(delete_ticker_query, (ticker,))
+
+            rows_deleted = cur.rowcount
+
+            conn.commit()
+
+            if rows_deleted > 0:
+                print(f"Successfully removed ticker: {ticker} from watchlist.")
+            else:
+                print(f"Ticker: {ticker} was not found in the watchlist (0 rows affected).")
+
+    except psycopg2.Error as e:
+        print(f"Database error during rm_watchlist: {e}")
+        conn.rollback()
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        if conn:
+            conn.close()
