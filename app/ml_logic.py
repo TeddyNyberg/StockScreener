@@ -34,7 +34,7 @@ def optimal_picks():
     if model_state_dict is None:
         raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
 
-    start, end = get_date_range("6M")
+    start, end = get_date_range("3M")
     sp_tickers = get_sp500_tickers()
     sp_tickers.append("^SPX")
 
@@ -42,17 +42,11 @@ def optimal_picks():
     for ticker in sp_tickers:
         if "." in ticker:
             ticker = ticker.replace(".", "-")
-        df = fetch_stock_data(ticker, start, end)
-        data = df["Close"]
-        seq_size = 50
-        input_sequence = data[-seq_size:]
 
-        normalized_window, mean, std = normalize_window(input_sequence)
-
-        input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
+        input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction(ticker, start, end)
         prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
 
-        delta = ((prediction - df["Close"].iloc[-1]) / df["Close"].iloc[-1]).item()
+        delta = ((prediction - latest_close_price) / latest_close_price).item()
 
         all_predictions.append((ticker, delta))
 
@@ -94,16 +88,8 @@ def predict_single_ticker(ticker):
     if model_state_dict is None:
         raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
 
-    start, end = get_date_range("6M")
-    df = fetch_stock_data(ticker, start, end)
-
-    data = df["Close"]
-    seq_size = 50
-    input_sequence = data[-seq_size:]
-
-    normalized_window, mean, std = normalize_window(input_sequence)
-
-    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
+    start, end = get_date_range("3M")
+    input_tensor, _, mean, std = _prepare_data_for_prediction(ticker, start, end)
     prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
 
     print(f"Predicted value: {prediction}")
@@ -115,3 +101,21 @@ def get_historical_volatility(ticker, start, end):
     daily_variance = df['Returns'].var()
     annualized_variance = daily_variance * 252
     return annualized_variance
+
+
+def _prepare_data_for_prediction(ticker, start, end):
+    df = fetch_stock_data(ticker, start, end)
+    data = df["Close"]
+
+    seq_size = 50
+    if len(data) < seq_size:
+        raise ValueError(f"Insufficient data for {ticker}. Need at least {seq_size} points, got {len(data)}.")
+
+    latest_close_price = df["Close"].iloc[-1]
+    input_sequence = data[-seq_size:]
+
+    normalized_window, mean, std = normalize_window(input_sequence)
+
+    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
+
+    return input_tensor, latest_close_price, mean, std
