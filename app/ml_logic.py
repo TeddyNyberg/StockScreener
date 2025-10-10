@@ -17,29 +17,22 @@ s3_client = boto3.client(
 def optimal_picks():
     print("Fetching model artifacts from S3...")
 
-    MODEL_ARCHIVE_KEY = "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
-
     model_buffer = io.BytesIO()
 
-    # Download the entire model.tar.gz archive into the buffer
-    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARCHIVE_KEY, model_buffer)
+    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARTIFACTS_PREFIX, model_buffer)
     model_buffer.seek(0)
     print("Downloaded entire model archive to memory.")
 
-    # Now open the archive and extract the individual files
     with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
         # Load the PyTorch model state dict
         with tar.extractfile('model.pth') as f:
             checkpoint = torch.load(io.BytesIO(f.read()))
             print("Model state dict loaded successfully.")
 
-    # Check for the model's structure. If it's a checkpoint dict, get the state.
     model_state_dict = checkpoint.get("model_state")
     config = checkpoint.get("config")
     if model_state_dict is None:
         raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
-
-    # --- Data fetching and preprocessing for prediction ---
 
     start, end = get_date_range("6M")
     sp_tickers = get_sp500_tickers()
@@ -86,10 +79,10 @@ def optimal_picks():
 
 def predict_single_ticker(ticker):
     print(f"Fetching model artifacts for {ticker} from S3...")
-    MODEL_ARCHIVE_KEY = "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
+
     model_buffer = io.BytesIO()
 
-    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARCHIVE_KEY, model_buffer)
+    s3_client.download_fileobj("sagemaker-us-east-1-307926602475", MODEL_ARTIFACTS_PREFIX, model_buffer)
     model_buffer.seek(0)
 
     with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:

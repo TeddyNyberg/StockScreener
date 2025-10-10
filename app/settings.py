@@ -3,7 +3,7 @@ import os
 
 load_dotenv()
 
-MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-09-12-15-43-24-377/source/sourcedir.tar.gz'
+MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz'
 S3_BUCKET_NAME = "stock-screener-bucker"
 
 # environ.get?
