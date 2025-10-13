@@ -185,5 +185,5 @@ def get_info(ticker):
     print(yf.Ticker(ticker).info)
     return yf.Ticker(ticker).info
 
-# def getxx(ticker):
-#    return yf.Ticker(ticker).
+def get_price(ticker):
+    return yf.Ticker(ticker).info.get("regularMarketPrice")

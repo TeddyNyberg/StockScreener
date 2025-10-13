@@ -1,22 +1,16 @@
-import os
-from urllib.response import addinfo
-from db import get_watchlist, add_watchlist
-import sklearn
+from db import get_watchlist, add_watchlist, rm_watchlist
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
-                               QSizePolicy, QGridLayout)
-from app.search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range
+                               QSizePolicy, QGridLayout, QMenu)
+from app.search import lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range, get_price
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 
-from data import (feat_engr, df_to_tensor_with_dynamic_ids, fetch_stock_data, DataHandler, to_sequences, to_seq,
-                  get_sp500_tickers, normalize_window)
+from data import (fetch_stock_data)
 
 from ml_logic import get_historical_volatility, optimal_picks, predict_single_ticker
-import torch
-import torch.serialization
 import subprocess
 import sys
 from settings import *
@@ -354,14 +348,9 @@ class SearchWidget(QWidget):
 
     def handle_search(self):
         ticker = self.search_bar_input.text().strip().upper()
-        if not ticker:
-            self.message_displayed.emit("Please enter a ticker symbol.")
-            return
-        result = lookup_tickers(ticker)  # all the data
-        if not result:
-            return
+        lookup_and_open_details(ticker, display_error_func=self.message_displayed.emit)
         self.search_bar_input.clear()
-        self.search_requested.emit(result)
+
 
 
 class ModelWindow(QMainWindow):
@@ -520,25 +509,72 @@ class WatchlistWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        watchlist = get_watchlist()
-        print(watchlist)
-
-        self.comp_ticker = None
         self.setWindowTitle("Watchlist")
 
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
         self.layout = layout
-
-        second_row_layout = QGridLayout()
-        second_row_layout.addWidget(QLabel("Ticker"), 0, 0)
-        # second_row_layout.addWidget(QLabel("Price"), 0, 1)
-        i=1
-        for entry in watchlist:
-            second_row_layout.addWidget(QLabel(entry[0]), i, 0)
-            i+=1
-        layout.addLayout(second_row_layout)
-
         self.setCentralWidget(central_widget)
+
+        self.list_layout = None
+        self.rebuild_display()
+
+    def rebuild_display(self):
+
+        if self.list_layout is not None:
+            clear_layout(self.list_layout)
+            self.layout.removeItem(self.list_layout)
+            self.list_layout.deleteLater()
+
+        watchlist = get_watchlist()
+
+        new_list_layout = QGridLayout()
+
+        new_list_layout.addWidget(QLabel("Ticker"), 0, 0)
+        new_list_layout.addWidget(QLabel("Price"), 0, 1)
+
+        i = 1
+        for entry in watchlist:
+            ticker = entry[0]
+            ticker_button = TickerButton(ticker)
+            ticker_button.remove_requested.connect(self.remove_ticker)
+            new_list_layout.addWidget(ticker_button, i, 0)
+
+            price_label_text = str(get_price(ticker))
+            new_list_layout.addWidget(QLabel(price_label_text), i, 1)
+            i += 1
+
+        self.list_layout = new_list_layout
+        self.layout.addLayout(self.list_layout)
+
+    def remove_ticker(self, ticker):
+        rm_watchlist(ticker)
+        self.rebuild_display()
+
+class TickerButton(QPushButton):
+    remove_requested = Signal(str)
+    def __init__(self, ticker):
+        super().__init__(ticker)
+        self.ticker = ticker
+        self.clicked.connect(lambda: lookup_and_open_details(self.ticker))
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        action_b = menu.addAction("Remove Ticker")
+        action_b.triggered.connect(lambda: self.remove_requested.emit(self.ticker))
+        menu.exec(event.globalPos())
+
+
+def lookup_and_open_details(ticker, display_error_func=None):
+    if not ticker:
+        if display_error_func:
+            display_error_func("Please enter a ticker symbol.")
+        return
+    result = lookup_tickers(ticker)
+    if not result:
+        if display_error_func:
+            display_error_func(f"Could not find data for ticker: {ticker}.")
+        return
+    open_window_from_ticker(result)
 
 

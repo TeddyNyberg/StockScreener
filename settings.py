@@ -7,9 +7,9 @@ MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-10-03-15-34-22-625/output/model.
 S3_BUCKET_NAME = "stock-screener-bucker"
 
 # environ.get?
-DB_NAME = os.getenv("RDS_DB_NAME")
-DB_USERNAME = os.getenv("RDS_USERNAME")
-DB_PASSWORD = os.getenv("RDS_PASSWORD")
+DB_NAME = os.getenv("POSTGRES_DB")
+DB_USERNAME = os.getenv("POSTGRES_USER")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 DB_HOST = os.getenv("RDS_HOST")
 DB_PORT = os.getenv("PORT")
 
