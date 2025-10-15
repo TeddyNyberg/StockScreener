@@ -146,8 +146,8 @@ def get_y_bounds(df1, df2, is_single):
     return low_y, high_y
 
 
-def get_date_range(time):  # must be all caps
-    today = pd.Timestamp.today().normalize()
+def get_date_range(time, today = pd.Timestamp.today().normalize()):  # must be all caps
+    #today = pd.Timestamp.today().normalize()
 
     offsets = {
         "1D": Day(1),
@@ -187,3 +187,26 @@ def get_info(ticker):
 
 def get_price(ticker):
     return yf.Ticker(ticker).info.get("regularMarketPrice")
+
+
+def get_close_on(ticker, date):
+    # Ensure `date` is a string like '2024-10-15'
+    date = pd.to_datetime(date)
+    next_day = date + pd.Timedelta(days=1)
+
+    # Get price data for that single day
+    data = yf.Ticker(ticker).history(start=date, end=next_day)
+
+    if not data.empty:
+        return data["Close"].iloc[0]
+    else:
+        return None
+
+def get_open_on(ticker, date):
+    date = pd.to_datetime(date)
+    next_day = date + pd.Timedelta(days=1)
+    data = yf.Ticker(ticker).history(start=date, end=next_day)
+    if not data.empty:
+        return data["Open"].iloc[0]
+    else:
+        return None

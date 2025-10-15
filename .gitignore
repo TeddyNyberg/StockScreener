@@ -7,3 +7,5 @@ build/
 stock_model.pt
 ticker_to_id.pt
 .idea/
+backtest_results.xlsx
+backtest_results.csv
