@@ -9,3 +9,6 @@ ticker_to_id.pt
 .idea/
 backtest_results.xlsx
 backtest_results.csv
+
+app/model.py
+app/modeltosm.py

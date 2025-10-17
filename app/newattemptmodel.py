@@ -246,3 +246,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     train_fn(args)
+
+
+def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
+    model = StockTransformerModel(
+        num_features_in=config["num_features_in"],
+        embedding_dim=config["embedding_dim"],
+        max_len=config["max_len"]
+    )
+
+    model.load_state_dict(model_state_dict)
+    model.eval()
+
+    with torch.no_grad():
+        normalized_prediction = model(input_tensor)
+    last_prediction = normalized_prediction[-1][0]
+    prediction_np = np.array(last_prediction.item()).reshape(1, -1)
+    prediction = (prediction_np[0][0] * std) + mean
+
+    return prediction.item()

@@ -4,7 +4,7 @@ import tarfile
 import torch
 import pandas as pd
 from data import fetch_stock_data, normalize_window, get_sp500_tickers
-from model import pred_next_day_no_ticker
+from newattemptmodel import pred_next_day_no_ticker
 from search import get_date_range, get_close_on
 from settings import *
 from datetime import datetime
