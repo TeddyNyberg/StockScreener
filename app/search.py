@@ -146,8 +146,9 @@ def get_y_bounds(df1, df2, is_single):
     return low_y, high_y
 
 
-def get_date_range(time, today = pd.Timestamp.today().normalize()):  # must be all caps
-    #today = pd.Timestamp.today().normalize()
+def get_date_range(time, today = None):  # must be all caps
+    if today is None:
+        today = pd.Timestamp.today().normalize()
 
     offsets = {
         "1D": Day(1),
