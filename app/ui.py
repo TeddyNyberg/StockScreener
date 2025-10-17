@@ -11,7 +11,7 @@ from app.search import (lookup_tickers, get_chart, get_financial_metrics, get_ba
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 
-from data import (fetch_stock_data)
+from data import fetch_stock_data
 
 from ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest
 import subprocess
@@ -412,10 +412,6 @@ class ModelWindow(QMainWindow):
             return
         try:
             prediction = predict_single_ticker(ticker)
-
-            current_price = fetch_stock_data(ticker, "1M", "1D")["Close"].iloc[-1]
-            message = f"Prediction for {ticker}: {prediction:.2f} (Current: {current_price:.2f})"
-            self.update_status_message(message)
 
             start, end = get_date_range("1M")
             df = fetch_stock_data(ticker, start, end)

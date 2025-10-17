@@ -251,7 +251,7 @@ def handle_backtest(start_date_str: str = "2025-10-03", initial_capital: float =
 
                 closing_price = get_close_on(ticker, prev_day)  # Price from the previous day's close
 
-                if closing_price is not None and entry_price is not -1:
+                if closing_price is not None and entry_price != -1:
                     sale_value = shares * closing_price
                     transaction_cost = sale_value * transaction_cost_pct
 
