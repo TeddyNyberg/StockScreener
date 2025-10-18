@@ -113,3 +113,58 @@ def rm_watchlist(ticker):
     finally:
         if conn:
             conn.close()
+
+def get_portfolio():
+    conn = get_db_connection()
+    if conn is None:
+        print("Could not establish a database connection.")
+        return None
+    try:
+        with conn.cursor() as cur:
+            get_table_query = """
+                              SELECT * FROM portfolio
+                              """
+            cur.execute(get_table_query)
+            portfolio = cur.fetchall()
+    except psycopg2.Error as e:
+        print(f"Database error during get_portfolio: {e}")
+        portfolio = []
+    finally:
+        if conn:
+            conn.close()
+    return portfolio
+
+
+
+def buy_stock(ticker, quantity, price, time):
+    conn = get_db_connection()
+    if conn is None:
+        print("Could not establish a database connection.")
+        return
+    try:
+        with conn.cursor() as cur:
+            create_table_query = """
+                                 CREATE TABLE IF NOT EXISTS portfolio ( 
+                                 id SERIAL PRIMARY KEY,
+                                 ticker VARCHAR(10) NOT NULL,
+                                 quantity INTEGER NOT NULL,
+                                 price NUMERIC(10, 2) NOT NULL,
+                                 purchase_time TIMESTAMP WITH TIME ZONE NOT NULL
+                                 ); 
+                                 """
+            cur.execute(create_table_query)
+
+            insert_ticker_query = """
+                                  INSERT INTO stock_purchases (ticker, quantity, price, purchase_time) 
+                                  VALUES (%s, %s, %s, %s); 
+                                  """
+            cur.execute(insert_ticker_query, (ticker,quantity,price,time))
+            conn.commit()
+            print(f"Successfully processed ticker: {ticker}. Table 'portfolio' ensured to exist.")
+
+    except psycopg2.Error as e:
+        print(f"Database error during add_watchlist: {e}")
+        conn.rollback()
+    finally:
+        if conn:
+            conn.close()

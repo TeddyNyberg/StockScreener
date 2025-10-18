@@ -1,18 +1,13 @@
-
-
-from db import get_watchlist, add_watchlist, rm_watchlist
-
+from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy, QGridLayout, QMenu)
 from app.search import (lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range,
-                        get_price, get_close_on, get_open_on)
+                        get_price)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-
 from data import fetch_stock_data
-
 from ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest
 import subprocess
 import sys
@@ -43,6 +38,7 @@ class MainWindow(QWidget):
         top_layout = QHBoxLayout()
         self.model_window = None
         self.watch_window = None
+        self.portfolio_window = None
         make_buttons({"Model": (self.handle_model, lambda: [])}, top_layout)
 
         spacer = QSpacerItem(400, 20, QSizePolicy.Expanding)
@@ -59,8 +55,27 @@ class MainWindow(QWidget):
 
         main_layout.addLayout(top_layout)
 
-        self.result_label = QLabel("Enter a ticker and press Enter")
-        main_layout.addWidget(self.result_label)
+        also_top_layout = QHBoxLayout()
+
+        #spacer = QSpacerItem(50, 20, QSizePolicy.Expanding)
+        #also_top_layout.addItem(spacer)
+
+        btn = QPushButton("Investments")
+        btn.clicked.connect(lambda _: open_portfolio(self))
+        btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+
+
+
+        btn_spacer_1 = QSpacerItem(300, 20, QSizePolicy.Expanding)
+        btn_spacer_2 = QSpacerItem(205, 20)
+        also_top_layout.addItem(btn_spacer_1)
+        also_top_layout.addWidget(btn)
+        also_top_layout.addItem(btn_spacer_2)
+
+
+        main_layout.addLayout(also_top_layout)
+
+
 
         spy, spy_chart, data = lookup_tickers("^SPX")
         self.canvas = CustomChartCanvas(data, spy_chart)
@@ -97,6 +112,11 @@ def open_watchlist(self):
     if self.watch_window is None:
         self.watch_window = WatchlistWindow()
     self.watch_window.show()
+
+def open_portfolio(self):
+    if self.portfolio_window is None:
+        self.portfolio_window = PortfolioWindow()
+    self.portfolio_window.show()
 
 
 def make_buttons(button_map, layout):
@@ -386,7 +406,7 @@ class ModelWindow(QMainWindow):
         middle_layout = QHBoxLayout()
 
         train_button = QPushButton("Train on Cloud")
-        train_button.clicked.connect(self.train_on_cloud)
+        train_button.clicked.connect(lambda: train_on_cloud())
         middle_layout.addWidget(train_button)
 
         self.search_bar_input = QLineEdit()
@@ -422,16 +442,6 @@ class ModelWindow(QMainWindow):
             self.update_status_message(f"Error predicting for {ticker}: {e}")
             print(f"Prediction error: {e}")
 
-
-    def train_on_cloud(self):
-        try:
-            subprocess.Popen([sys.executable, os.path.join('app', 'sage.py')], cwd=os.getcwd())
-            print("SageMaker training job started. Check your AWS console for progress.")
-        except FileNotFoundError:
-            print("Error: sage.py not found. Make sure the file exists.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
     def show_kelly_bet(self):
         final_allocations = calculate_kelly_allocations("6M")
 
@@ -456,7 +466,14 @@ class ModelWindow(QMainWindow):
         goog = fetch_stock_data("GOOG", start, end) # sanity check, shows latest data available for model
         print(goog.tail(1))
 
-
+def train_on_cloud():
+    try:
+        subprocess.Popen([sys.executable, os.path.join('app', 'sage.py')], cwd=os.getcwd())
+        print("SageMaker training job started. Check your AWS console for progress.")
+    except FileNotFoundError:
+        print("Error: sage.py not found. Make sure the file exists.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 class WatchlistWindow(QMainWindow):
     def __init__(self):
@@ -473,7 +490,6 @@ class WatchlistWindow(QMainWindow):
         self.rebuild_display()
 
     def rebuild_display(self):
-
         if self.list_layout is not None:
             clear_layout(self.list_layout)
             self.layout.removeItem(self.list_layout)
@@ -530,5 +546,49 @@ def lookup_and_open_details(ticker, display_error_func=None):
         return
     open_window_from_ticker(result)
 
+class PortfolioWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Investments")
+
+        central_widget = QWidget()
+        layout = QVBoxLayout(central_widget)
+        self.layout = layout
+        self.setCentralWidget(central_widget)
+
+        self.list_layout = None
+        self.rebuild_display()
+
+    def rebuild_display(self):
+        if self.list_layout is not None:
+            clear_layout(self.list_layout)
+            self.layout.removeItem(self.list_layout)
+            self.list_layout.deleteLater()
+
+        portfolio = get_portfolio()
+
+        new_list_layout = QGridLayout()
+
+        new_list_layout.addWidget(QLabel("Ticker"), 0, 0)
+        new_list_layout.addWidget(QLabel("Price"), 0, 1)
+        new_list_layout.addWidget(QLabel("Shares Owned"), 0, 2)
+        new_list_layout.addWidget(QLabel("Cost Basis"), 0, 3)
+        new_list_layout.addWidget(QLabel("Average Cost Basis"), 0, 4)
+        new_list_layout.addWidget(QLabel("Total Gain"), 0, 5)
+        new_list_layout.addWidget(QLabel("Percent Return"), 0, 6)
 
 
+        i = 1
+        for entry in portfolio:
+            ticker = entry[0]
+            ticker_button = TickerButton(ticker)
+
+            new_list_layout.addWidget(ticker_button, i, 0)
+            new_list_layout.addWidget(QLabel(str(get_price(ticker))), i, 1)
+
+            #TODO: more to add
+            i += 1
+
+        self.list_layout = new_list_layout
+        self.layout.addLayout(self.list_layout)

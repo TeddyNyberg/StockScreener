@@ -6,8 +6,6 @@ import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
 from data import DataHandler, to_seq, normalize_window
-from sklearn.preprocessing import StandardScaler
-import joblib
 import numpy as np
 
 class StockTransformerModel(nn.Module):
@@ -77,7 +75,7 @@ def model_fn(model_dir):
 def train_fn(args):
     print("CALLED NEW ATTEMPT TRAIN FN")
 
-    # --- 1. Data Loading ---
+
     data_handler = DataHandler()
     list_of_dfs = data_handler.get_dfs_from_s3(prefix="historical_data/")
 
@@ -99,7 +97,7 @@ def train_fn(args):
 
     #all_train = np.concatenate(list_close_train, axis=0)
 
-    # --- 5. Build Training Data ---
+
     SEQUENCE_SIZE = 50
     norm_windows, targets = [], []
     for arr in list_close_train:
@@ -113,7 +111,7 @@ def train_fn(args):
 
     y_train = np.array(targets, dtype=np.float32).reshape(-1, 1)
 
-    # --- 6. Build Testing Data (same normalization) ---
+
     norm_windows_test, targets_test = [], []
     for arr in list_close_test:
         xt, yt = to_seq(SEQUENCE_SIZE, arr)
@@ -154,7 +152,7 @@ def train_fn(args):
     min_val_loss = float("inf")
 
     best_checkpoint = None
-    # --- 3. Training Loop ---
+
     print("Starting training...")
     for epoch in range(args.epochs):
         has_printed = False
@@ -216,9 +214,6 @@ def train_fn(args):
 
         print(f"Epoch [{epoch + 1}/{args.epochs}], Validation Loss: {val_loss:.4f}")
 
-    #scaler_path = os.path.join(args.model_dir, "scaler.joblib")
-    #joblib.dump(scaler, scaler_path)
-    #print(f"scaler to {scaler_path}")
 
     path = os.path.join(args.model_dir, "model.pth")
     torch.save(best_checkpoint, path)
