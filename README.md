@@ -21,7 +21,9 @@ Goals
   - Better transformer model. Hyperparam tuning, feat engineering, better train and test split
   - More models for stock prediciton, then combine them for final pick (average, most confident, ...)
   - Paper trading
+      - Possibly w multiple accounts? 
   - Cleaner, better looking UI
       - Make stock info cleaner, 1,000M instead of 1000000000
       - Add hoverability to comparison chart for both stocks? see if it looks good
   - Faster predictions, model optimization, logic optimization 
+
