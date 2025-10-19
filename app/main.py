@@ -7,6 +7,7 @@ from app.ui import MainWindow
 ## alt do --onefile for cleaner exp but slowwwwwwwwwwww
 
 ## docker-compose up -d
+## --build
 
 def main():
     print("Starting app...")

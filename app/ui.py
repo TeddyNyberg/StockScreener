@@ -1,5 +1,5 @@
 from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy, QGridLayout, QMenu)
@@ -39,42 +39,34 @@ class MainWindow(QWidget):
         self.model_window = None
         self.watch_window = None
         self.portfolio_window = None
-        make_buttons({"Model": (self.handle_model, lambda: [])}, top_layout)
+
+        m_btn = QPushButton("Model")
+        m_btn.clicked.connect(self.handle_model)
+        top_layout.addWidget(m_btn, alignment=Qt.AlignmentFlag.AlignTop)
 
         spacer = QSpacerItem(400, 20, QSizePolicy.Expanding)
         top_layout.addItem(spacer)
 
-        btn = QPushButton("Watchlist")
-        btn.clicked.connect(lambda _: open_watchlist(self))
-        top_layout.addWidget(btn)
+        watchlist_port_layout = QVBoxLayout()
+
+
+        w_btn = QPushButton("Watchlist")
+        w_btn.clicked.connect(lambda _: open_watchlist(self))
+        watchlist_port_layout.addWidget(w_btn)
+
+        i_btn = QPushButton("Investments")
+        i_btn.clicked.connect(lambda _: open_portfolio(self))
+        watchlist_port_layout.addWidget(i_btn)
+
+
+        top_layout.addLayout(watchlist_port_layout)
 
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_window_from_ticker)
         self.search_widget.message_displayed.connect(self.update_status_message)
-        top_layout.addWidget(self.search_widget)
+        top_layout.addWidget(self.search_widget, alignment=Qt.AlignmentFlag.AlignTop)
 
         main_layout.addLayout(top_layout)
-
-        also_top_layout = QHBoxLayout()
-
-        #spacer = QSpacerItem(50, 20, QSizePolicy.Expanding)
-        #also_top_layout.addItem(spacer)
-
-        btn = QPushButton("Investments")
-        btn.clicked.connect(lambda _: open_portfolio(self))
-        btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-
-
-
-        btn_spacer_1 = QSpacerItem(300, 20, QSizePolicy.Expanding)
-        btn_spacer_2 = QSpacerItem(205, 20)
-        also_top_layout.addItem(btn_spacer_1)
-        also_top_layout.addWidget(btn)
-        also_top_layout.addItem(btn_spacer_2)
-
-
-        main_layout.addLayout(also_top_layout)
-
 
 
         spy, spy_chart, data = lookup_tickers("^SPX")
