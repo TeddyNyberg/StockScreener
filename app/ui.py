@@ -135,34 +135,49 @@ class DetailsWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         self.layout = layout
 
-        top_row_layout = QHBoxLayout()
-        top_row_layout.addWidget(QLabel(f"Name: {name_and_price[0]["name"]}"))
-
+        nm_wl_layout = QHBoxLayout()
+        nm_wl_layout.addWidget(QLabel(f"Name: {name_and_price[0]["name"]}"))
         btn = QPushButton("Add to Watchlist")
         btn.clicked.connect(lambda _: add_watchlist(name_and_price[0]["ticker"]))
-        top_row_layout.addWidget(btn)
+        nm_wl_layout.addWidget(btn)
 
-        top_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        pr_buy_layout = QHBoxLayout()
+        pr_buy_layout.addWidget(QLabel(f"Price: {name_and_price[0]["price"]} {name_and_price[0]["currency"]}"))
+        btn = QPushButton("Buy/Sell")
+        btn.clicked.connect(lambda _: self.handle_investment_window(name_and_price[0]["name"]))
+        pr_buy_layout.addWidget(btn)
 
+        left_side = QVBoxLayout()
+        left_side.addLayout(nm_wl_layout)
+        left_side.addLayout(pr_buy_layout)
+
+        top_row_layout = QHBoxLayout()
+        top_row_layout.addLayout(left_side)
+
+        wl_sw_layout = QHBoxLayout()
         btn = QPushButton("Watchlist")
         btn.clicked.connect(lambda _: open_watchlist(self))
-        top_row_layout.addWidget(btn)
-
+        wl_sw_layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignRight)
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_window_from_ticker)
         self.search_widget.message_displayed.connect(self.update_status_message)
-        top_row_layout.addWidget(self.search_widget)
+        wl_sw_layout.addWidget(self.search_widget)
+        wl_sw_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        layout.addLayout(top_row_layout)
-
-        second_row_layout = QHBoxLayout()
-        second_row_layout.addWidget(QLabel(f"Price: {name_and_price[0]["price"]} {name_and_price[0]["currency"]}"))
-        second_row_layout.addItem(QSpacerItem(40, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        comp_layout = QHBoxLayout()
         self.compare_button = QPushButton("Compare")
         self.compare_button.clicked.connect(self.compare)
-        second_row_layout.addWidget(self.compare_button)
+        comp_layout.addWidget(self.compare_button)
+        comp_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        layout.addLayout(second_row_layout)
+
+        right_side = QVBoxLayout()
+        right_side.addLayout(wl_sw_layout)
+        right_side.addLayout(comp_layout)
+
+        top_row_layout.addLayout(right_side)
+
+        layout.addLayout(top_row_layout)
 
         self.canvas = CustomChartCanvas(pricing_data, chart)
         self.canvas.setMaximumSize(900, 600)
@@ -281,6 +296,10 @@ class DetailsWindow(QMainWindow):
             return
 
         self.update_chart("1Y", tickers)
+
+    def handle_investment_window(self, ticker):
+        #TODO: do this
+        pass
 
 
 # chart figure is a list of charts??????
