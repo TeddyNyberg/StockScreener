@@ -171,7 +171,7 @@ def add_to_portfolio(conn, ticker, to_buy, price):
                                 total_shares = portfolio.total_shares + EXCLUDED.total_shares,
                                 cost_basis = portfolio.cost_basis + EXCLUDED.cost_basis;
                               """
-        cur.execute(upsert_ticker_query, (ticker, to_buy, price))
+        cur.execute(upsert_ticker_query, (ticker, to_buy, to_buy*price))
         conn.commit()
         print(f"Successfully processed ticker: {ticker}. Table 'portfolio' ensured to exist.")
 
