@@ -1,8 +1,8 @@
-from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio
+from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
-                               QSizePolicy, QGridLayout, QMenu)
+                               QSizePolicy, QGridLayout, QMenu, QSpinBox)
 from app.search import (lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range,
                         get_price)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -128,6 +128,7 @@ class DetailsWindow(QMainWindow):
 
         self.comp_ticker = None
         self.watch_window = None
+        self.trading_window = None
         self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
         self.ticker_data = name_and_price
 
@@ -144,7 +145,7 @@ class DetailsWindow(QMainWindow):
         pr_buy_layout = QHBoxLayout()
         pr_buy_layout.addWidget(QLabel(f"Price: {name_and_price[0]["price"]} {name_and_price[0]["currency"]}"))
         btn = QPushButton("Buy/Sell")
-        btn.clicked.connect(lambda _: self.handle_investment_window(name_and_price[0]["name"]))
+        btn.clicked.connect(lambda _: self.handle_investment_window(name_and_price[0]["ticker"], name_and_price[0]["price"]))
         pr_buy_layout.addWidget(btn)
 
         left_side = QVBoxLayout()
@@ -297,9 +298,12 @@ class DetailsWindow(QMainWindow):
 
         self.update_chart("1Y", tickers)
 
-    def handle_investment_window(self, ticker):
-        #TODO: do this
-        pass
+    def handle_investment_window(self, ticker, price):
+        if self.trading_window is None:
+            self.trading_window = TradingWindow(ticker, price)
+        self.trading_window.show()
+
+
 
 
 # chart figure is a list of charts??????
@@ -592,14 +596,75 @@ class PortfolioWindow(QMainWindow):
 
         i = 1
         for entry in portfolio:
+            # entry = (ticker, shares owned, total cost basis)
             ticker = entry[0]
+            shares = entry[1]
+            total_cost_basis = entry[2]
+            avg_cost_basis = total_cost_basis / shares
+            cur_price = get_price(ticker)
+            profit_loss = (cur_price - float(avg_cost_basis)) * shares
             ticker_button = TickerButton(ticker)
-
             new_list_layout.addWidget(ticker_button, i, 0)
-            new_list_layout.addWidget(QLabel(str(get_price(ticker))), i, 1)
+            new_list_layout.addWidget(QLabel(str(cur_price)), i, 1)
+            new_list_layout.addWidget(QLabel(str(shares)), i, 2)
+            new_list_layout.addWidget(QLabel(str(total_cost_basis)), i, 3)
+            new_list_layout.addWidget(QLabel(str(avg_cost_basis)), i, 4)
+            new_list_layout.addWidget(QLabel(str(profit_loss)), i, 5)
 
-            #TODO: more to add
+
             i += 1
 
         self.list_layout = new_list_layout
         self.layout.addLayout(self.list_layout)
+
+
+class TradingWindow(QMainWindow):
+    def __init__(self, ticker, price):
+        super().__init__()
+
+        self.ticker = ticker
+        self.price = price
+        self.setWindowTitle(f"Trade: {self.ticker}")
+
+        central_widget = QWidget()
+        main_layout = QVBoxLayout(central_widget)
+
+        info_layout = QHBoxLayout()
+        info_layout.addWidget(QLabel(f"<b>Stock:</b> {self.ticker}"))
+        info_layout.addWidget(QLabel(f"<b>Current Price:</b> ${self.price:.2f}"))
+        main_layout.addLayout(info_layout)
+
+        main_layout.addWidget(QLabel("---"))
+
+        quantity_layout = QHBoxLayout()
+        quantity_layout.addWidget(QLabel("<b>Quantity:</b>"))
+
+        self.quantity_input = QSpinBox()
+        self.quantity_input.setRange(1, 1000000)  # Set a reasonable range
+        self.quantity_input.setValue(1)
+        self.quantity_input.setToolTip("Number of shares to buy or sell")
+        quantity_layout.addWidget(self.quantity_input)
+
+        main_layout.addLayout(quantity_layout)
+
+        trade_buttons_layout = QHBoxLayout()
+
+        self.buy_button = QPushButton("BUY")
+        self.buy_button.setStyleSheet("background-color: #4CAF50; color: white;")
+        self.buy_button.clicked.connect(lambda _: buy_stock(ticker, self.quantity_input.value(), price))
+        trade_buttons_layout.addWidget(self.buy_button)
+
+        #self.sell_button = QPushButton("SELL")
+        #self.sell_button.setStyleSheet("background-color: #F44336; color: white;")
+        #self.sell_button.clicked.connect(lambda: self.handle_trade("SELL"))
+        #trade_buttons_layout.addWidget(self.sell_button)
+
+        main_layout.addLayout(trade_buttons_layout)
+
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.status_label)
+
+        main_layout.addStretch()
+        self.setCentralWidget(central_widget)
+        self.resize(300, 150)

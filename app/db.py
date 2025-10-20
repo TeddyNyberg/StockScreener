@@ -136,35 +136,61 @@ def get_portfolio():
 
 
 
-def buy_stock(ticker, quantity, price, time):
+def buy_stock(ticker, quantity, price):
     conn = get_db_connection()
     if conn is None:
         print("Could not establish a database connection.")
         return
     try:
-        with conn.cursor() as cur:
-            create_table_query = """
-                                 CREATE TABLE IF NOT EXISTS portfolio ( 
-                                 id SERIAL PRIMARY KEY,
-                                 ticker VARCHAR(10) NOT NULL,
-                                 quantity INTEGER NOT NULL,
-                                 price NUMERIC(10, 2) NOT NULL,
-                                 purchase_time TIMESTAMP WITH TIME ZONE NOT NULL
-                                 ); 
-                                 """
-            cur.execute(create_table_query)
-
-            insert_ticker_query = """
-                                  INSERT INTO stock_purchases (ticker, quantity, price, purchase_time) 
-                                  VALUES (%s, %s, %s, %s); 
-                                  """
-            cur.execute(insert_ticker_query, (ticker,quantity,price,time))
-            conn.commit()
-            print(f"Successfully processed ticker: {ticker}. Table 'portfolio' ensured to exist.")
-
+        add_to_portfolio(conn, ticker, quantity, price)
+        buy_transaction(conn, ticker, quantity, price)
     except psycopg2.Error as e:
-        print(f"Database error during add_watchlist: {e}")
+        print(f"Database error during buy_stock: {e}")
         conn.rollback()
+
     finally:
         if conn:
             conn.close()
+
+def add_to_portfolio(conn, ticker, to_buy, price):
+    with conn.cursor() as cur:
+        create_table_query = """
+                             CREATE TABLE IF NOT EXISTS portfolio ( 
+                             ticker VARCHAR(10) PRIMARY KEY,
+                             total_shares INTEGER NOT NULL,
+                             cost_basis NUMERIC(12, 4) NOT NULL
+                             ); 
+                             """
+        cur.execute(create_table_query)
+
+        upsert_ticker_query = """
+                              INSERT INTO portfolio (ticker, total_shares, cost_basis)
+                              VALUES (%s, %s, %s)
+                              ON CONFLICT (ticker) DO UPDATE
+                              SET 
+                                total_shares = portfolio.total_shares + EXCLUDED.total_shares,
+                                cost_basis = portfolio.cost_basis + EXCLUDED.cost_basis;
+                              """
+        cur.execute(upsert_ticker_query, (ticker, to_buy, price))
+        conn.commit()
+        print(f"Successfully processed ticker: {ticker}. Table 'portfolio' ensured to exist.")
+
+def buy_transaction(conn, ticker, quantity, price):
+    with conn.cursor() as cur:
+        create_table_query = """
+                             CREATE TABLE IF NOT EXISTS transactions ( 
+                             id SERIAL PRIMARY KEY,
+                             ticker VARCHAR(10) NOT NULL,
+                             quantity INTEGER NOT NULL,
+                             price NUMERIC(10, 2) NOT NULL
+                             ); 
+                             """
+        cur.execute(create_table_query)
+
+        insert_ticker_query = """
+                              INSERT INTO transactions (ticker, quantity, price) 
+                              VALUES (%s, %s, %s); 
+                              """
+        cur.execute(insert_ticker_query, (ticker,quantity,price))
+        conn.commit()
+        print(f"Successfully processed ticker: {ticker}. Table 'transactions' ensured to exist.")
