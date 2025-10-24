@@ -12,3 +12,5 @@ backtest_results.csv
 
 app/model.py
 app/modeltosm.py
+
+*.xlsx

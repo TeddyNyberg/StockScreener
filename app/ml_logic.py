@@ -43,25 +43,7 @@ def optimal_picks(today = pd.Timestamp.today().normalize()):
             print(f"Warning: Skipping {ticker} for prediction due to data/network error: {e}")
             continue
 
-    sorted_predictions = sorted(all_predictions, key=lambda x: x[1], reverse=True)
-
-    print("\n--- Sorted Predictions (Highest Predicted Return First) ---")
-
-    for ticker, delta in sorted_predictions[:10]:
-        print(f"Stock: {ticker}, Predicted Delta: {delta:+.4f}")
-
-    print("\n--- Lowest Predictions ---")
-    for ticker, delta in sorted_predictions[-5:]:
-        print(f"Stock: {ticker}, Predicted Delta: {delta:+.4f}")
-
-    if sorted_predictions:
-        best_stock, best_value = sorted_predictions[0]
-        print(f"\nOverall Best Stock Pick: {best_stock}")
-        print(f"Predicted Value: {best_value:+.4f}")
-    else:
-        print("No predictions were successfully generated.")
-
-    return sorted_predictions, all_predictions[-1]
+    return all_predictions, all_predictions[-1]
 
 
 def predict_single_ticker(ticker):
@@ -132,13 +114,13 @@ def _load_model_artifacts():
 
 def calculate_kelly_allocations(lookback_period="6M", end=None):
 
-    # if end is none, get range until today
+    # if end is none, get range until today, end = today
     # if end is not none, backtest
     start, end = get_date_range(lookback_period, end)
 
-    sorted_predictions, spy_delta = optimal_picks(end)
+    predictions, spy_delta = optimal_picks(end)
 
-    if not sorted_predictions:
+    if not predictions:
         print("No predictions available to calculate Kelly bets.")
         return None
 
@@ -146,7 +128,7 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
 
     kelly_allocations = []
 
-    for ticker, predicted_delta in sorted_predictions:
+    for ticker, predicted_delta in predictions:
         mu = predicted_delta
 
         try:
@@ -194,10 +176,12 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
 
     return final_allocations
 
-def handle_backtest(start_date_str: str = "2025-10-03", initial_capital: float = 100000.0, lookback_period: str = "6M"):
+#use 2025-10-3 for no leak data, model trained on 10/2
+def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 100000.0, lookback_period: str = "6M"):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
-
+    print("CLOSE GOOG 1/9", get_close_on("GOOG", "2025-1-9"))
+    print("CLOSE GOOG 1/8", get_close_on("GOOG", "2025-1-8"))
     daily_position_reports = {}
     daily_pnl_reports = {}
 
@@ -206,6 +190,7 @@ def handle_backtest(start_date_str: str = "2025-10-03", initial_capital: float =
 
         # pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) = date today at 00:00:00
         # TODO: See what yfticker get data until today before open, during hours, after close
+        # so today = yesterday bc want to trade until yesterday, dont use todays data
         today = pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) - pd.Timedelta(days=1)
         print("today: ", pd.to_datetime(datetime.now().strftime('%Y-%m-%d')))
 
@@ -215,41 +200,84 @@ def handle_backtest(start_date_str: str = "2025-10-03", initial_capital: float =
 
         date_range = pd.date_range(start_date, today, freq='B')  # Business days
 
-        portfolio_df = pd.DataFrame(index=date_range, columns=['Total_Value_At_Close', 'Cash'], dtype=float)
+        portfolio_df = pd.DataFrame(index=date_range, columns=['Total_Value_At_Close', 'Cash_At_Open'], dtype=float)
         portfolio_df.loc[date_range[0], 'Total_Value_At_Close'] = initial_capital
-        portfolio_df.loc[date_range[0], "Cash"] = initial_capital
+        portfolio_df.loc[date_range[1], "Cash_At_Open"] = initial_capital
 
-        current_holdings = {}  # ticker: {"shares": float, "entryprice":float}
+        new_holdings = {}
+        transaction_cost_pct = 0
+        trading_today = True
 
         for i in range(1, len(date_range)):
+
             current_day = date_range[i]
             prev_day = date_range[i - 1]
-
             print(current_day)
-            print(prev_day)
+            if trading_today:
+                kelly_allocations = calculate_kelly_allocations(
+                    lookback_period,
+                    current_day
+                )
 
-            prev_day_cash_raw = portfolio_df.loc[prev_day, 'Cash']
-            if pd.isna(prev_day_cash_raw):
-                day_start_capital = 0.0
-                print(f"Error: Cash for {prev_day.strftime('%Y-%m-%d')} is NaN. Assuming 0 capital.")
+                total_capital_available = portfolio_df.loc[current_day, 'Cash_At_Open']
+                cash_for_trading = total_capital_available
+
+                daily_allocations_list = []
+
+
+                total_allocation_value = 0
+                # 0.0005 5bp
+                # 0 for now
+
+
+                for ticker, kelly_fraction, _ in kelly_allocations:
+                    target_value = total_capital_available * kelly_fraction
+                    # buy at prev days close
+                    close_price = get_close_on(ticker, prev_day)
+
+                    if close_price is not None:
+                        buy_value = min(target_value, cash_for_trading)
+
+                        shares_to_buy = buy_value / close_price
+                        transaction_cost = buy_value * transaction_cost_pct
+
+                        if cash_for_trading >= (buy_value + transaction_cost):
+                            cash_for_trading -= (buy_value + transaction_cost)
+                            new_holdings[ticker] = {"shares": shares_to_buy, "entry_price": close_price,
+                                                    "closing_price": close_price}
+
+                            total_allocation_value += buy_value
+                            """
+                            daily_allocations_list.append({
+                                "Ticker": ticker,
+                                "Allocation_Percent": kelly_fraction,
+                                "Entry_Price": close_price,
+                                "Target_Value": target_value,
+                                "Actual_Shares": shares_to_buy
+                            })
+                            """
             else:
-                day_start_capital = float(prev_day_cash_raw)
+                trading_today = True
 
-            # 0.0005 5bp
-            # 0 for now
-            transaction_cost_pct = 0
+            """
+            if daily_allocations_list:
+                allocations_df = pd.DataFrame(daily_allocations_list)
+                daily_position_reports[current_day.strftime("%Y-%m-%d")] = allocations_df
+            """
             daily_pnl_list = []
 
-            tickers_to_remove = list(current_holdings.keys())
-            for ticker in tickers_to_remove: #LIQUIDATE
-                holding = current_holdings.get(ticker, {})
+            total_value = cash_for_trading
+
+            tickers_to_remove = list(new_holdings.keys())
+            for ticker in tickers_to_remove: #LIQUIDATE, SELL AT EOD
+                holding = new_holdings.get(ticker, {})
                 shares = holding.get("shares", 0)
                 entry_price = holding.get("entry_price", -1)
 
                 if shares == 0:
                    continue
 
-                closing_price = get_close_on(ticker, prev_day)  # Price from the previous day's close
+                closing_price = get_close_on(ticker, current_day)  # Price from the current day's close, bc bought at prev days close
 
                 if closing_price is not None and entry_price != -1:
                     sale_value = shares * closing_price
@@ -257,85 +285,57 @@ def handle_backtest(start_date_str: str = "2025-10-03", initial_capital: float =
 
                     purchase_value = shares * entry_price
                     gain_loss = sale_value - purchase_value
-                    day_start_capital += sale_value - transaction_cost
-
+                    total_value += sale_value - transaction_cost
+                    """
                     daily_pnl_list.append({
                         "Ticker": ticker,
-                        "Shares_Sold": shares,
+                        "Shares": shares,
                         "Entry_Price": entry_price,
                         "Exit_Price": closing_price,
                         "Sale_Value": sale_value,
                         "Transaction_Cost": transaction_cost,
                         "Gain_Loss": gain_loss
                     })
+                    """
                 else:
-                    print(
-                        f"Warning: Price unavailable for {ticker} on {prev_day}. Assuming zero contribution to daily capital.")
+                    print(f"Warning: Price unavailable for {ticker} on {current_day}.")
+                    trading_today = False
+                    break
+
+            if trading_today:
+                new_holdings = {}
+            else:
+                total_value = total_capital_available
 
             if daily_pnl_list:
                 daily_pnl_reports[current_day.strftime('%Y-%m-%d')] = pd.DataFrame(daily_pnl_list)
 
-            portfolio_df.loc[current_day, 'Total_Value_At_Close'] = day_start_capital
+            portfolio_df.loc[current_day, 'Total_Value_At_Close'] = total_value
+            if i < len(date_range)-1:
+                if trading_today:
+                    portfolio_df.loc[date_range[i+1], 'Cash_At_Open'] = total_value
+                else:
+                    portfolio_df.loc[date_range[i+1], 'Cash_At_Open'] = cash_for_trading
 
-            data_end_date = prev_day
+            print(current_day, " total at close: ", total_value)
 
-            kelly_allocations = calculate_kelly_allocations(
-                lookback_period,
-                data_end_date
-            )
-
-            total_capital_available = day_start_capital
-            cash_for_trading = day_start_capital  # We start with cash = total capital, then sell/buy
-
-            new_holdings = {}
+            file_path = 'backtest_results.xlsx'
+            writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
+            portfolio_df.to_excel(writer, sheet_name="Summary_Performance")
+            writer.close()
 
 
-            daily_allocations_list = []
-
-            total_allocation_value = 0
-
-            for ticker, kelly_fraction, _ in kelly_allocations:
-                target_value = total_capital_available * kelly_fraction
-                close_price = get_close_on(ticker, prev_day)
-
-                if close_price is not None:
-                    buy_value = min(target_value, cash_for_trading)
-
-                    shares_to_buy = buy_value / close_price
-                    transaction_cost = buy_value * transaction_cost_pct
-
-                    if cash_for_trading >= (buy_value + transaction_cost):
-                        cash_for_trading -= (buy_value + transaction_cost)
-                        new_holdings[ticker] = {"shares": shares_to_buy, "entry_price": close_price, "closing_price": close_price}
-
-                        total_allocation_value += buy_value
-
-                        daily_allocations_list.append({
-                            "Ticker": ticker,
-                            "Allocation_Percent": kelly_fraction,
-                            "Entry_Price": close_price,
-                            "Target_Value": target_value,
-                            "Actual_Shares": shares_to_buy
-                        })
-
-            current_holdings = new_holdings
-            portfolio_df.loc[prev_day, 'Cash'] = float(cash_for_trading)
-            portfolio_df.loc[prev_day, 'Total_Value_At_Close'] = float(cash_for_trading + total_allocation_value)
-
-            if daily_allocations_list:
-                allocations_df = pd.DataFrame(daily_allocations_list)
-                daily_position_reports[current_day.strftime("%Y-%m-%d")] = allocations_df
 
             # print(f"Day {current_day.strftime('%Y-%m-%d')} | End Value: ${portfolio_df.loc[current_day, 'Total_Value']:,.2f} | Cash: ${cash_for_trading:,.2f}")
 
-
-        file_path = 'backtest_results.xlsx'
+        """
+        file_path = 'backtest_results_lit_same_thing_as_jan.xlsx'
         writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
         portfolio_df.to_excel(writer, sheet_name="Summary_Performance")
-
+        """
         #for pnl sheet, to see loss and gain on 5/1, look at sheet named 5/2 pnl
         #for allocations, the stocks syou see on 5/1 are the stocks you own on 5/1
-
+        """
         for date_str, df in daily_position_reports.items():
             sheet_name = f"{date_str}_Allocations"
             df.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -343,7 +343,9 @@ def handle_backtest(start_date_str: str = "2025-10-03", initial_capital: float =
         for date_str, df in daily_pnl_reports.items():
             sheet_name = f"{date_str}_PnL"
             df.to_excel(writer, sheet_name=sheet_name, index=False)
-        writer.close()
+        """
+
+        # writer.close()
         print("\n" + "=" * 50)
         print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value']:,.2f}")
         print(f"Results saved to {file_path}")
