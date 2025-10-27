@@ -22,6 +22,9 @@ def main():
 
 """
 
+so s3 has 3years of data, the model is trained on 3 years
+
+
 def initialize_database():
 
     data_handler = DataHandler()

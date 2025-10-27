@@ -8,7 +8,7 @@ from app.search import (lookup_tickers, get_chart, get_financial_metrics, get_ba
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from data import fetch_stock_data
-from ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest
+from ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest, continue_backtest
 import subprocess
 import sys
 from settings import *
@@ -30,6 +30,8 @@ def open_window_from_ticker(result):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+
+
         self.setWindowTitle("Stock Screener")
         main_layout = QVBoxLayout()
 
@@ -408,8 +410,10 @@ class ModelWindow(QMainWindow):
         next_day_picks.clicked.connect(self.show_kelly_bet)
         top_row_layout.addWidget(next_day_picks)
 
+
+        #TODO: make this filename universal?
         back_test_button = QPushButton("Back Test")
-        back_test_button.clicked.connect(lambda: handle_backtest())
+        back_test_button.clicked.connect(lambda: continue_backtest("backtest_results_jan.xlsx", "Summary_Performance"))
         top_row_layout.addWidget(back_test_button)
 
 

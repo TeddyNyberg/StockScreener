@@ -3,11 +3,14 @@ import io
 import tarfile
 import torch
 import pandas as pd
+
+from app.search import get_yfdata_cache
 from data import fetch_stock_data, normalize_window, get_sp500_tickers
 from newattemptmodel import pred_next_day_no_ticker
 from search import get_date_range, get_close_on
 from settings import *
 from datetime import datetime
+
 
 s3_client = boto3.client(
         's3',
@@ -180,8 +183,6 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
 def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 100000.0, lookback_period: str = "6M"):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
-    print("CLOSE GOOG 1/9", get_close_on("GOOG", "2025-1-9"))
-    print("CLOSE GOOG 1/8", get_close_on("GOOG", "2025-1-8"))
     daily_position_reports = {}
     daily_pnl_reports = {}
 
@@ -247,7 +248,7 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
                                                     "closing_price": close_price}
 
                             total_allocation_value += buy_value
-                            """
+
                             daily_allocations_list.append({
                                 "Ticker": ticker,
                                 "Allocation_Percent": kelly_fraction,
@@ -255,15 +256,15 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
                                 "Target_Value": target_value,
                                 "Actual_Shares": shares_to_buy
                             })
-                            """
+
             else:
                 trading_today = True
 
-            """
+
             if daily_allocations_list:
                 allocations_df = pd.DataFrame(daily_allocations_list)
                 daily_position_reports[current_day.strftime("%Y-%m-%d")] = allocations_df
-            """
+
             daily_pnl_list = []
 
             total_value = cash_for_trading
@@ -286,7 +287,7 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
                     purchase_value = shares * entry_price
                     gain_loss = sale_value - purchase_value
                     total_value += sale_value - transaction_cost
-                    """
+
                     daily_pnl_list.append({
                         "Ticker": ticker,
                         "Shares": shares,
@@ -296,7 +297,7 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
                         "Transaction_Cost": transaction_cost,
                         "Gain_Loss": gain_loss
                     })
-                    """
+
                 else:
                     print(f"Warning: Price unavailable for {ticker} on {current_day}.")
                     trading_today = False
@@ -319,23 +320,11 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
 
             print(current_day, " total at close: ", total_value)
 
-            file_path = 'backtest_results.xlsx'
-            writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
-            portfolio_df.to_excel(writer, sheet_name="Summary_Performance")
-            writer.close()
+
+        file_path = 'backtest_portfolio_PL.xlsx'
+        writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
 
 
-
-            # print(f"Day {current_day.strftime('%Y-%m-%d')} | End Value: ${portfolio_df.loc[current_day, 'Total_Value']:,.2f} | Cash: ${cash_for_trading:,.2f}")
-
-        """
-        file_path = 'backtest_results_lit_same_thing_as_jan.xlsx'
-        writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
-        portfolio_df.to_excel(writer, sheet_name="Summary_Performance")
-        """
-        #for pnl sheet, to see loss and gain on 5/1, look at sheet named 5/2 pnl
-        #for allocations, the stocks syou see on 5/1 are the stocks you own on 5/1
-        """
         for date_str, df in daily_position_reports.items():
             sheet_name = f"{date_str}_Allocations"
             df.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -343,9 +332,9 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
         for date_str, df in daily_pnl_reports.items():
             sheet_name = f"{date_str}_PnL"
             df.to_excel(writer, sheet_name=sheet_name, index=False)
-        """
 
-        # writer.close()
+
+        writer.close()
         print("\n" + "=" * 50)
         print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value']:,.2f}")
         print(f"Results saved to {file_path}")
@@ -357,3 +346,56 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
     print(portfolio_df)
 
     return portfolio_df
+
+
+
+def ytd_spy():
+    spy, _ = get_yfdata_cache(["^SPX"], "1Y")
+
+    file_path = 'spy.xlsx'
+    writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
+    spy["Close"].to_excel(writer, sheet_name="Summary_Performance")
+    writer.close()
+
+
+def continue_backtest(file_path, sheet_name):
+    data = pd.read_excel(file_path, sheet_name=sheet_name)
+
+    last_index = data.index[-1]
+    last_day_total_value = data.loc[last_index, 'Total_Value_At_Close']
+    start_date = data.loc[last_index, "Unnamed: 0"]
+    start_date_str = start_date.strftime('%Y-%m-%d')
+
+    print("-" * 50)
+    print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
+    print(f"New initial capital: ${last_day_total_value:,.2f}")
+    print("-" * 50)
+
+    today_check = pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) - pd.Timedelta(days=1)
+    if start_date > today_check:
+        print("Backtest is already up-to-date. No new trading days to process.")
+        return
+
+    new_results_df = handle_backtest(
+        start_date_str=start_date_str,
+        initial_capital=last_day_total_value
+    )
+
+    new_trading_days_df = new_results_df.iloc[1:]
+
+    if new_trading_days_df.empty:
+        print("The new backtest run produced no new trading days to append.")
+        return
+
+    with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        startrow = data.shape[0] + 1
+        new_trading_days_df.to_excel(writer, sheet_name="Summary_Performance", startrow=startrow, header=False)
+
+    print("\n" + "=" * 50)
+    print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
+    print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%Y-%m-%d')}")
+    print("=" * 50)
+
+
+
+

@@ -13,4 +13,7 @@ backtest_results.csv
 app/model.py
 app/modeltosm.py
 
-*.xlsx
+spy.xlsx
+backtest_results_jan_copy1.xlsx
+backtest_results_jan_copy2.xlsx
+backtest_results_lit_same_thing_as_jan.xlsx
