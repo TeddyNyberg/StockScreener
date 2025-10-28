@@ -1,4 +1,4 @@
-from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock
+from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock, sell_stock
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
@@ -657,10 +657,10 @@ class TradingWindow(QMainWindow):
         self.buy_button.clicked.connect(lambda _: buy_stock(ticker, self.quantity_input.value(), price))
         trade_buttons_layout.addWidget(self.buy_button)
 
-        #self.sell_button = QPushButton("SELL")
-        #self.sell_button.setStyleSheet("background-color: #F44336; color: white;")
-        #self.sell_button.clicked.connect(lambda: self.handle_trade("SELL"))
-        #trade_buttons_layout.addWidget(self.sell_button)
+        self.sell_button = QPushButton("SELL")
+        self.sell_button.setStyleSheet("background-color: #F44336; color: white;")
+        self.sell_button.clicked.connect(lambda: sell_stock(ticker, self.quantity_input.value(), price))
+        trade_buttons_layout.addWidget(self.sell_button)
 
         main_layout.addLayout(trade_buttons_layout)
 

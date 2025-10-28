@@ -1,5 +1,6 @@
 from settings import *
 import psycopg2
+from decimal import Decimal
 
 def get_db_connection():
     # Establishes and returns a connection to the PostgreSQL database.
@@ -153,6 +154,9 @@ def buy_stock(ticker, quantity, price):
             conn.close()
 
 def add_to_portfolio(conn, ticker, to_buy, price):
+    price = Decimal(str(price))
+    to_buy = Decimal(to_buy)
+
     with conn.cursor() as cur:
         create_table_query = """
                              CREATE TABLE IF NOT EXISTS portfolio ( 
@@ -182,15 +186,106 @@ def buy_transaction(conn, ticker, quantity, price):
                              id SERIAL PRIMARY KEY,
                              ticker VARCHAR(10) NOT NULL,
                              quantity INTEGER NOT NULL,
-                             price NUMERIC(10, 2) NOT NULL
+                             price NUMERIC(10, 2) NOT NULL,
+                             type VARCHAR(4) NOT NULL 
+                             ); 
+                             """
+        cur.execute(create_table_query)
+        insert_ticker_query = """
+                              INSERT INTO transactions (ticker, quantity, price, type) 
+                              VALUES (%s, %s, %s, 'BUY'); 
+                              """
+        cur.execute(insert_ticker_query, (ticker, quantity, price))
+        conn.commit()
+        print(f"Successfully logged BUY transaction for {ticker}.")
+
+def sell_stock(ticker, quantity, price):
+    conn = get_db_connection()
+    if conn is None:
+        print("Could not establish a database connection.")
+        return
+    try:
+        rm_from_portfolio(conn, ticker, quantity, price)
+        sell_transaction(conn, ticker, quantity, price)
+    except psycopg2.Error as e:
+        print(f"Database error during buy_stock: {e}")
+        conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+
+def rm_from_portfolio(conn, ticker, to_sell, price):
+    with conn.cursor() as cur:
+        create_table_query = """
+                             CREATE TABLE IF NOT EXISTS portfolio ( 
+                             ticker VARCHAR(10) PRIMARY KEY,
+                             total_shares INTEGER NOT NULL,
+                             cost_basis NUMERIC(12, 4) NOT NULL
+                             ); 
+                             """
+        cur.execute(create_table_query)
+
+        cur.execute("SELECT total_shares, cost_basis FROM portfolio WHERE ticker = %s FOR UPDATE", (ticker,))
+        result = cur.fetchone()
+
+        if result is None:
+            print(f"Error: Cannot sell {to_sell} shares of {ticker}. Ticker not found in portfolio.")
+            conn.rollback()
+            return False
+
+        current_shares = result[0]
+        current_cost_basis = result[1]
+
+        print("current_shares: ", current_shares)
+        print("current_cost_basis: ", current_cost_basis)
+
+        if current_shares < to_sell:
+            print(f"Error: Insufficient shares to sell {to_sell} of {ticker}. Current shares: {current_shares}.")
+            conn.rollback()
+            return False
+
+        avg_cost_per_share = current_cost_basis / Decimal(current_shares) if current_shares > 0 else 0
+        to_sell = Decimal(to_sell)
+        cost_basis_reduction = to_sell * avg_cost_per_share
+
+        new_shares = current_shares - to_sell
+        new_cost_basis = current_cost_basis - cost_basis_reduction
+
+        if new_shares <= 0:
+            delete_query = "DELETE FROM portfolio WHERE ticker = %s;"
+            cur.execute(delete_query, (ticker,))
+            print(f"Successfully sold all shares of {ticker}. Removed from portfolio.")
+        else:
+            update_query = """
+                           UPDATE portfolio 
+                           SET total_shares = %s, cost_basis = %s
+                           WHERE ticker = %s;
+                           """
+            cur.execute(update_query, (new_shares, new_cost_basis, ticker))
+            print(f"Successfully sold {to_sell} shares of {ticker}. Portfolio updated.")
+
+        conn.commit()
+        return True
+
+
+def sell_transaction(conn, ticker, quantity, price):
+    with conn.cursor() as cur:
+        create_table_query = """
+                             CREATE TABLE IF NOT EXISTS transactions ( 
+                             id SERIAL PRIMARY KEY,
+                             ticker VARCHAR(10) NOT NULL,
+                             quantity INTEGER NOT NULL,
+                             price NUMERIC(10, 2) NOT NULL,
+                             type VARCHAR(4) NOT NULL
                              ); 
                              """
         cur.execute(create_table_query)
 
         insert_ticker_query = """
-                              INSERT INTO transactions (ticker, quantity, price) 
-                              VALUES (%s, %s, %s); 
+                              INSERT INTO transactions (ticker, quantity, price, type) 
+                              VALUES (%s, %s, %s, 'SELL'); 
                               """
-        cur.execute(insert_ticker_query, (ticker,quantity,price))
+        cur.execute(insert_ticker_query, (ticker, quantity, price))
         conn.commit()
-        print(f"Successfully processed ticker: {ticker}. Table 'transactions' ensured to exist.")
+        print(f"Successfully logged SELL transaction for {ticker}.")
