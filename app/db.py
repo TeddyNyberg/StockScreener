@@ -2,265 +2,134 @@ from settings import *
 import psycopg2
 from decimal import Decimal
 
-def get_db_connection():
-    # Establishes and returns a connection to the PostgreSQL database.
+def load_sql(filename):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    query_path = os.path.join(current_dir, "queries", filename)
     try:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USERNAME,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
-        return conn
-    except psycopg2.Error as e:
-        print(f"Error connecting to the database: {e}")
-        return None
-
+        with open(query_path, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"File {filename} not found. Looked for: {query_path}")
+        return ""
 
 def get_watchlist():
-    conn = get_db_connection()
-    if conn is None:
-        print("Could not establish a database connection.")
-        return None
+    GET_WATCHLIST_QUERY = load_sql("select_watchlist.sql")
     try:
-        with conn.cursor() as cur:
-            get_table_query = """
-                              SELECT * FROM watchlist
-                              """
-            cur.execute(get_table_query)
-            watchlist = cur.fetchall()
-    except psycopg2.Error as e:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(GET_WATCHLIST_QUERY)
+                return cur.fetchall()
+    except Exception as e:
         print(f"Database error during get_watchlist: {e}")
-        watchlist = []
-    finally:
-        if conn:
-            conn.close()
-    return watchlist
+        return []
 
 
 def add_watchlist(ticker):
-    conn = get_db_connection()
-    if conn is None:
-        print("Could not establish a database connection.")
-        return
+    INSERT_TICKER_QUERY = load_sql("insert_watchlist.sql")
     try:
-        with conn.cursor() as cur:
-            create_table_query = """
-                                 CREATE TABLE IF NOT EXISTS watchlist ( 
-                                     ticker VARCHAR(10) PRIMARY KEY
-                                 ); 
-                                 """
-            cur.execute(create_table_query)
-
-            insert_ticker_query = """
-                                  INSERT INTO watchlist (ticker) 
-                                  VALUES (%s) ON CONFLICT (ticker) DO NOTHING; 
-                                  """
-            cur.execute(insert_ticker_query, (ticker,))
-            conn.commit()
-            print(f"Successfully processed ticker: {ticker}. Table 'watchlist' ensured to exist.")
-
-    except psycopg2.Error as e:
-        print(f"Database error during add_watchlist: {e}")
-        conn.rollback()
-    finally:
-        if conn:
-            conn.close()
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(INSERT_TICKER_QUERY, (ticker,))
+                print(f"Successfully processed ticker: {ticker}.")
+                return True
+    except Exception as e:
+        print(f"Database error during add_watchlist (Rollback): {e}")
+        return False
 
 
 def rm_watchlist(ticker):
-
-    conn = get_db_connection()  # Assuming this function is defined elsewhere
-    if conn is None:
-        print("Could not establish a database connection.")
-        return
-
+    DELETE_TICKER_QUERY = load_sql("delete_watchlist.sql")
     try:
-        with conn.cursor() as cur:
-            create_table_query = """
-                                 CREATE TABLE IF NOT EXISTS watchlist
-                                 (
-                                     ticker VARCHAR(10) PRIMARY KEY
-                                 );
-                                 """
-            cur.execute(create_table_query)
-
-            delete_ticker_query = """
-                                  DELETE FROM watchlist
-                                  WHERE ticker = %s;
-                                  """
-            cur.execute(delete_ticker_query, (ticker,))
-
-            rows_deleted = cur.rowcount
-
-            conn.commit()
-
-            if rows_deleted > 0:
-                print(f"Successfully removed ticker: {ticker} from watchlist.")
-            else:
-                print(f"Ticker: {ticker} was not found in the watchlist (0 rows affected).")
-
-    except psycopg2.Error as e:
-        print(f"Database error during rm_watchlist: {e}")
-        conn.rollback()
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(DELETE_TICKER_QUERY, (ticker,))
+                rows_deleted = cur.rowcount
+                if rows_deleted > 0:
+                    print(f"Successfully removed ticker: {ticker} from watchlist.")
+                else:
+                    print(f"Ticker: {ticker} was not found in the watchlist (0 rows affected).")
+            return True
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-    finally:
-        if conn:
-            conn.close()
+        print(f"Database error during rm_watchlist (Rollback): {e}")
+        return False
 
 def get_portfolio():
-    conn = get_db_connection()
-    if conn is None:
-        print("Could not establish a database connection.")
-        return None
+    GET_PORTFOLIO_QUERY = load_sql("select_portfolio.sql")
     try:
-        with conn.cursor() as cur:
-            get_table_query = """
-                              SELECT * FROM portfolio
-                              """
-            cur.execute(get_table_query)
-            portfolio = cur.fetchall()
-    except psycopg2.Error as e:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(GET_PORTFOLIO_QUERY)
+                return cur.fetchall()
+    except Exception as e:
         print(f"Database error during get_portfolio: {e}")
-        portfolio = []
-    finally:
-        if conn:
-            conn.close()
-    return portfolio
-
+        return []
 
 
 def buy_stock(ticker, quantity, price):
-    conn = get_db_connection()
-    if conn is None:
-        print("Could not establish a database connection.")
-        return
     try:
-        add_to_portfolio(conn, ticker, quantity, price)
-        buy_transaction(conn, ticker, quantity, price)
-    except psycopg2.Error as e:
-        print(f"Database error during buy_stock: {e}")
-        conn.rollback()
+        with DB() as conn:
+            _add_to_portfolio(conn, ticker, quantity, price)
+            _log_transaction(conn, ticker, quantity, price, 'BUY')
+    except Exception as e:
+        print(f"Error executing buy_stock (transaction failed): {e}")
 
-    finally:
-        if conn:
-            conn.close()
-
-def add_to_portfolio(conn, ticker, to_buy, price):
+def _add_to_portfolio(conn, ticker, to_buy, price):
+    UPSERT_QUERY = load_sql("upsert_portfolio.sql")
     price = Decimal(str(price))
     to_buy = Decimal(to_buy)
-
     with conn.cursor() as cur:
-        create_table_query = """
-                             CREATE TABLE IF NOT EXISTS portfolio ( 
-                             ticker VARCHAR(10) PRIMARY KEY,
-                             total_shares INTEGER NOT NULL,
-                             cost_basis NUMERIC(12, 4) NOT NULL
-                             ); 
-                             """
-        cur.execute(create_table_query)
+        cur.execute(UPSERT_QUERY, (ticker, to_buy, to_buy*price))
+        print(f"Successfully updated portfolio for {ticker}.")
 
-        upsert_ticker_query = """
-                              INSERT INTO portfolio (ticker, total_shares, cost_basis)
-                              VALUES (%s, %s, %s)
-                              ON CONFLICT (ticker) DO UPDATE
-                              SET 
-                                total_shares = portfolio.total_shares + EXCLUDED.total_shares,
-                                cost_basis = portfolio.cost_basis + EXCLUDED.cost_basis;
-                              """
-        cur.execute(upsert_ticker_query, (ticker, to_buy, to_buy*price))
-        conn.commit()
-        print(f"Successfully processed ticker: {ticker}. Table 'portfolio' ensured to exist.")
 
-def buy_transaction(conn, ticker, quantity, price):
+def _log_transaction(conn, ticker, quantity, price, type):
+    INSERT_TRANSACTION_QUERY = load_sql("insert_transactions.sql")
     with conn.cursor() as cur:
-        create_table_query = """
-                             CREATE TABLE IF NOT EXISTS transactions ( 
-                             id SERIAL PRIMARY KEY,
-                             ticker VARCHAR(10) NOT NULL,
-                             quantity INTEGER NOT NULL,
-                             price NUMERIC(10, 2) NOT NULL,
-                             type VARCHAR(4) NOT NULL 
-                             ); 
-                             """
-        cur.execute(create_table_query)
-        insert_ticker_query = """
-                              INSERT INTO transactions (ticker, quantity, price, type) 
-                              VALUES (%s, %s, %s, 'BUY'); 
-                              """
-        cur.execute(insert_ticker_query, (ticker, quantity, price))
-        conn.commit()
-        print(f"Successfully logged BUY transaction for {ticker}.")
+        cur.execute(INSERT_TRANSACTION_QUERY, (ticker, quantity, price, type))
+        print(f"Successfully logged {type} transaction for {ticker}.")
+
 
 def sell_stock(ticker, quantity, price):
-    conn = get_db_connection()
-    if conn is None:
-        print("Could not establish a database connection.")
-        return
     try:
-        rm_from_portfolio(conn, ticker, quantity, price)
-        sell_transaction(conn, ticker, quantity, price)
-    except psycopg2.Error as e:
-        print(f"Database error during buy_stock: {e}")
-        conn.rollback()
-    finally:
-        if conn:
-            conn.close()
+        with DB() as conn:
+            _rm_from_portfolio(conn, ticker, quantity, price)
+            _log_transaction(conn, ticker, quantity, price, 'SELL')
+    except Exception as e:
+        print(f"Error executing sell_stock (transaction failed): {e}")
 
 
-def rm_from_portfolio(conn, ticker, to_sell, price):
+def _rm_from_portfolio(conn, ticker, to_sell, price):
+    SELECT_FOR_UPDATE_SQL = load_sql("select_shares_for_update.sql")
+    DELETE_PORTFOLIO_SQL = load_sql("delete_portfolio.sql")
+    UPDATE_PORTFOLIO_SQL = load_sql("update_portfolio.sql")
+
     with conn.cursor() as cur:
-        create_table_query = """
-                             CREATE TABLE IF NOT EXISTS portfolio ( 
-                             ticker VARCHAR(10) PRIMARY KEY,
-                             total_shares INTEGER NOT NULL,
-                             cost_basis NUMERIC(12, 4) NOT NULL
-                             ); 
-                             """
-        cur.execute(create_table_query)
-
-        cur.execute("SELECT total_shares, cost_basis FROM portfolio WHERE ticker = %s FOR UPDATE", (ticker,))
+        cur.execute(SELECT_FOR_UPDATE_SQL, (ticker,))
         result = cur.fetchone()
 
         if result is None:
-            print(f"Error: Cannot sell {to_sell} shares of {ticker}. Ticker not found in portfolio.")
-            conn.rollback()
-            return False
+            raise ValueError(f"Error: Cannot sell {to_sell} shares of {ticker}. Ticker not found in portfolio.")
 
         current_shares = result[0]
         current_cost_basis = result[1]
-
-        print("current_shares: ", current_shares)
-        print("current_cost_basis: ", current_cost_basis)
+        to_sell = Decimal(to_sell)
 
         if current_shares < to_sell:
-            print(f"Error: Insufficient shares to sell {to_sell} of {ticker}. Current shares: {current_shares}.")
-            conn.rollback()
-            return False
+            raise ValueError(
+                f"Error: Insufficient shares to sell {to_sell} of {ticker}. Current shares: {current_shares}.")
 
         avg_cost_per_share = current_cost_basis / Decimal(current_shares) if current_shares > 0 else 0
-        to_sell = Decimal(to_sell)
         cost_basis_reduction = to_sell * avg_cost_per_share
-
         new_shares = current_shares - to_sell
         new_cost_basis = current_cost_basis - cost_basis_reduction
 
         if new_shares <= 0:
-            delete_query = "DELETE FROM portfolio WHERE ticker = %s;"
-            cur.execute(delete_query, (ticker,))
+            cur.execute(DELETE_PORTFOLIO_SQL, (ticker,))
             print(f"Successfully sold all shares of {ticker}. Removed from portfolio.")
         else:
-            update_query = """
-                           UPDATE portfolio 
-                           SET total_shares = %s, cost_basis = %s
-                           WHERE ticker = %s;
-                           """
-            cur.execute(update_query, (new_shares, new_cost_basis, ticker))
+            cur.execute(UPDATE_PORTFOLIO_SQL, (new_shares, new_cost_basis, ticker))
             print(f"Successfully sold {to_sell} shares of {ticker}. Portfolio updated.")
 
-        conn.commit()
         return True
 
 
@@ -284,3 +153,41 @@ def sell_transaction(conn, ticker, quantity, price):
         cur.execute(insert_ticker_query, (ticker, quantity, price))
         conn.commit()
         print(f"Successfully logged SELL transaction for {ticker}.")
+
+class DB:
+    def __init__(self):
+        self.conn = None
+    def __enter__(self):
+        try:
+            self.conn = psycopg2.connect(
+                dbname=DB_NAME,
+                user=DB_USERNAME,
+                password=DB_PASSWORD,
+                host=DB_HOST,
+                port=DB_PORT
+            )
+            return self.conn
+        except psycopg2.Error as e:
+            print(f"Could not establish a database connection.")
+            raise
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
+            if exc_type is None:
+                self.conn.commit()
+            else:
+                self.conn.rollback()
+                print("rollback")
+            self.conn.close()
+        return False
+
+def init_db(conn):
+    create_watchlist_sql = load_sql("create_watchlist.sql")
+    create_portfolio_sql = load_sql("create_portfolio.sql")
+    create_transactions_sql = load_sql("create_transactions.sql")
+
+    with conn.cursor() as cur:
+        cur.execute(create_watchlist_sql)
+        cur.execute(create_portfolio_sql)
+        cur.execute(create_transactions_sql)
+
+    print("Database initialized.")

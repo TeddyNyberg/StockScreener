@@ -365,15 +365,16 @@ def continue_backtest(file_path, sheet_name):
     start_date = data.loc[last_index, "Unnamed: 0"]
     start_date_str = start_date.strftime('%Y-%m-%d')
 
+    today_check = pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) - pd.Timedelta(days=1)
+    if start_date > today_check:
+        print("Backtest is already up-to-date. No new trading days to process.")
+        return
+
     print("-" * 50)
     print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
     print(f"New initial capital: ${last_day_total_value:,.2f}")
     print("-" * 50)
 
-    today_check = pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) - pd.Timedelta(days=1)
-    if start_date > today_check:
-        print("Backtest is already up-to-date. No new trading days to process.")
-        return
 
     new_results_df = handle_backtest(
         start_date_str=start_date_str,

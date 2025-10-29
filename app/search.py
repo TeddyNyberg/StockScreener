@@ -1,6 +1,7 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
+
 from pandas.tseries.offsets import DateOffset, Day
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
@@ -61,6 +62,7 @@ def get_chart(tickers, time):
 
 
 
+
     title = get_title(tickers)
 
     if not is_single_ticker:
@@ -71,6 +73,8 @@ def get_chart(tickers, time):
         elif len2 > len1:
             second_data = second_data.iloc[-len1:]
         plot_data, second_data = normalize(plot_data, second_data)
+        print(plot_data)
+        print(second_data)
 
     plot_kwargs = {
         "type": "line",
@@ -97,7 +101,6 @@ def get_chart(tickers, time):
 
 def rm_nm(df1, df2=None):
     if isinstance(df1.columns, pd.MultiIndex):
-        print("is inst")
         df1.columns = df1.columns.droplevel(1)
     if df2 is not None and isinstance(df2.columns, pd.MultiIndex):
         df2.columns = df2.columns.droplevel(1)
@@ -236,10 +239,12 @@ def get_open_on(ticker, date):
         return None
 
 def get_nyberg_price():
+
     data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
     return data.loc[data.index[-1], 'Total_Value_At_Close']
 
 def get_nyberg_data(time):
+
     start_time, end_time = get_date_range(time)
 
     data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
@@ -259,7 +264,6 @@ def get_nyberg_data(time):
         'Close': close_values,
         'Volume': 0
     })
-
     nyberg_df.index.name = 'Date'
 
     return nyberg_df

@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS portfolio
+( ticker VARCHAR(10) PRIMARY KEY,
+  total_shares INTEGER NOT NULL,
+  cost_basis NUMERIC(12, 4) NOT NULL
+);

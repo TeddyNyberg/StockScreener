@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication
 from app.ui import MainWindow
-
+from db import DB, init_db
 
 ## pyinstaller app/main.py --onedir --name stock_screener
 
@@ -11,8 +11,10 @@ from app.ui import MainWindow
 
 def main():
     print("Starting app...")
-    #initialize_database() one time use
+    #initialize_database() one time use far S3
     app = QApplication([])
+    with DB() as conn:
+        init_db(conn)
     window = MainWindow()
     window.show()
     app.exec()
