@@ -178,8 +178,8 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
 
     return final_allocations
 
-#use 2025-9-7 for no leak data, model trained on 10/2 but on data until 9-7
-def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 100000.0, lookback_period: str = "6M"):
+#use 2025-1-28 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 2025-1-27; test 2025-1-28
+def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 100000.0, lookback_period: str = "6M"):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -243,8 +243,7 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
 
                         if cash_for_trading >= (buy_value + transaction_cost):
                             cash_for_trading -= (buy_value + transaction_cost)
-                            new_holdings[ticker] = {"shares": shares_to_buy, "entry_price": close_price,
-                                                    "closing_price": close_price}
+                            new_holdings[ticker] = {"shares": shares_to_buy, "entry_price": close_price}
 
                             total_allocation_value += buy_value
 

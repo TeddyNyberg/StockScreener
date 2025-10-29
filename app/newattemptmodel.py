@@ -83,8 +83,8 @@ def train_fn(args):
     list_test_df = []
     for df in list_of_dfs:
         split_idx = int(len(df) * 0.8)
-        list_train_df.append(df[:split_idx])
-        list_test_df.append(df[split_idx:])
+        list_train_df.append(df[:split_idx]) #oldest
+        list_test_df.append(df[split_idx:]) #newest 20%, cna include this in testing
 
     list_close_train = []
     list_close_test = []
