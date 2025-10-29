@@ -5,7 +5,7 @@ import torch
 import pandas as pd
 from app.search import get_yfdata_cache
 from data import fetch_stock_data, normalize_window, get_sp500_tickers
-from newattemptmodel import pred_next_day_no_ticker
+from only_close_model import pred_next_day_no_ticker
 from search import get_date_range, get_close_on
 from settings import *
 from datetime import datetime

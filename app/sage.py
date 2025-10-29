@@ -20,7 +20,7 @@ hyperparameter_ranges = {
 # Define the PyTorch estimator
 estimator = PyTorch(
     source_dir='app',
-    entry_point='newattemptmodel.py',
+    entry_point='only_close_model.py',
     role=sagemaker_role,
     session=sagemaker_session,
     instance_count=1,
