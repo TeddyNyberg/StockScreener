@@ -70,12 +70,7 @@ def add_watchlist(ticker):
 
 
 def rm_watchlist(ticker):
-    """
-    Removes a given ticker symbol from the 'watchlist' table.
 
-    Args:
-        ticker (str): The stock ticker symbol to remove.
-    """
     conn = get_db_connection()  # Assuming this function is defined elsewhere
     if conn is None:
         print("Could not establish a database connection.")

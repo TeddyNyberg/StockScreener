@@ -1,7 +1,7 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
-from pandas.tseries.offsets import DateOffset, Day, MonthEnd
+from pandas.tseries.offsets import DateOffset, Day
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
 
@@ -19,6 +19,16 @@ def lookup_tickers(tickers):
 
     # by now tickers is a list regardless of how it comes in
     for ticker in tickers:
+        if ticker == "NYBERG":
+            to_ret.append({
+                "ticker": "NYBERG",
+                "name": "NYBERG_PORTFOLIO",
+                "price": get_nyberg_price(),
+                "currency": "USD"
+            })
+            valid_tickers_for_chart.append(ticker)
+            continue
+
         stock = yf.Ticker(ticker)
         info = stock.info
 
@@ -49,9 +59,17 @@ def get_chart(tickers, time):
 
     plot_data, second_data = get_yfdata_cache(tickers, time)
 
+
+
     title = get_title(tickers)
 
     if not is_single_ticker:
+        len1 = len(plot_data)
+        len2 = len(second_data)
+        if len1 > len2:
+            plot_data = plot_data.iloc[-len2:]
+        elif len2 > len1:
+            second_data = second_data.iloc[-len1:]
         plot_data, second_data = normalize(plot_data, second_data)
 
     plot_kwargs = {
@@ -79,6 +97,7 @@ def get_chart(tickers, time):
 
 def rm_nm(df1, df2=None):
     if isinstance(df1.columns, pd.MultiIndex):
+        print("is inst")
         df1.columns = df1.columns.droplevel(1)
     if df2 is not None and isinstance(df2.columns, pd.MultiIndex):
         df2.columns = df2.columns.droplevel(1)
@@ -99,6 +118,10 @@ def get_yfdata_cache(tickers, time):
     for ticker in tickers:
         if ticker is None:
             results.append(None)
+            continue
+
+        if ticker == "NYBERG":
+            results.append(get_nyberg_data(time))
             continue
 
         if ticker not in _cache:
@@ -211,3 +234,32 @@ def get_open_on(ticker, date):
         return data["Open"].iloc[0]
     else:
         return None
+
+def get_nyberg_price():
+    data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
+    return data.loc[data.index[-1], 'Total_Value_At_Close']
+
+def get_nyberg_data(time):
+    start_time, end_time = get_date_range(time)
+
+    data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
+    data.rename(columns={"Unnamed: 0": "Date"}, inplace=True)
+    data.set_index("Date", inplace=True)
+
+    if not isinstance(data.index, pd.DatetimeIndex):
+        data.index = pd.to_datetime(data.index)
+
+    selected_data = data.loc[start_time:end_time]
+    close_values = selected_data["Total_Value_At_Close"]
+
+    nyberg_df = pd.DataFrame({
+        'Open': close_values,
+        'High': close_values,
+        'Low': close_values,
+        'Close': close_values,
+        'Volume': 0
+    })
+
+    nyberg_df.index.name = 'Date'
+
+    return nyberg_df

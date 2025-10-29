@@ -3,7 +3,6 @@ import io
 import tarfile
 import torch
 import pandas as pd
-
 from app.search import get_yfdata_cache
 from data import fetch_stock_data, normalize_window, get_sp500_tickers
 from newattemptmodel import pred_next_day_no_ticker
@@ -179,7 +178,7 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
 
     return final_allocations
 
-#use 2025-10-3 for no leak data, model trained on 10/2
+#use 2025-9-7 for no leak data, model trained on 10/2 but on data until 9-7
 def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 100000.0, lookback_period: str = "6M"):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
@@ -305,13 +304,14 @@ def handle_backtest(start_date_str: str = "2025-1-1", initial_capital: float = 1
 
             if trading_today:
                 new_holdings = {}
+                daily_pnl_reports[current_day.strftime('%Y-%m-%d')] = pd.DataFrame(daily_pnl_list)
+                portfolio_df.loc[current_day, 'Total_Value_At_Close'] = total_value
             else:
                 total_value = total_capital_available
+                portfolio_df.drop(portfolio_df.index[-1], inplace=True)
 
-            if daily_pnl_list:
-                daily_pnl_reports[current_day.strftime('%Y-%m-%d')] = pd.DataFrame(daily_pnl_list)
 
-            portfolio_df.loc[current_day, 'Total_Value_At_Close'] = total_value
+
             if i < len(date_range)-1:
                 if trading_today:
                     portfolio_df.loc[date_range[i+1], 'Cash_At_Open'] = total_value
