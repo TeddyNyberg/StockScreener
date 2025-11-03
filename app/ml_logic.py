@@ -3,10 +3,11 @@ import io
 import tarfile
 import torch
 import pandas as pd
+from pandas.tseries.offsets import CustomBusinessDay
 from app.search import get_yfdata_cache
-from data import fetch_stock_data, normalize_window, get_sp500_tickers
+from app.data import fetch_stock_data, normalize_window, get_sp500_tickers
 from only_close_model import pred_next_day_no_ticker
-from search import get_date_range, get_close_on
+from app.search import get_date_range, get_close_on
 from settings import *
 from datetime import datetime
 
@@ -363,13 +364,16 @@ def continue_backtest(file_path, sheet_name):
     last_index = data.index[-1]
     last_day_total_value = data.loc[last_index, 'Total_Value_At_Close']
     start_date = data.loc[last_index, "Unnamed: 0"]
-    start_date_str = start_date.strftime('%Y-%m-%d')
 
-    today_check = pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) - pd.Timedelta(days=1)
-    if start_date > today_check:
+    today = pd.to_datetime(datetime.now().strftime('%Y-%m-%d'))
+    business_day_offset = CustomBusinessDay(n=1)
+    most_recent_business_day = (today - pd.Timedelta(days=1)).normalize() - business_day_offset
+
+    if start_date >= most_recent_business_day:
         print("Backtest is already up-to-date. No new trading days to process.")
         return
 
+    start_date_str = start_date.strftime('%Y-%m-%d')
     print("-" * 50)
     print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
     print(f"New initial capital: ${last_day_total_value:,.2f}")

@@ -5,7 +5,7 @@ from torch import nn, optim
 import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
-from data import DataHandler, to_seq, normalize_window
+from app.data import DataHandler, to_seq, normalize_window
 import numpy as np
 
 class StockTransformerModel(nn.Module):

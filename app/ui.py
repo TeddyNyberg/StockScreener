@@ -1,4 +1,4 @@
-from db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock, sell_stock
+from app.db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock, sell_stock
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
@@ -7,8 +7,8 @@ from app.search import (lookup_tickers, get_chart, get_financial_metrics, get_ba
                         get_price)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-from data import fetch_stock_data
-from ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest, continue_backtest
+from app.data import fetch_stock_data
+from app.ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest, continue_backtest
 import subprocess
 import sys
 from settings import *
@@ -130,7 +130,7 @@ class DetailsWindow(QMainWindow):
         self.comp_ticker = None
         self.watch_window = None
         self.trading_window = None
-        self.setWindowTitle(f"Details for {name_and_price[0]["ticker"]}")
+        self.setWindowTitle(f"Details for {name_and_price[0]['ticker']}")
         self.ticker_data = name_and_price
 
         central_widget = QWidget()
@@ -138,13 +138,13 @@ class DetailsWindow(QMainWindow):
         self.layout = layout
 
         nm_wl_layout = QHBoxLayout()
-        nm_wl_layout.addWidget(QLabel(f"Name: {name_and_price[0]["name"]}"))
+        nm_wl_layout.addWidget(QLabel(f"Name: {name_and_price[0]['name']}"))
         btn = QPushButton("Add to Watchlist")
         btn.clicked.connect(lambda _: add_watchlist(name_and_price[0]["ticker"]))
         nm_wl_layout.addWidget(btn)
 
         pr_buy_layout = QHBoxLayout()
-        pr_buy_layout.addWidget(QLabel(f"Price: {name_and_price[0]["price"]} {name_and_price[0]["currency"]}"))
+        pr_buy_layout.addWidget(QLabel(f"Price: {name_and_price[0]['price']} {name_and_price[0]['currency']}"))
         btn = QPushButton("Buy/Sell")
         btn.clicked.connect(lambda _: self.handle_investment_window(name_and_price[0]["ticker"], name_and_price[0]["price"]))
         pr_buy_layout.addWidget(btn)
@@ -453,7 +453,7 @@ class ModelWindow(QMainWindow):
 
             start, end = get_date_range("1M")
             df = fetch_stock_data(ticker, start, end)
-            print(f"most recent day {df["Close"].iloc[-1]}")
+            print(f"most recent day {df['Close'].iloc[-1]}")
             print(f"Predicted next day value: {prediction}")
 
         except Exception as e:
