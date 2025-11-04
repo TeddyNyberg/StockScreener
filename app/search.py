@@ -1,8 +1,10 @@
 import yfinance as yf
 import mplfinance as mpf
 import pandas as pd
+from config import *
 
 from pandas.tseries.offsets import DateOffset, Day
+
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
 
@@ -45,7 +47,7 @@ def lookup_tickers(tickers):
             print(f"Warning: Could not retrieve valid info for ticker {ticker}. Skipping this ticker.")
 
     if valid_tickers_for_chart:
-        chart, chart_data = get_chart(valid_tickers_for_chart, "1Y")
+        chart, chart_data = get_chart(valid_tickers_for_chart, DEFAULT_CHART_TIME)
         return to_ret, chart, chart_data
     else:
         return [], None, None
@@ -59,8 +61,6 @@ def get_chart(tickers, time):
     is_single_ticker = len(tickers) == 1 or tickers[1] is None
 
     plot_data, second_data = get_yfdata_cache(tickers, time)
-
-
 
 
     title = get_title(tickers)
@@ -78,7 +78,7 @@ def get_chart(tickers, time):
 
     plot_kwargs = {
         "type": "line",
-        "style": "charles",
+        "style": DEFAULT_STYLE,
         "title": title,
         "returnfig": True,
         "figratio": (10, 6)
@@ -239,7 +239,6 @@ def get_open_on(ticker, date):
         return None
 
 def get_nyberg_price():
-
     data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
     return data.loc[data.index[-1], 'Total_Value_At_Close']
 

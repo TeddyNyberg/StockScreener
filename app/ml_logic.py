@@ -9,6 +9,7 @@ from app.data import fetch_stock_data, normalize_window, get_sp500_tickers
 from only_close_model import pred_next_day_no_ticker
 from app.search import get_date_range, get_close_on
 from settings import *
+from config import *
 from datetime import datetime
 
 
@@ -72,12 +73,12 @@ def _prepare_data_for_prediction(ticker, start, end):
     df = fetch_stock_data(ticker, start, end)
     data = df["Close"]
 
-    seq_size = 50
-    if len(data) < seq_size:
-        raise ValueError(f"Insufficient data for {ticker}. Need at least {seq_size} points, got {len(data)}.")
+
+    if len(data) < SEQ_SIZE:
+        raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQ_SIZE} points, got {len(data)}.")
 
     latest_close_price = df["Close"].iloc[-1]
-    input_sequence = data[-seq_size:]
+    input_sequence = data[-SEQ_SIZE:]
 
     normalized_window, mean, std = normalize_window(input_sequence)
 
@@ -115,7 +116,7 @@ def _load_model_artifacts():
     return _MODEL_STATE_DICT, _CONFIG
 
 
-def calculate_kelly_allocations(lookback_period="6M", end=None):
+def calculate_kelly_allocations(end=None):
 
     # if end is none, get range until today, end = today
     # if end is not none, backtest
@@ -126,8 +127,6 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
     if not predictions:
         print("No predictions available to calculate Kelly bets.")
         return None
-
-    RISK_FREE_RATE = 0.005  # Assuming 0.5% annualized risk-free rate (r)
 
     kelly_allocations = []
 
@@ -144,8 +143,6 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
 
             kelly_fraction = (mu - RISK_FREE_RATE) / sigma_squared
 
-            # WE GOING FULL KELLY
-            HALF_KELLY_MULTIPLIER = 1
             allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
 
             if allocation < 0:
@@ -180,7 +177,7 @@ def calculate_kelly_allocations(lookback_period="6M", end=None):
     return final_allocations
 
 #use 2025-1-28 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 2025-1-27; test 2025-1-28
-def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 100000.0, lookback_period: str = "6M"):
+def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = initial_capital_fully):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -206,7 +203,6 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
         portfolio_df.loc[date_range[1], "Cash_At_Open"] = initial_capital
 
         new_holdings = {}
-        transaction_cost_pct = 0
         trading_today = True
 
         for i in range(1, len(date_range)):
@@ -215,10 +211,7 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
             prev_day = date_range[i - 1]
             print(current_day)
             if trading_today:
-                kelly_allocations = calculate_kelly_allocations(
-                    lookback_period,
-                    current_day
-                )
+                kelly_allocations = calculate_kelly_allocations(current_day)
 
                 total_capital_available = portfolio_df.loc[current_day, 'Cash_At_Open']
                 cash_for_trading = total_capital_available
