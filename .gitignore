@@ -1,8 +1,8 @@
-dist/
+
 **/__pycache__/
 *.pyc
 .venv/
-build/
+
 .env
 stock_model.pt
 ticker_to_id.pt
@@ -17,3 +17,7 @@ spy.xlsx
 backtest_results_jan_copy1.xlsx
 backtest_results_jan_copy2.xlsx
 backtest_results_lit_same_thing_as_jan.xlsx
+
+*.spec
+build/
+dist/
