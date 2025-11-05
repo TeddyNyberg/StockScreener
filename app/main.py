@@ -1,8 +1,6 @@
 from PySide6.QtWidgets import QApplication
-from app.ui import MainWindow
-from app.db.db_handler import DB, init_db
-from app.ml_logic.tester import continue_backtest
-import threading
+from app.ui import start_application
+
 
 ## pyinstaller app/main.py --onedir --name stock_screener
 
@@ -12,19 +10,11 @@ import threading
 ## --build
 
 def main():
-    print("Starting app...")
-
-    backtest_thread = threading.Thread(target=continue_backtest, args=("backtest_results_jan.xlsx", "Summary_Performance"))
-    backtest_thread.daemon = True
-    backtest_thread.start()
-
-    #initialize_database() one time use far S3
     app = QApplication([])
-    with DB() as conn:
-        init_db(conn)
-    window = MainWindow()
-    window.show()
+    start_application()
     app.exec()
+
+
 
 
 
