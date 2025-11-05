@@ -5,7 +5,8 @@ import torch
 import pandas as pd
 from pandas.tseries.offsets import CustomBusinessDay
 from app.search import get_yfdata_cache
-from app.data import fetch_stock_data, normalize_window, get_sp500_tickers
+from app.data import normalize_window, get_sp500_tickers
+from app.data.yfinance_fetcher import get_historical_data
 from only_close_model import pred_next_day_no_ticker
 from app.search import get_date_range, get_close_on
 from settings import *
@@ -62,7 +63,7 @@ def predict_single_ticker(ticker):
     return prediction
 
 def get_historical_volatility(ticker, start, end):
-    df = fetch_stock_data(ticker, start, end)
+    df = get_historical_data(ticker, start, end)
     df['Returns'] = df['Close'].pct_change().dropna()
     daily_variance = df['Returns'].var()
     annualized_variance = daily_variance * 252
@@ -70,7 +71,7 @@ def get_historical_volatility(ticker, start, end):
 
 
 def _prepare_data_for_prediction(ticker, start, end):
-    df = fetch_stock_data(ticker, start, end)
+    df = get_historical_data(ticker, start, end)
     data = df["Close"]
 
 
@@ -340,15 +341,6 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
 
     return portfolio_df
 
-
-
-def ytd_spy():
-    spy, _ = get_yfdata_cache(["^SPX"], "1Y")
-
-    file_path = 'spy.xlsx'
-    writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
-    spy["Close"].to_excel(writer, sheet_name="Summary_Performance")
-    writer.close()
 
 
 def continue_backtest(file_path, sheet_name):

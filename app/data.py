@@ -3,7 +3,6 @@ import torch
 from torch.utils.data import Dataset
 import pandas as pd
 import boto3
-import yfinance as yf
 import requests
 import numpy as np
 from settings import *
@@ -124,10 +123,6 @@ class StockDataset(Dataset): # make iterable instead?
         return self.data[idx]
 
 
-def fetch_stock_data(ticker, start_date, end_date):
-    stock_data = yf.download(ticker, start=start_date, end=end_date, auto_adjust=True)
-    stock_data['Ticker'] = ticker
-    return stock_data
 
 
 def get_sp500_tickers():

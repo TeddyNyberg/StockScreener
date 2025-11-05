@@ -1,6 +1,7 @@
-import yfinance as yf
+
 import mplfinance as mpf
 import pandas as pd
+from app.data.yfinance_fetcher import get_info, get_historical_data
 from config import *
 
 from pandas.tseries.offsets import DateOffset, Day
@@ -32,8 +33,8 @@ def lookup_tickers(tickers):
             valid_tickers_for_chart.append(ticker)
             continue
 
-        stock = yf.Ticker(ticker)
-        info = stock.info
+
+        info = get_info(ticker)
 
         if info and "shortName" in info:
             to_ret.append({
@@ -128,7 +129,8 @@ def get_yfdata_cache(tickers, time):
             continue
 
         if ticker not in _cache:
-            df = yf.download(ticker, start=start_time, end=end_time, auto_adjust=True)
+            df = get_historical_data(ticker, start_time, end_time)
+
             _cache[ticker] = {"range": (start_time, end_time),
                               "data": df}
         else:
@@ -141,8 +143,7 @@ def get_yfdata_cache(tickers, time):
             else:
                 new_start = min(start_time, cache_start)
                 new_end = max(end_time, cache_end)
-
-                new_df = yf.download(ticker, start=new_start, end=new_end, auto_adjust=True)
+                new_df = get_historical_data(ticker, new_start, new_end)
                 _cache[ticker]["range"] = (new_start, new_end)
                 _cache[ticker]["data"] = new_df
                 df = new_df.loc[start_time:end_time]
@@ -194,50 +195,6 @@ def get_date_range(time, today = None):  # must be all caps
     return start, today
 
 
-def get_yfticker(ticker):
-    return yf.Ticker(ticker)
-
-
-def get_financial_metrics(ticker):
-    # TODO: scale financials and return the scale with it too
-    # TODO: remove things I dont care abt??
-    return yf.Ticker(ticker).financials
-
-
-def get_balancesheet(ticker):
-    return yf.Ticker(ticker).balancesheet
-
-
-def get_info(ticker):
-    print(yf.Ticker(ticker).info)
-    return yf.Ticker(ticker).info
-
-def get_price(ticker):
-    return yf.Ticker(ticker).info.get("regularMarketPrice")
-
-
-def get_close_on(ticker, date):
-    # Ensure `date` is a string like '2024-10-15'
-    date = pd.to_datetime(date)
-    next_day = date + pd.Timedelta(days=1)
-
-    # Get price data for that single day
-    data = yf.Ticker(ticker).history(start=date, end=next_day)
-
-    if not data.empty:
-        return data["Close"].iloc[0]
-    else:
-        return None
-
-def get_open_on(ticker, date):
-    date = pd.to_datetime(date)
-    next_day = date + pd.Timedelta(days=1)
-    data = yf.Ticker(ticker).history(start=date, end=next_day)
-    if not data.empty:
-        return data["Open"].iloc[0]
-    else:
-        return None
-
 def get_nyberg_price():
     data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
     return data.loc[data.index[-1], 'Total_Value_At_Close']
@@ -266,3 +223,4 @@ def get_nyberg_data(time):
     nyberg_df.index.name = 'Date'
 
     return nyberg_df
+

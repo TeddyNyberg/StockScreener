@@ -3,11 +3,11 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy, QGridLayout, QMenu, QSpinBox)
-from app.search import (lookup_tickers, get_chart, get_financial_metrics, get_balancesheet, get_info, get_date_range,
-                        get_price)
+from app.search import lookup_tickers, get_chart, get_date_range
+from app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet, get_price
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-from app.data import fetch_stock_data
+from app.data.yfinance_fetcher import get_historical_data
 from app.ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest, continue_backtest
 import subprocess
 import sys
@@ -452,7 +452,7 @@ class ModelWindow(QMainWindow):
             prediction = predict_single_ticker(ticker)
 
             start, end = get_date_range("1M")
-            df = fetch_stock_data(ticker, start, end)
+            df = get_historical_data(ticker, start, end)
             print(f"most recent day {df['Close'].iloc[-1]}")
             print(f"Predicted next day value: {prediction}")
 
@@ -481,7 +481,7 @@ class ModelWindow(QMainWindow):
         print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a, _ in final_allocations) * 100:.2f}%")
 
         start, end = get_date_range("6M")
-        goog = fetch_stock_data("GOOG", start, end) # sanity check, shows latest data available for model
+        goog = get_historical_data("GOOG", start, end) # sanity check, shows latest data available for model
         print(goog.tail(1))
 
 def train_on_cloud():
