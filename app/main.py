@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QApplication
 from app.ui import MainWindow
 from app.db import DB, init_db
-from ml_logic import continue_backtest
+from app.ml_logic.tester import continue_backtest
 import threading
 
 ## pyinstaller app/main.py --onedir --name stock_screener

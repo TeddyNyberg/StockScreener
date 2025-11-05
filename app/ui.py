@@ -8,7 +8,8 @@ from app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balan
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
 from app.data.yfinance_fetcher import get_historical_data
-from app.ml_logic import predict_single_ticker, calculate_kelly_allocations, handle_backtest, continue_backtest
+from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker
+from app.ml_logic.tester import handle_backtest, continue_backtest
 import subprocess
 import sys
 from settings import *

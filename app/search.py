@@ -2,9 +2,10 @@
 import mplfinance as mpf
 import pandas as pd
 from app.data.yfinance_fetcher import get_info, get_historical_data
+from app.utils import get_date_range
 from config import *
 
-from pandas.tseries.offsets import DateOffset, Day
+
 
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
@@ -62,7 +63,6 @@ def get_chart(tickers, time):
     is_single_ticker = len(tickers) == 1 or tickers[1] is None
 
     plot_data, second_data = get_yfdata_cache(tickers, time)
-
 
     title = get_title(tickers)
 
@@ -171,28 +171,6 @@ def get_y_bounds(df1, df2, is_single):
         low_y = min(low_y, low_y_2)
         high_y = max(high_y, high_y_2)
     return low_y, high_y
-
-
-def get_date_range(time, today = None):  # must be all caps
-    if today is None:
-        today = pd.Timestamp.today().normalize()
-
-    offsets = {
-        "1D": Day(1),
-        "5D": Day(5),
-        "1M": DateOffset(months=1),
-        "3M": DateOffset(months=3),
-        "6M": DateOffset(months=6),
-        "1Y": DateOffset(years=1),
-        "3Y": DateOffset(years=3),
-        "5Y": DateOffset(years=5),
-        "YTD": DateOffset(year=today.year, month=1, day=1)
-    }
-    if time == "MAX":
-        start = pd.Timestamp(year=1950, month=1, day=1)
-    else:
-        start = today - offsets[time]
-    return start, today
 
 
 def get_nyberg_price():
