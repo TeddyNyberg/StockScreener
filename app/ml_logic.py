@@ -5,10 +5,11 @@ import torch
 import pandas as pd
 from pandas.tseries.offsets import CustomBusinessDay
 from app.search import get_yfdata_cache
-from app.data import normalize_window, get_sp500_tickers
-from app.data.yfinance_fetcher import get_historical_data
+from app.data import normalize_window
+from app.data.yfinance_fetcher import get_historical_data, get_close_on
+from app.data.ticker_source import get_sp500_tickers
 from only_close_model import pred_next_day_no_ticker
-from app.search import get_date_range, get_close_on
+from app.search import get_date_range
 from settings import *
 from config import *
 from datetime import datetime

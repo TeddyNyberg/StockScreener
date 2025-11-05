@@ -11,3 +11,6 @@ SEQ_SIZE = 50
 # Charting/Data Defaults
 DEFAULT_CHART_TIME = "1Y"
 DEFAULT_STYLE = "charles"
+
+#S&P ticker list location
+S_AND_P_URL = "https://stockanalysis.com/list/sp-500-stocks/"
