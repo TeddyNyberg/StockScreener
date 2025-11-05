@@ -1,4 +1,4 @@
-from app.db import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock, sell_stock
+from app.db.db_handler import get_watchlist, add_watchlist, rm_watchlist, get_portfolio, buy_stock, sell_stock
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,

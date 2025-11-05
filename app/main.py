@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication
 from app.ui import MainWindow
-from app.db import DB, init_db
+from app.db.db_handler import DB, init_db
 from app.ml_logic.tester import continue_backtest
 import threading
 

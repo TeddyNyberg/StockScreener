@@ -1,4 +1,3 @@
-
 import pandas as pd
 from pandas.tseries.offsets import CustomBusinessDay
 from app.data.yfinance_fetcher import get_close_on
