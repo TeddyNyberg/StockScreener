@@ -1,0 +1,47 @@
+from app.data.yfinance_fetcher import get_info
+from app.data.nyberg_fetcher import get_nyberg_price
+from app.search.charting import get_chart
+from config import *
+
+# returns 3 things, normally called result, chart, data
+# result = list of quaduple{ticker, price, currency, name}for each stock
+# chart = figure
+# data = data use to make chart
+def lookup_tickers(tickers):
+    to_ret = []
+    valid_tickers_for_chart = []
+
+    if isinstance(tickers, str):
+        tickers = [tickers]
+
+    # by now tickers is a list regardless of how it comes in
+    for ticker in tickers:
+        if ticker == "NYBERG":
+            to_ret.append({
+                "ticker": "NYBERG",
+                "name": "NYBERG_PORTFOLIO",
+                "price": get_nyberg_price(),
+                "currency": "USD"
+            })
+            valid_tickers_for_chart.append(ticker)
+            continue
+
+
+        info = get_info(ticker)
+
+        if info and "shortName" in info:
+            to_ret.append({
+                "ticker": ticker,
+                "name": info.get("shortName", "N/A"),
+                "price": info.get("currentPrice", "N/A"),
+                "currency": info.get("currency", "USD"),
+            })
+            valid_tickers_for_chart.append(ticker)
+        else:
+            print(f"Warning: Could not retrieve valid info for ticker {ticker}. Skipping this ticker.")
+
+    if valid_tickers_for_chart:
+        chart, chart_data = get_chart(valid_tickers_for_chart, DEFAULT_CHART_TIME)
+        return to_ret, chart, chart_data
+    else:
+        return [], None, None

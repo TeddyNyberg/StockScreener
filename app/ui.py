@@ -3,7 +3,9 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QTableWidget, QTableWidgetItem,
                                QSizePolicy, QGridLayout, QMenu, QSpinBox)
-from app.search import lookup_tickers, get_chart, get_date_range
+from app.search.charting import get_chart
+from app.search.ticker_lookup import lookup_tickers
+from app.utils import get_date_range
 from app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet, get_price
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
