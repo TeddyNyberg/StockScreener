@@ -30,7 +30,7 @@ class ModelWindow(QMainWindow):
 
         #TODO: make this filename universal?
         back_test_button = QPushButton("Back Test")
-        back_test_button.clicked.connect(lambda: continue_backtest("backtest_results_jan.xlsx", "Summary_Performance"))
+        back_test_button.clicked.connect(lambda: continue_backtest("backtest_results_jan.csv"))
         top_row_layout.addWidget(back_test_button)
 
 

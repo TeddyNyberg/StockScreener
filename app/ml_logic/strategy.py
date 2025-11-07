@@ -56,11 +56,11 @@ def _prepare_data_for_prediction(ticker, start, end):
     df = get_historical_data(ticker, start, end)
     data = df["Close"]
 
-    if len(data) < SEQ_SIZE:
-        raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQ_SIZE} points, got {len(data)}.")
+    if len(data) < SEQUENCE_SIZE:
+        raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQUENCE_SIZE} points, got {len(data)}.")
 
     latest_close_price = df["Close"].iloc[-1]
-    input_sequence = data[-SEQ_SIZE:]
+    input_sequence = data[-SEQUENCE_SIZE:]
 
     normalized_window, mean, std = normalize_window(input_sequence)
     input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
@@ -122,3 +122,5 @@ def calculate_kelly_allocations(end=None):
     final_allocations = sorted(final_allocations_unsorted, key=lambda x: x[1], reverse=True)
 
     return final_allocations
+
+

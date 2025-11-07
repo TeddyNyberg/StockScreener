@@ -6,7 +6,7 @@ initial_capital_fully = 100000.0
 lookback_period = "6M"
 
 # Model Parameters
-SEQ_SIZE = 50
+SEQUENCE_SIZE = 50
 
 # Charting/Data Defaults
 DEFAULT_CHART_TIME = "1Y"

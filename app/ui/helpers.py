@@ -11,7 +11,7 @@ open_detail_windows = []
 def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
-    backtest_thread = threading.Thread(target=continue_backtest, args=("backtest_results_jan.xlsx", "Summary_Performance"))
+    backtest_thread = threading.Thread(target=continue_backtest, args=["backtest_results_jan.csv"])
     backtest_thread.daemon = True
     backtest_thread.start()
     with DB() as conn:

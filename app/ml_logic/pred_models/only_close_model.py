@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
 from app.data.preprocessor_utils import to_seq, normalize_window
 from app.data.s3_handler import DataHandler
+from config import *
 import numpy as np
 
 class StockTransformerModel(nn.Module):
@@ -99,7 +100,7 @@ def train_fn(args):
     #all_train = np.concatenate(list_close_train, axis=0)
 
 
-    SEQUENCE_SIZE = 50
+
     norm_windows, targets = [], []
     for arr in list_close_train:
         xt, yt = to_seq(SEQUENCE_SIZE, arr)
@@ -261,3 +262,52 @@ def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
     prediction = (prediction_np[0][0] * std) + mean
 
     return prediction.item()
+
+
+def fine_tune_model_daily(model_state_dict, config, new_data_df, num_epochs=3, learning_rate=0.00005, batch_size=32):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    model = StockTransformerModel(
+        num_features_in=config["num_features_in"],
+        embedding_dim=config["embedding_dim"],
+        max_len=config["max_len"]
+    )
+    model.load_state_dict(model_state_dict)
+    model.to(device)
+
+    close_data_arr = new_data_df["Close"].to_numpy().reshape(-1, 1)
+    norm_windows, targets = [], []
+    xt, yt = to_seq(SEQUENCE_SIZE, close_data_arr)
+    if not xt:
+        print("no train data")
+        return model_state_dict, config
+
+    for x_win, y_val in zip(xt, yt):
+        x_norm, _, _ = normalize_window(x_win)
+        norm_windows.append(x_norm)
+        targets.append((y_val - np.mean(x_win)) / np.std(x_win))
+
+    x_new = torch.tensor(np.stack(norm_windows), dtype=torch.float32)
+    y_new = torch.tensor(np.array(targets, dtype=np.float32).reshape(-1, 1), dtype=torch.float32)
+
+    fine_tune_dataset = TensorDataset(x_new, y_new)
+    fine_tune_loader = DataLoader(fine_tune_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    model.train()
+    print(f"Starting daily fine-tuning on {len(x_new)} new samples for {num_epochs} epochs...")
+
+    for epoch in range(num_epochs):
+        epoch_loss = 0
+        for x_batch, y_batch in fine_tune_loader:
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+            optimizer.zero_grad()
+            predictions = model(x_batch)
+            loss = criterion(predictions, y_batch)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        print(f"Fine-tune Epoch {epoch+1}/{num_epochs}, Avg Loss: {epoch_loss/len(fine_tune_loader):.6f}")
+
+    return model.state_dict(), config

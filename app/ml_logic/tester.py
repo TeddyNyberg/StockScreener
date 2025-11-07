@@ -4,6 +4,7 @@ from app.data.yfinance_fetcher import get_close_on
 from app.ml_logic.strategy import calculate_kelly_allocations
 from config import *
 from datetime import datetime
+import os
 
 #use 2025-1-28 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 2025-1-27; test 2025-1-28
 def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = initial_capital_fully):
@@ -28,6 +29,7 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
         date_range = pd.date_range(start_date, today, freq='B')  # Business days
 
         portfolio_df = pd.DataFrame(index=date_range, columns=['Total_Value_At_Close', 'Cash_At_Open'], dtype=float)
+        portfolio_df.index.name = "Date"
         portfolio_df.loc[date_range[0], 'Total_Value_At_Close'] = initial_capital
         portfolio_df.loc[date_range[1], "Cash_At_Open"] = initial_capital
 
@@ -158,7 +160,7 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
 
         writer.close()
         print("\n" + "=" * 50)
-        print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value']:,.2f}")
+        print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value_At_Close']:,.2f}")
         print(f"Results saved to {file_path}")
         print("=" * 50)
 
@@ -171,12 +173,12 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
 
 
 
-def continue_backtest(file_path, sheet_name):
-    data = pd.read_excel(file_path, sheet_name=sheet_name)
+def continue_backtest(file_path):
+    data = pd.read_csv(file_path, index_col=0, parse_dates=True, encoding="latin1")
+    start_date = data.index[-1]
 
-    last_index = data.index[-1]
-    last_day_total_value = data.loc[last_index, 'Total_Value_At_Close']
-    start_date = data.loc[last_index, "Unnamed: 0"]
+    last_day_total_value = data.loc[start_date, 'Total_Value_At_Close']
+
 
     today = pd.to_datetime(datetime.now().strftime('%Y-%m-%d'))
     business_day_offset = CustomBusinessDay(n=1)
@@ -192,7 +194,6 @@ def continue_backtest(file_path, sheet_name):
     print(f"New initial capital: ${last_day_total_value:,.2f}")
     print("-" * 50)
 
-
     new_results_df = handle_backtest(
         start_date_str=start_date_str,
         initial_capital=last_day_total_value
@@ -204,9 +205,10 @@ def continue_backtest(file_path, sheet_name):
         print("The new backtest run produced no new trading days to append.")
         return
 
-    with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-        startrow = data.shape[0] + 1
-        new_trading_days_df.to_excel(writer, sheet_name="Summary_Performance", startrow=startrow, header=False)
+
+    mode = "a" if os.path.exists(file_path) else "w"
+    header = not os.path.exists(file_path)
+    new_trading_days_df.to_csv(file_path, mode=mode, header=header)
 
     print("\n" + "=" * 50)
     print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
