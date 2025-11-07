@@ -174,7 +174,7 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
 
 
 def continue_backtest(file_path):
-    data = pd.read_csv(file_path, index_col=0, parse_dates=True, encoding="latin1")
+    data = pd.read_csv(file_path, index_col=0, parse_dates=True)
     start_date = data.index[-1]
 
     last_day_total_value = data.loc[start_date, 'Total_Value_At_Close']

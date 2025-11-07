@@ -3,16 +3,14 @@ from app.utils import get_date_range
 
 
 def get_nyberg_price():
-    data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
+    data = pd.read_csv("backtest_results_jan.csv", index_col=0, parse_dates=True)
     return data.loc[data.index[-1], 'Total_Value_At_Close']
 
 def get_nyberg_data(time):
 
     start_time, end_time = get_date_range(time)
 
-    data = pd.read_excel("backtest_results_jan.xlsx", sheet_name="Summary_Performance")
-    data.rename(columns={"Unnamed: 0": "Date"}, inplace=True)
-    data.set_index("Date", inplace=True)
+    data = pd.read_csv("backtest_results_jan.csv", index_col=0, parse_dates=True)
 
     if not isinstance(data.index, pd.DatetimeIndex):
         data.index = pd.to_datetime(data.index)
