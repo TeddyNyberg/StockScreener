@@ -5,6 +5,7 @@ load_dotenv()
 
 MODEL_ARTIFACTS_PREFIX = 'pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz'
 S3_BUCKET_NAME = "stock-screener-bucker"
+S3_TRAINING_BUCKET = "sagemaker-us-east-1-307926602475"
 
 # environ.get?
 DB_NAME = os.getenv("POSTGRES_DB")

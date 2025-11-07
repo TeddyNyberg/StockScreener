@@ -3,7 +3,7 @@ import pandas as pd
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
 from app.data.preprocessor_utils import normalize_window
-from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker
+from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model_daily
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts
 from config import *
@@ -122,5 +122,11 @@ def calculate_kelly_allocations(end=None):
     final_allocations = sorted(final_allocations_unsorted, key=lambda x: x[1], reverse=True)
 
     return final_allocations
+
+def load_for_tuning():
+    model_state_dict, config = load_model_artifacts()
+    new_data = None
+    fine_tune_model_daily(model_state_dict, config, new_data)
+    pass
 
 
