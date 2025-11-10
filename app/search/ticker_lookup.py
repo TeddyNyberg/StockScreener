@@ -1,5 +1,5 @@
 from app.data.yfinance_fetcher import get_info
-from app.data.nyberg_fetcher import get_nyberg_price
+from app.data.nyberg_fetcher import get_nyberg_price, get_nyberg_name
 from app.search.charting import get_chart
 from config import *
 
@@ -16,11 +16,11 @@ def lookup_tickers(tickers):
 
     # by now tickers is a list regardless of how it comes in
     for ticker in tickers:
-        if ticker == "NYBERG":
+        if ticker.startswith("NYBERG"):
             to_ret.append({
-                "ticker": "NYBERG",
-                "name": "NYBERG_PORTFOLIO",
-                "price": get_nyberg_price(),
+                "ticker": ticker,
+                "name": get_nyberg_name(ticker),
+                "price": get_nyberg_price(ticker),
                 "currency": "USD"
             })
             valid_tickers_for_chart.append(ticker)

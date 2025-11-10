@@ -1,16 +1,15 @@
 import pandas as pd
+from config import MODEL_MAP
 from app.utils import get_date_range
 
 
-def get_nyberg_price():
-    data = pd.read_csv("backtest_results_jan.csv", index_col=0, parse_dates=True)
+def get_nyberg_price(ticker):
+    data = _read_nyberg_file(ticker)
     return data.loc[data.index[-1], 'Total_Value_At_Close']
 
-def get_nyberg_data(time):
-
+def get_nyberg_data(time, ticker):
     start_time, end_time = get_date_range(time)
-
-    data = pd.read_csv("backtest_results_jan.csv", index_col=0, parse_dates=True)
+    data = _read_nyberg_file(ticker)
 
     if not isinstance(data.index, pd.DatetimeIndex):
         data.index = pd.to_datetime(data.index)
@@ -28,3 +27,12 @@ def get_nyberg_data(time):
     nyberg_df.index.name = 'Date'
 
     return nyberg_df
+
+def get_nyberg_name(ticker):
+    version = ticker[7]
+    return MODEL_MAP[version]["name"]
+
+def _read_nyberg_file(ticker):
+    version = ticker[7]
+    filepath = MODEL_MAP[version]["filename"]
+    return pd.read_csv(filepath, index_col=0, parse_dates=True)

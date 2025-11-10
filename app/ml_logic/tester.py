@@ -9,8 +9,8 @@ import os
 import numpy as np
 import traceback
 
-#use 2025-1-28 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 2025-1-27; test 2025-1-28
-def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capital_fully, model=CLOSE_ONLY_STATIC_PREFIX, tuning_period = None):
+#use 1-28-2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1-27-2025; test 1-28-2025
+def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully, model=CLOSE_ONLY_STATIC_PREFIX, tuning_period = None):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -19,11 +19,11 @@ def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capi
     try:
         start_date = pd.to_datetime(start_date_str)
 
-        # pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) = date today at 00:00:00
+        # pd.to_datetime(datetime.now().strftime('%m-%d-%Y')) = date today at 00:00:00
         # TODO: See what yfticker get data until today before open, during hours, after close
         # so today = yesterday bc want to trade until yesterday, dont use todays data
-        today = pd.to_datetime(datetime.now().strftime('%Y-%m-%d')) - pd.Timedelta(days=1)
-        print("today: ", pd.to_datetime(datetime.now().strftime('%Y-%m-%d')))
+        today = pd.to_datetime(datetime.now().strftime('%m/%d/%Y')) - pd.Timedelta(days=1)
+        print("today: ", pd.to_datetime(datetime.now().strftime('%m/%d/%Y')))
 
         if start_date > today:
             print("Start date is in the future or today. Cannot run backtest.")
@@ -39,6 +39,9 @@ def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capi
 
         new_holdings = {}
         trading_today = True
+        #TODO: when done getting this modle up to date, delete this var, also delete csv sabving in geneeral here
+        temp_write_from = date_range[1]
+
 
         for i in range(1, len(date_range)):
 
@@ -46,13 +49,20 @@ def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capi
             prev_day = date_range[i - 1]
             print(current_day)
 
-            if is_tuning_day(current_day, tuning_period):
+            # if cur_day is tuning day -> tune and update csv to cur_day
+            # except if cur_day = first_day and its a tuning day, then it was already tuned so skip
+            #TODO: THIS IF IS ONLY FOR GETTING UP TO DATE WILL NEED TO CHANGE
+            if is_tuning_day(current_day, tuning_period) and not (is_tuning_day(date_range[1], tuning_period) and current_day == date_range[1]):
                 tune(model, prev_day)
+
+                filled_portfolio_df = portfolio_df.loc[temp_write_from:current_day]
                 #TODO: save evrything
                 mode = "a" if os.path.exists("backtest_results_jan_w_tune.csv") else "w"
                 header = not os.path.exists("backtest_results_jan_w_tune.csv")
-                portfolio_df.to_csv("backtest_results_jan_w_tune.csv", mode=mode, header=header)
+                filled_portfolio_df.to_csv("backtest_results_jan_w_tune.csv", mode=mode, header=header)
                 print("update backtest_results_jan_w_tune.csv")
+
+                temp_write_from = current_day
 
 
             if trading_today:
@@ -100,7 +110,7 @@ def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capi
 
             if daily_allocations_list:
                 allocations_df = pd.DataFrame(daily_allocations_list)
-                daily_position_reports[current_day.strftime("%Y-%m-%d")] = allocations_df
+                daily_position_reports[current_day.strftime("%m/%d/Y")] = allocations_df
 
             daily_pnl_list = []
 
@@ -142,7 +152,7 @@ def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capi
 
             if trading_today:
                 new_holdings = {}
-                daily_pnl_reports[current_day.strftime('%Y-%m-%d')] = pd.DataFrame(daily_pnl_list)
+                daily_pnl_reports[current_day.strftime('%m/%d/%Y')] = pd.DataFrame(daily_pnl_list)
                 portfolio_df.loc[current_day, 'Total_Value_At_Close'] = total_value
             else:
                 total_value = total_capital_available
@@ -191,13 +201,15 @@ def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capi
 
 
 def continue_backtest(file_path, model, tuning_period=None):
-    data = pd.read_csv(file_path, index_col=0, parse_dates=[0], date_format="%Y-%m-%d")
+    data = pd.read_csv(file_path, index_col=0)
+    data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
     start_date = data.index[-1]
+
     print("start date: ", start_date, " in ", model)
     last_day_total_value = data.loc[start_date, 'Total_Value_At_Close']
 
 
-    today = pd.to_datetime(datetime.now().strftime('%Y-%m-%d'))
+    today = pd.to_datetime(datetime.now().strftime('%m/%d/%Y'))
     business_day_offset = CustomBusinessDay(n=1)
     most_recent_business_day = (today - pd.Timedelta(days=1)).normalize() - business_day_offset
 
@@ -205,7 +217,7 @@ def continue_backtest(file_path, model, tuning_period=None):
         print("Backtest is already up-to-date. No new trading days to process.")
         return
 
-    start_date_str = start_date.strftime('%Y-%m-%d')
+    start_date_str = start_date.strftime('%m/%d/%Y')
     print("START: ", start_date_str, " using ", model)
     print("-" * 50)
     print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
@@ -232,5 +244,5 @@ def continue_backtest(file_path, model, tuning_period=None):
 
     print("\n" + "=" * 50)
     print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
-    print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%Y-%m-%d')}")
+    print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%m/%d/%Y')}")
     print("=" * 50)

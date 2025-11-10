@@ -2,11 +2,10 @@ import torch
 import pandas as pd
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
-from app.data.preprocessor_utils import normalize_window
+from app.data.preprocessor_utils import normalize_window, to_seq
 from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model
 from app.utils import get_date_range
-from app.ml_logic.model_loader import load_model_artifacts
-
+from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
 
 from config import *
 
@@ -130,9 +129,8 @@ def tune(model, date):
     model_dict, config = load_model_artifacts(model)
     start, end = get_date_range("3M", date)
     snp = get_sp500_tickers()
+    list_of_df = []
     for ticker in snp:
-        get_historical_volatility(ticker, start, end)
-
-
-    fine_tune_model(model_dict, config, None)
-    pass
+        list_of_df.append(get_historical_data(ticker, start, end))
+    new_model_dict, new_config = fine_tune_model(model_dict, config, list_of_df)
+    save_model_artifacts(new_model_dict, new_config, model)
