@@ -14,3 +14,7 @@ DEFAULT_STYLE = "charles"
 
 #S&P ticker list location
 S_AND_P_URL = "https://stockanalysis.com/list/sp-500-stocks/"
+
+#Models
+CLOSE_ONLY_STATIC_PREFIX = 'pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz'
+CLOSE_ONLY_TUNED_PREFIX = "fine_tuned_models/only_close_model_original_not_fine_tuned.gz"

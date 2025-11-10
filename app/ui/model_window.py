@@ -3,11 +3,12 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
 
 from app.utils import get_date_range
 from app.data.yfinance_fetcher import get_historical_data
-from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker, load_for_tuning
+from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker
 from app.ml_logic.tester import handle_backtest, continue_backtest
 import subprocess
 import sys
 from settings import *
+from config import *
 
 
 class ModelWindow(QMainWindow):
@@ -22,9 +23,9 @@ class ModelWindow(QMainWindow):
 
         top_row_layout = QHBoxLayout()
 
-        fine_tune_btn = QPushButton("Fine Tune")
-        fine_tune_btn.clicked.connect(lambda: load_for_tuning())
-        top_row_layout.addWidget(fine_tune_btn)
+        #fine_tune_btn = QPushButton("Fine Tune")
+        #fine_tune_btn.clicked.connect(lambda: tune())  tune from ml_logic.strategy
+        #top_row_layout.addWidget(fine_tune_btn)
 
         next_day_picks = QPushButton("Next Day Picks")
         next_day_picks.clicked.connect(self.show_kelly_bet)
@@ -33,7 +34,7 @@ class ModelWindow(QMainWindow):
 
         #TODO: make this filename universal?
         back_test_button = QPushButton("Back Test")
-        back_test_button.clicked.connect(lambda: continue_backtest("backtest_results_jan.csv"))
+        back_test_button.clicked.connect(lambda: continue_backtest("backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX))
         top_row_layout.addWidget(back_test_button)
 
 
@@ -81,7 +82,7 @@ class ModelWindow(QMainWindow):
             print(f"Prediction error: {e}")
 
     def show_kelly_bet(self):
-        final_allocations = calculate_kelly_allocations()
+        final_allocations = calculate_kelly_allocations(CLOSE_ONLY_STATIC_PREFIX)
 
         self.third_layout.addWidget(QLabel("Ticker"), 0, 0)
         self.third_layout.addWidget(QLabel("Allocation"), 0, 1)

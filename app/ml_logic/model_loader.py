@@ -2,7 +2,9 @@ import boto3
 import io
 import tarfile
 import torch
+import gzip
 from settings import *
+from config import *
 
 MODEL_CACHE = {}
 
@@ -12,8 +14,8 @@ S3_CLIENT = boto3.client(
     aws_secret_access_key=AWS_SCR_ACC_KEY
     )
 
-# for static model use model_key=MODEL_ARTIFACTS_PREFIX
-def load_model_artifacts(model_key):
+# for static model use model_key=CLOSE_ONLY_STATIC_PREFIX
+def load_model_artifacts(model_key = CLOSE_ONLY_STATIC_PREFIX):
     global MODEL_CACHE
 
     if model_key in MODEL_CACHE:
@@ -28,9 +30,22 @@ def load_model_artifacts(model_key):
     model_buffer.seek(0)
     print("Downloaded model archive to memory.")
 
-    with tarfile.open(fileobj=model_buffer, mode='r:gz') as tar:
-        with tar.extractfile('model.pth') as f:
-            checkpoint = torch.load(io.BytesIO(f.read()), map_location='cpu')
+    checkpoint = None
+    try:
+        with tarfile.open(fileobj=model_buffer, mode="r:gz") as tar:
+            with tar.extractfile("model.pth") as f:
+                checkpoint = torch.load(io.BytesIO(f.read()), map_location="cpu")
+        print("Loaded checkpoint from tar.gz archive.")
+    except tarfile.ReadError:
+        model_buffer.seek(0)
+        try:
+            with gzip.GzipFile(fileobj=model_buffer, mode="rb") as gz:
+                checkpoint = torch.load(io.BytesIO(gz.read()), map_location="cpu")
+            print("Loaded checkpoint from gz file.")
+        except OSError:
+            model_buffer.seek(0)
+            checkpoint = torch.load(model_buffer, map_location="cpu")
+            print("Loaded checkpoint from uncompressed file.")
 
     MODEL_STATE_DICT = checkpoint.get("model_state")
     CONFIG = checkpoint.get("config")
@@ -43,3 +58,26 @@ def load_model_artifacts(model_key):
     MODEL_CACHE[model_key] = (MODEL_STATE_DICT, CONFIG)
 
     return MODEL_STATE_DICT, CONFIG
+
+
+def save_model_artifacts(model_state_dict, config, s3_key):
+
+    checkpoint = {
+        "model_state": model_state_dict,
+        "config": config,
+    }
+
+    buffer = io.BytesIO()
+    torch.save(checkpoint, buffer)
+    buffer.seek(0)
+
+    try:
+        S3_CLIENT.upload_fileobj(
+            buffer,
+            S3_TRAINING_BUCKET,
+            s3_key
+        )
+        MODEL_CACHE[s3_key] = (model_state_dict, config)
+        print(f"Model artifacts successfully saved to s3://{S3_TRAINING_BUCKET}/{s3_key}")
+    except Exception as e:
+        print(f"Error saving model to S3 at {s3_key}: {e}")

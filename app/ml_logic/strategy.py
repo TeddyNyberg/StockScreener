@@ -3,14 +3,16 @@ import pandas as pd
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
 from app.data.preprocessor_utils import normalize_window
-from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model_daily
+from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts
+
+
 from config import *
 
 
-def optimal_picks(today = pd.Timestamp.today().normalize()):
-    model_state_dict, config = load_model_artifacts()
+def optimal_picks(model, today = pd.Timestamp.today().normalize()):
+    model_state_dict, config = load_model_artifacts(model)
 
     start, end = get_date_range("3M", today)
     sp_tickers = get_sp500_tickers()
@@ -68,13 +70,13 @@ def _prepare_data_for_prediction(ticker, start, end):
     return input_tensor, latest_close_price, mean, std
 
 
-def calculate_kelly_allocations(end=None):
+def calculate_kelly_allocations(model, end=None):
 
     # if end is none, get range until today, end = today
     # if end is not none, backtest
     start, end = get_date_range(lookback_period, end)
 
-    predictions, spy_delta = optimal_picks(end)
+    predictions, spy_delta = optimal_picks(model, end)
     if not predictions:
         print("No predictions available to calculate Kelly bets.")
         return None
@@ -123,10 +125,14 @@ def calculate_kelly_allocations(end=None):
 
     return final_allocations
 
-def load_for_tuning():
-    model_state_dict, config = load_model_artifacts()
-    new_data = None
-    fine_tune_model_daily(model_state_dict, config, new_data)
+
+def tune(model, date):
+    model_dict, config = load_model_artifacts(model)
+    start, end = get_date_range("3M", date)
+    snp = get_sp500_tickers()
+    for ticker in snp:
+        get_historical_volatility(ticker, start, end)
+
+
+    fine_tune_model(model_dict, config, None)
     pass
-
-

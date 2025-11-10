@@ -264,7 +264,9 @@ def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
     return prediction.item()
 
 
-def fine_tune_model_daily(model_state_dict, config, new_data_df, num_epochs=3, learning_rate=0.00005, batch_size=32):
+def fine_tune_model(model_state_dict, config, new_data_df, num_epochs=3, learning_rate=0.00005, batch_size=32):
+    print("-----TUNING-----")
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     model = StockTransformerModel(

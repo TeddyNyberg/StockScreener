@@ -1,13 +1,16 @@
 import pandas as pd
 from pandas.tseries.offsets import CustomBusinessDay
 from app.data.yfinance_fetcher import get_close_on
-from app.ml_logic.strategy import calculate_kelly_allocations
+from app.ml_logic.strategy import calculate_kelly_allocations, tune
 from config import *
+from app.ml_logic.helpers import is_tuning_day
 from datetime import datetime
 import os
+import numpy as np
+import traceback
 
 #use 2025-1-28 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 2025-1-27; test 2025-1-28
-def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = initial_capital_fully):
+def handle_backtest(start_date_str = "2025-1-28", initial_capital = initial_capital_fully, model=CLOSE_ONLY_STATIC_PREFIX, tuning_period = None):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -27,6 +30,7 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
             return
 
         date_range = pd.date_range(start_date, today, freq='B')  # Business days
+        print(date_range, " DATE RANGE")
 
         portfolio_df = pd.DataFrame(index=date_range, columns=['Total_Value_At_Close', 'Cash_At_Open'], dtype=float)
         portfolio_df.index.name = "Date"
@@ -41,8 +45,18 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
             current_day = date_range[i]
             prev_day = date_range[i - 1]
             print(current_day)
+
+            if is_tuning_day(current_day, tuning_period):
+                tune(model, prev_day)
+                #TODO: save evrything
+                mode = "a" if os.path.exists("backtest_results_jan_w_tune.csv") else "w"
+                header = not os.path.exists("backtest_results_jan_w_tune.csv")
+                portfolio_df.to_csv("backtest_results_jan_w_tune.csv", mode=mode, header=header)
+                print("update backtest_results_jan_w_tune.csv")
+
+
             if trading_today:
-                kelly_allocations = calculate_kelly_allocations(current_day)
+                kelly_allocations = calculate_kelly_allocations(model, current_day)
 
                 total_capital_available = portfolio_df.loc[current_day, 'Cash_At_Open']
                 cash_for_trading = total_capital_available
@@ -144,21 +158,21 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
 
             print(current_day, " total at close: ", total_value)
 
-
-        file_path = 'backtest_portfolio_PL.xlsx'
-        writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
-
-
-        for date_str, df in daily_position_reports.items():
-            sheet_name = f"{date_str}_Allocations"
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-        for date_str, df in daily_pnl_reports.items():
-            sheet_name = f"{date_str}_PnL"
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
+        if model == CLOSE_ONLY_STATIC_PREFIX:
+            file_path = 'backtest_portfolio_PL.xlsx'
+            writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
 
 
-        writer.close()
+            for date_str, df in daily_position_reports.items():
+                sheet_name = f"{date_str}_Allocations"
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+            for date_str, df in daily_pnl_reports.items():
+                sheet_name = f"{date_str}_PnL"
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
+            writer.close()
         print("\n" + "=" * 50)
         print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value_At_Close']:,.2f}")
         print(f"Results saved to {file_path}")
@@ -166,17 +180,20 @@ def handle_backtest(start_date_str: str = "2025-1-28", initial_capital: float = 
 
     except Exception as e:
         print(f"Backtesting error: {e}")
+        traceback.print_exc()
 
     print(portfolio_df)
 
+    portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] = \
+        (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
     return portfolio_df
 
 
 
-def continue_backtest(file_path):
-    data = pd.read_csv(file_path, index_col=0, parse_dates=True)
+def continue_backtest(file_path, model, tuning_period=None):
+    data = pd.read_csv(file_path, index_col=0, parse_dates=[0], date_format="%Y-%m-%d")
     start_date = data.index[-1]
-
+    print("start date: ", start_date, " in ", model)
     last_day_total_value = data.loc[start_date, 'Total_Value_At_Close']
 
 
@@ -189,6 +206,7 @@ def continue_backtest(file_path):
         return
 
     start_date_str = start_date.strftime('%Y-%m-%d')
+    print("START: ", start_date_str, " using ", model)
     print("-" * 50)
     print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
     print(f"New initial capital: ${last_day_total_value:,.2f}")
@@ -196,7 +214,9 @@ def continue_backtest(file_path):
 
     new_results_df = handle_backtest(
         start_date_str=start_date_str,
-        initial_capital=last_day_total_value
+        initial_capital=last_day_total_value,
+        model=model,
+        tuning_period=tuning_period
     )
 
     new_trading_days_df = new_results_df.iloc[1:]
@@ -214,7 +234,3 @@ def continue_backtest(file_path):
     print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
     print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%Y-%m-%d')}")
     print("=" * 50)
-
-
-
-
