@@ -55,7 +55,10 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             if is_tuning_day(current_day, tuning_period) and not (is_tuning_day(date_range[1], tuning_period) and current_day == date_range[1]):
                 tune(model, prev_day)
 
+                portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] = \
+                    (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
                 filled_portfolio_df = portfolio_df.loc[temp_write_from:current_day]
+
                 #TODO: save evrything
                 mode = "a" if os.path.exists("backtest_results_jan_w_tune.csv") else "w"
                 header = not os.path.exists("backtest_results_jan_w_tune.csv")
