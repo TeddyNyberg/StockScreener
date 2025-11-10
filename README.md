@@ -12,10 +12,10 @@ Features
       - Assumes 0 cost trades, 0 taxes, instant model_input -> model_output -> buy/sell   
   - Backtesting
       - Default starts 1/28 (model trained on data until 1/27)
-      - To view performance, look at backtest_results_jan.csv and backtest_portfolio_PL.xlsx OR in the app, lookup "nyberg"
+      - To view performance, look at backtest_results_jan.csv and backtest_portfolio_PL.xlsx OR in the app, lookup "nyberg-a"
   - Stock lookup and comparison
       - Comparison charts
-  - Persistent Watchlist w SQL
+  - Persistent Watchlist and Paper Trading w SQL
 
 Goals
   - Create model for sentiment analysis on earnings calls, classifying them as trustworthy and likely to grow
@@ -27,6 +27,7 @@ Goals
       - Make stock info cleaner, 1,000M instead of 1000000000
       - Add hoverability to comparison chart for both stocks? see if it looks good
   - Faster predictions, model optimization, logic optimization 
+
 
 
 
