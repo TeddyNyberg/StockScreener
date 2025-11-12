@@ -9,7 +9,7 @@ import pandas as pd
 
 # this may lead to errors, understand some may want ticker col some dont
 def get_historical_data(ticker, start, end, ticker_col = False):
-    stock_data = yf.download(ticker, start=start, end=end, auto_adjust=True)
+    stock_data = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
     if ticker_col:
         stock_data['Ticker'] = ticker
     return stock_data

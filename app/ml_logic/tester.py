@@ -113,7 +113,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             if daily_allocations_list:
                 allocations_df = pd.DataFrame(daily_allocations_list)
-                daily_position_reports[current_day.strftime("%m-%d-Y")] = allocations_df
+                daily_position_reports[current_day.strftime("%m-%d-%Y")] = allocations_df
 
             daily_pnl_list = []
 
