@@ -9,7 +9,7 @@ import os
 import numpy as np
 import traceback
 
-#use 1-28-2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1-27-2025; test 1-28-2025
+#use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully, model=CLOSE_ONLY_STATIC_PREFIX, tuning_period = None):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
@@ -62,7 +62,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                 #TODO: save evrything
                 mode = "a" if os.path.exists("backtest_results_jan_w_tune.csv") else "w"
                 header = not os.path.exists("backtest_results_jan_w_tune.csv")
-                filled_portfolio_df.to_csv("backtest_results_jan_w_tune.csv", mode=mode, header=header)
+                filled_portfolio_df.to_csv("backtest_results_jan_w_tune.csv", mode=mode, header=header, date_format="%m/%d/%Y")
                 print("update backtest_results_jan_w_tune.csv")
 
                 temp_write_from = current_day
@@ -113,7 +113,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             if daily_allocations_list:
                 allocations_df = pd.DataFrame(daily_allocations_list)
-                daily_position_reports[current_day.strftime("%m/%d/Y")] = allocations_df
+                daily_position_reports[current_day.strftime("%m-%d-Y")] = allocations_df
 
             daily_pnl_list = []
 
@@ -155,7 +155,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             if trading_today:
                 new_holdings = {}
-                daily_pnl_reports[current_day.strftime('%m/%d/%Y')] = pd.DataFrame(daily_pnl_list)
+                daily_pnl_reports[current_day.strftime('%m-%d-%Y')] = pd.DataFrame(daily_pnl_list)
                 portfolio_df.loc[current_day, 'Total_Value_At_Close'] = total_value
             else:
                 total_value = total_capital_available
@@ -205,6 +205,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 def continue_backtest(file_path, model, tuning_period=None):
     data = pd.read_csv(file_path, index_col=0)
+    print(data, " in model ", model)
     data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
     start_date = data.index[-1]
 
@@ -243,7 +244,9 @@ def continue_backtest(file_path, model, tuning_period=None):
 
     mode = "a" if os.path.exists(file_path) else "w"
     header = not os.path.exists(file_path)
-    new_trading_days_df.to_csv(file_path, mode=mode, header=header)
+    new_trading_days_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
+
+
 
     print("\n" + "=" * 50)
     print(f"Successfully appended {len(new_trading_days_df)} new days of results.")

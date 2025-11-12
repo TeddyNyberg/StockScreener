@@ -12,9 +12,10 @@ open_detail_windows = []
 def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
-    backtest_thread = threading.Thread(target=continue_backtest, args=["backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX])
-    backtest_thread.daemon = True
-    backtest_thread.start()
+    #backtest_thread = threading.Thread(target=continue_backtest, args=["backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX])
+    #backtest_thread.daemon = True
+    #backtest_thread.start()
+    continue_backtest("backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX) # this to prevent racing go sequentally
     with DB() as conn:
         init_db(conn)
     continue_backtest("backtest_results_jan_w_tune.csv", CLOSE_ONLY_TUNED_PREFIX, "weekly")

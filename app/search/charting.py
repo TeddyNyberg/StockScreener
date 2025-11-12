@@ -53,7 +53,7 @@ def get_chart(tickers, time):
 def _get_title(tickers):
     title = f"{tickers[0]} Stock Price"
     if len(tickers) > 1 and tickers[1] is not None:
-        title = f"Price Comparison of {", ".join(tickers)}"
+        title = f"Price Comparison of {', '.join(tickers)}"
     return title
 
 

@@ -47,10 +47,14 @@ def predict_single_ticker(ticker):
 
 def get_historical_volatility(ticker, start, end):
     df = get_historical_data(ticker, start, end)
-    df['Returns'] = df['Close'].pct_change().dropna()
-    daily_variance = df['Returns'].var()
-    annualized_variance = daily_variance * 252
-    return annualized_variance
+    try:
+        df['Returns'] = df['Close'].pct_change(fill_method=None).dropna()
+        daily_variance = df['Returns'].var()
+        annualized_variance = daily_variance * 252
+        return annualized_variance
+    except Exception as e:
+        print(f"ticker = {ticker} df = {df} e = {e}")
+        return 10000000
 
 
 def _prepare_data_for_prediction(ticker, start, end):
@@ -102,7 +106,8 @@ def calculate_kelly_allocations(model, end=None):
             kelly_allocations.append((ticker, allocation, mu, sigma_squared))
         except Exception as e:
             # Handle any failure during volatility calculation and skip the ticker for the day.
-            print(f"Warning: Skipping {ticker} from Kelly allocation due to data/calculation error: {e}")
+
+            print(f"Warning {model}: Skipping {ticker} from Kelly allocation due to data/calculation error: {e}")
             continue
 
     total_allocation = sum(allocation for _, allocation, _, _ in kelly_allocations)
