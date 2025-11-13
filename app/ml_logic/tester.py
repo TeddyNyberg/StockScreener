@@ -39,8 +39,6 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
         new_holdings = {}
         trading_today = True
-        #TODO: when done getting this modle up to date, delete this var, also delete csv sabving in geneeral here
-        temp_write_from = date_range[1]
 
 
         for i in range(1, len(date_range)):
@@ -49,23 +47,9 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             prev_day = date_range[i - 1]
             print(current_day)
 
-            # if cur_day is tuning day -> tune and update csv to cur_day
-            # except if cur_day = first_day and its a tuning day, then it was already tuned so skip
-            #TODO: THIS IF IS ONLY FOR GETTING UP TO DATE WILL NEED TO CHANGE
-            if is_tuning_day(current_day, tuning_period) and not (is_tuning_day(date_range[1], tuning_period) and current_day == date_range[1]):
+
+            if is_tuning_day(current_day, tuning_period):
                 tune(model, prev_day)
-
-                portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] = \
-                    (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
-                filled_portfolio_df = portfolio_df.loc[temp_write_from:current_day]
-
-                #TODO: save evrything
-                mode = "a" if os.path.exists("backtest_results_jan_w_tune.csv") else "w"
-                header = not os.path.exists("backtest_results_jan_w_tune.csv")
-                filled_portfolio_df.to_csv("backtest_results_jan_w_tune.csv", mode=mode, header=header, date_format="%m/%d/%Y")
-                print("update backtest_results_jan_w_tune.csv")
-
-                temp_write_from = current_day
 
 
             if trading_today:
@@ -216,8 +200,8 @@ def continue_backtest(file_path, model, tuning_period=None):
     today = pd.to_datetime(datetime.now().strftime('%m/%d/%Y'))
     business_day_offset = CustomBusinessDay(n=1)
     most_recent_business_day = (today - pd.Timedelta(days=1)).normalize() - business_day_offset
-
-    if start_date >= most_recent_business_day:
+    print(most_recent_business_day, "mrbd")
+    if start_date > most_recent_business_day:
         print("Backtest is already up-to-date. No new trading days to process.")
         return
 

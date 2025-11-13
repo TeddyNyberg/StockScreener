@@ -4,10 +4,12 @@ from app.utils import get_date_range
 
 
 def get_nyberg_price(ticker):
+    print(ticker, "get_nyberg_price")
     data = _read_nyberg_file(ticker)
     return data.loc[data.index[-1], 'Total_Value_At_Close']
 
 def get_nyberg_data(time, ticker):
+    print(ticker, "get_nyberg_data")
     start_time, end_time = get_date_range(time)
     data = _read_nyberg_file(ticker)
 
@@ -34,5 +36,5 @@ def get_nyberg_name(ticker):
 
 def _read_nyberg_file(ticker):
     version = ticker[7]
-    filepath = MODEL_MAP[version]["filename"]
+    filepath = MODEL_MAP[version]["filepath"]
     return pd.read_csv(filepath, index_col=0, parse_dates=True)

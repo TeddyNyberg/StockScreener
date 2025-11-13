@@ -26,8 +26,7 @@ def get_yfdata_cache(tickers, time):
             continue
 
         if ticker.startswith("NYBERG"):
-            version = ticker[7]
-            results.append(get_nyberg_data(time, version))
+            results.append(get_nyberg_data(time, ticker))
             continue
 
         if ticker not in _cache:

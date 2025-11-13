@@ -12,13 +12,11 @@ open_detail_windows = []
 def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
-    #backtest_thread = threading.Thread(target=continue_backtest, args=["backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX])
-    #backtest_thread.daemon = True
-    #backtest_thread.start()
-    continue_backtest("backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX) # this to prevent racing go sequentally
+    backtest_thread = threading.Thread(target=background_backtesting, args=[])
+    backtest_thread.daemon = True
+    backtest_thread.start()
     with DB() as conn:
         init_db(conn)
-    continue_backtest("backtest_results_jan_w_tune.csv", CLOSE_ONLY_TUNED_PREFIX, "weekly")
     window = MainWindow()
     window.show()
 
@@ -76,3 +74,7 @@ def lookup_and_open_details(ticker, display_error_func=None):
     open_window_from_ticker(result)
 
 
+def background_backtesting():
+    continue_backtest("backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX)
+    continue_backtest("backtest_results_jan_w_tune.csv", CLOSE_ONLY_TUNED_PREFIX, "weekly")
+    pass
