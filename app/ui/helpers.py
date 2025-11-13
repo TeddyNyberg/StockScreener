@@ -75,6 +75,6 @@ def lookup_and_open_details(ticker, display_error_func=None):
 
 
 def background_backtesting():
-    continue_backtest("backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX)
-    continue_backtest("backtest_results_jan_w_tune.csv", CLOSE_ONLY_TUNED_PREFIX, "weekly")
+    continue_backtest("A")
+    continue_backtest("B", "weekly")
     pass

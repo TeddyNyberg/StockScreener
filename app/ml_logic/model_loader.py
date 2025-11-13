@@ -14,8 +14,8 @@ S3_CLIENT = boto3.client(
     aws_secret_access_key=AWS_SCR_ACC_KEY
     )
 
-# for static model use model_key=CLOSE_ONLY_STATIC_PREFIX
-def load_model_artifacts(model_key = CLOSE_ONLY_STATIC_PREFIX):
+# for static model use model_key= MODEL_MAP["A"]["prefix"]
+def load_model_artifacts(model_key = MODEL_MAP["A"]["prefix"]):
     global MODEL_CACHE
 
     if model_key in MODEL_CACHE:

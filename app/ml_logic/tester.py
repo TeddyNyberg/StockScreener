@@ -10,7 +10,8 @@ import numpy as np
 import traceback
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
-def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully, model=CLOSE_ONLY_STATIC_PREFIX, tuning_period = None):
+def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
+                    model=MODEL_MAP["A"]["prefix"], tuning_period = None):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -159,7 +160,6 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             file_path = 'backtest_portfolio_PL.xlsx'
             writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
 
-
             for date_str, df in daily_position_reports.items():
                 sheet_name = f"{date_str}_Allocations"
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -187,7 +187,10 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 
 
-def continue_backtest(file_path, model, tuning_period=None):
+def continue_backtest(version, tuning_period=None):
+
+    model = MODEL_MAP[version]["prefix"]
+    file_path = MODEL_MAP[version]["filepath"]
     data = pd.read_csv(file_path, index_col=0)
     print(data, " in model ", model)
     data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
