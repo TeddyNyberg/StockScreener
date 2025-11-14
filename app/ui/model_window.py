@@ -126,7 +126,7 @@ class ModelWindow(QMainWindow):
             if widget is not None:
                 widget.deleteLater()
 
-        fig = create_return_figure(ticker)
+        fig = create_return_figure(ticker, "NYBERG-B")
 
         if fig is not None:
             canvas = MplCanvas(fig)

@@ -17,11 +17,11 @@ class MplCanvas(FigureCanvas):
         self.updateGeometry()
 
 
-def create_return_figure(nyberg_ticker):
-    df_nyberg, df_spy = get_yfdata_cache([nyberg_ticker, "SPY"], "1Y")
+def create_return_figure(nyberg_ticker, ticker2 = "SPY"):
+    df_nyberg, df_2 = get_yfdata_cache([nyberg_ticker, ticker2], "1Y")
 
     nyberg_returns = df_nyberg['Close'].pct_change().mul(100)
-    spy_returns = df_spy['Close'].pct_change().mul(100)
+    spy_returns = df_2['Close'].pct_change().mul(100)
 
     returns_df = pd.DataFrame({
         'Nyberg_Return': nyberg_returns,
@@ -93,9 +93,9 @@ def create_return_figure(nyberg_ticker):
     ax.axhline(0, color='black', linestyle='-', linewidth=0.8)
     ax.axvline(0, color='black', linestyle='-', linewidth=0.8)
 
-    ax.set_title(f'Volatility and Correlation: {nyberg_ticker} vs. SPY Daily % Returns', fontsize=16, fontweight='bold')
+    ax.set_title(f'Volatility and Correlation: {nyberg_ticker} vs. {ticker2} Daily % Returns', fontsize=16, fontweight='bold')
     ax.set_xlabel(f'{nyberg_ticker} Daily Return (%)', fontsize=14)
-    ax.set_ylabel('SPY Daily Return (%)', fontsize=14)
+    ax.set_ylabel(f'{ticker2} Daily Return (%)', fontsize=14)
 
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(-plot_limit, plot_limit)
