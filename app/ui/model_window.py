@@ -9,6 +9,7 @@ import subprocess
 import sys
 from settings import *
 from config import *
+from app.ui.scatter_canvas import MplCanvas, create_return_figure
 
 
 class ModelWindow(QMainWindow):
@@ -34,7 +35,7 @@ class ModelWindow(QMainWindow):
 
         #TODO: make this filename universal?
         back_test_button = QPushButton("Back Test")
-        back_test_button.clicked.connect(lambda: continue_backtest("backtest_results_jan.csv", CLOSE_ONLY_STATIC_PREFIX))
+        back_test_button.clicked.connect(lambda: continue_backtest("A"))
         top_row_layout.addWidget(back_test_button)
 
 
@@ -58,7 +59,20 @@ class ModelWindow(QMainWindow):
 
         self.third_layout = QGridLayout()
 
+        self.fourth_layout = QHBoxLayout()
+        self.plot_button = QPushButton("Show Return Scatterplot")
+        self.plot_button.clicked.connect(self.show_scatterplot)
+        self.fourth_layout.addWidget(self.plot_button)
+        layout.addLayout(self.fourth_layout)
+
+        self.plot_container = QWidget()
+        self.plot_layout = QVBoxLayout(self.plot_container)
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.plot_container)
+
         self.setCentralWidget(central_widget)
+
+
 
     def update_status_message(self, message):
         self.result_label = QLabel(message)
@@ -82,7 +96,7 @@ class ModelWindow(QMainWindow):
             print(f"Prediction error: {e}")
 
     def show_kelly_bet(self):
-        final_allocations = calculate_kelly_allocations(CLOSE_ONLY_STATIC_PREFIX)
+        final_allocations = calculate_kelly_allocations(MODEL_MAP["A"]["version"])
 
         self.third_layout.addWidget(QLabel("Ticker"), 0, 0)
         self.third_layout.addWidget(QLabel("Allocation"), 0, 1)
@@ -104,6 +118,24 @@ class ModelWindow(QMainWindow):
         start, end = get_date_range("6M")
         goog = get_historical_data("GOOG", start, end) # sanity check, shows latest data available for model
         print(goog.tail(1))
+
+    def show_scatterplot(self):
+        ticker = "NYBERG-A"
+        for i in reversed(range(self.plot_layout.count())):
+            widget = self.plot_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        fig = create_return_figure(ticker)
+
+        if fig is not None:
+            canvas = MplCanvas(fig)
+            self.plot_layout.addWidget(canvas)
+            self.resize(800, 650)
+            print(f"Scatterplot updated for {ticker} vs SPY.")
+        else:
+            print(f"Could not generate plot for {ticker}.")
+
 
 def train_on_cloud():
     try:

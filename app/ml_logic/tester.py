@@ -48,7 +48,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             prev_day = date_range[i - 1]
             print(current_day)
 
-
+            #TODO: make it trian after i buy on firday to make faster
             if is_tuning_day(current_day, tuning_period):
                 tune(model, prev_day)
 
@@ -156,7 +156,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             print(current_day, " total at close: ", total_value)
 
-        if model == CLOSE_ONLY_STATIC_PREFIX:
+        if model == MODEL_MAP["A"]["prefix"]:
             file_path = 'backtest_portfolio_PL.xlsx'
             writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
 
@@ -172,8 +172,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             writer.close()
         print("\n" + "=" * 50)
         print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value_At_Close']:,.2f}")
-        print(f"Results saved to {file_path}")
-        print("=" * 50)
+
 
     except Exception as e:
         print(f"Backtesting error: {e}")
@@ -185,7 +184,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
         (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
     return portfolio_df
 
-
+#TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
 def continue_backtest(version, tuning_period=None):
 
@@ -238,4 +237,5 @@ def continue_backtest(version, tuning_period=None):
     print("\n" + "=" * 50)
     print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
     print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%m/%d/%Y')}")
+    print(f"Results saved to {file_path}")
     print("=" * 50)

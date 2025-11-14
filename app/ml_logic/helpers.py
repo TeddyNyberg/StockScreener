@@ -8,3 +8,7 @@ def is_tuning_day(date, tuning_period):
     if tuning_period == 'weekly':
         return date.dayofweek == 0
     return False
+
+
+
+
