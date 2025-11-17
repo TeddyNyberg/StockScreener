@@ -26,7 +26,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
         today = pd.to_datetime(datetime.now().strftime('%m/%d/%Y')) - pd.Timedelta(days=1)
         print("today: ", pd.to_datetime(datetime.now().strftime('%m/%d/%Y')))
 
-        if start_date > today:
+        if start_date >= today:
             print("Start date is in the future or today. Cannot run backtest.")
             return
 
@@ -203,7 +203,7 @@ def continue_backtest(version, tuning_period=None):
     business_day_offset = CustomBusinessDay(n=1)
     most_recent_business_day = (today - pd.Timedelta(days=1)).normalize() - business_day_offset
     print(most_recent_business_day, "mrbd")
-    if start_date > most_recent_business_day:
+    if start_date >= most_recent_business_day:
         print("Backtest is already up-to-date. No new trading days to process.")
         return
 
