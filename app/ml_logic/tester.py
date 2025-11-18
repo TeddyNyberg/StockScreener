@@ -28,7 +28,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
         if start_date >= today:
             print("Start date is in the future or today. Cannot run backtest.")
-            return
+            return None
 
         date_range = pd.date_range(start_date, today, freq='B')  # Business days
         print(date_range, " DATE RANGE")
@@ -50,12 +50,16 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             #TODO: make it trian after i buy on firday to make faster
             if is_tuning_day(current_day, tuning_period):
-                tune(model, prev_day)
-
+                ok = tune(model, prev_day)
+                if not ok:
+                    print("tune was not successful")
+                    return None
 
             if trading_today:
                 kelly_allocations = calculate_kelly_allocations(model, current_day)
-
+                if not kelly_allocations:
+                    print("no kelly allocations")
+                    return None
                 total_capital_available = portfolio_df.loc[current_day, 'Cash_At_Open']
                 cash_for_trading = total_capital_available
 
@@ -155,6 +159,11 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                     portfolio_df.loc[date_range[i+1], 'Cash_At_Open'] = cash_for_trading
 
             print(current_day, " total at close: ", total_value)
+            if model == MODEL_MAP["C"]["prefix"]:
+                mode = "a" if os.path.exists("nyberg_results_static_quantized.csv") else "w"
+                header = not os.path.exists("nyberg_results_static_quantized.csv")
+                portfolio_df.loc[current_day].to_csv("nyberg_results_static_quantized.csv", mode=mode, header=header, date_format="%m/%d/%Y")
+                print(portfolio_df.loc[current_day])
 
         if model == MODEL_MAP["A"]["prefix"]:
             file_path = 'backtest_portfolio_PL.xlsx'
@@ -201,7 +210,7 @@ def continue_backtest(version, tuning_period=None):
 
     today = pd.to_datetime(datetime.now().strftime('%m/%d/%Y'))
     business_day_offset = CustomBusinessDay(n=1)
-    most_recent_business_day = (today - pd.Timedelta(days=1)).normalize() - business_day_offset
+    most_recent_business_day = today - business_day_offset
     print(most_recent_business_day, "mrbd")
     if start_date >= most_recent_business_day:
         print("Backtest is already up-to-date. No new trading days to process.")
@@ -220,6 +229,10 @@ def continue_backtest(version, tuning_period=None):
         model=model,
         tuning_period=tuning_period
     )
+
+    if new_results_df is None:
+        print("handle_backtest did not return any results")
+        return
 
     new_trading_days_df = new_results_df.iloc[1:]
 

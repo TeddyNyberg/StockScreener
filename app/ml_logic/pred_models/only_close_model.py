@@ -5,6 +5,7 @@ from torch import nn, optim
 import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
+import torch.ao.quantization as quantization
 from app.data.preprocessor_utils import to_seq, normalize_window
 from app.data.s3_handler import DataHandler
 from config import *
@@ -318,3 +319,26 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
         print(f"Fine-tune Epoch {epoch+1}/{num_epochs}, Avg Loss: {epoch_loss/len(tune_loader):.6f}")
 
     return model.state_dict(), config
+
+
+def quantize_model(model_state_dict, config):
+    device = "cpu"
+    model = StockTransformerModel(
+        num_features_in=config["num_features_in"],
+        embedding_dim=config["embedding_dim"],
+        max_len=config["max_len"],
+        num_layers=config.get("num_layers", 3)
+    )
+    model.load_state_dict(model_state_dict)
+    model.eval()
+    model.to(device)
+
+    quantized_model = quantization.quantize_dynamic(
+        model,
+        qconfig_spec={torch.nn.Linear},
+        dtype=torch.qint8
+    )
+    print("Model successfully dynamically quantized to int8.")
+    quantized_state_dict = quantized_model.state_dict()
+
+    return quantized_state_dict, config

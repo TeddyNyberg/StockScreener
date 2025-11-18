@@ -15,6 +15,8 @@ def optimal_picks(model, today = pd.Timestamp.today().normalize()):
 
     start, end = get_date_range("3M", today)
     sp_tickers = get_sp500_tickers()
+    if not sp_tickers:
+        return None, None
     sp_tickers.append("^SPX")
 
     all_predictions = []
@@ -133,9 +135,13 @@ def calculate_kelly_allocations(model, end=None):
 def tune(model, date):
     model_dict, config = load_model_artifacts(model)
     start, end = get_date_range("3M", date)
+
     snp = get_sp500_tickers()
+    if not snp:
+        return False
     list_of_df = []
     for ticker in snp:
         list_of_df.append(get_historical_data(ticker, start, end))
     new_model_dict, new_config = fine_tune_model(model_dict, config, list_of_df)
     save_model_artifacts(new_model_dict, new_config, model)
+    return True

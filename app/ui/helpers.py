@@ -13,7 +13,8 @@ open_detail_windows = []
 def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
-    print_model_characteristics("NYBERG-A")
+    #print_model_characteristics("NYBERG-A")
+
     backtest_thread = threading.Thread(target=background_backtesting, args=[])
     backtest_thread.daemon = True
     backtest_thread.start()
@@ -79,6 +80,7 @@ def lookup_and_open_details(ticker, display_error_func=None):
 def background_backtesting():
     continue_backtest("A")
     continue_backtest("B", "weekly")
+    continue_backtest("C")
 
 
 #TODO: this may go into search helpers....
