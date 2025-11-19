@@ -168,6 +168,8 @@ def calculate_kelly_allocations(model, end=None):
         kelly_tasks.append((ticker, predicted_delta, sigma_squared))
 
     max_workers = os.cpu_count() or 4
+
+    print(f"Starting parallel kelly alloc for {len(kelly_tasks)} tickers using {max_workers} processes.")
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         results = executor.map(
             kelly_worker,
