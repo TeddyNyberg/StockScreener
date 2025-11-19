@@ -60,7 +60,7 @@ def load_model_artifacts(model_key = MODEL_MAP["A"]["prefix"]):
     return MODEL_STATE_DICT, CONFIG
 
 
-def save_model_artifacts(model_state_dict, config, s3_key):
+def save_model_artifacts(s3_key, model_state_dict, config):
 
     checkpoint = {
         "model_state": model_state_dict,
@@ -81,3 +81,4 @@ def save_model_artifacts(model_state_dict, config, s3_key):
         print(f"Model artifacts successfully saved to s3://{S3_TRAINING_BUCKET}/{s3_key}")
     except Exception as e:
         print(f"Error saving model to S3 at {s3_key}: {e}")
+

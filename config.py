@@ -30,6 +30,6 @@ MODEL_MAP = {
     "C":{
         "name": "NYBERG STATIC QUANTIZED MODEL",
         "filepath": "nyberg_results_static_quantized.csv",
-        "prefix": "fine_tuned_models/close_only_quantized_static.gz"
+        "prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
     }
 }

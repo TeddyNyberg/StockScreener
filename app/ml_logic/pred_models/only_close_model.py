@@ -246,16 +246,7 @@ if __name__ == "__main__":
     train_fn(args)
 
 
-def pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std):
-    model = StockTransformerModel(
-        num_features_in=config["num_features_in"],
-        embedding_dim=config["embedding_dim"],
-        max_len=config["max_len"]
-    )
-
-    model.load_state_dict(model_state_dict)
-    model.eval()
-
+def pred_next_day_no_ticker(input_tensor, model, mean, std):
     with torch.no_grad():
         normalized_prediction = model(input_tensor)
     last_prediction = normalized_prediction[-1][0]
@@ -321,24 +312,20 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
     return model.state_dict(), config
 
 
-def quantize_model(model_state_dict, config):
-    device = "cpu"
+def setup_pred_model(model_state_dict, config, is_quantized):
     model = StockTransformerModel(
         num_features_in=config["num_features_in"],
         embedding_dim=config["embedding_dim"],
-        max_len=config["max_len"],
-        num_layers=config.get("num_layers", 3)
+        max_len=config["max_len"]
     )
+
     model.load_state_dict(model_state_dict)
     model.eval()
-    model.to(device)
 
-    quantized_model = quantization.quantize_dynamic(
-        model,
-        qconfig_spec={torch.nn.Linear},
-        dtype=torch.qint8
-    )
-    print("Model successfully dynamically quantized to int8.")
-    quantized_state_dict = quantized_model.state_dict()
+    if is_quantized:
+        model = quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
 
-    return quantized_state_dict, config
+    return model

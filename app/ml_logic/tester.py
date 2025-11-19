@@ -162,8 +162,8 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             if model == MODEL_MAP["C"]["prefix"]:
                 mode = "a" if os.path.exists("nyberg_results_static_quantized.csv") else "w"
                 header = not os.path.exists("nyberg_results_static_quantized.csv")
-                portfolio_df.loc[current_day].to_csv("nyberg_results_static_quantized.csv", mode=mode, header=header, date_format="%m/%d/%Y")
-                print(portfolio_df.loc[current_day])
+                portfolio_df.iloc[-2].to_csv("nyberg_results_static_quantized.csv", mode=mode, header=header, date_format="%m/%d/%Y")
+                print(portfolio_df.iloc[-2])
 
         if model == MODEL_MAP["A"]["prefix"]:
             file_path = 'backtest_portfolio_PL.xlsx'

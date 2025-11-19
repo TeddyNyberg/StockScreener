@@ -3,15 +3,17 @@ import pandas as pd
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
 from app.data.preprocessor_utils import normalize_window, to_seq
-from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model
+from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model, setup_pred_model
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
-
+import math
 from config import *
 
 
-def optimal_picks(model, today = pd.Timestamp.today().normalize()):
-    model_state_dict, config = load_model_artifacts(model)
+def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
+    model_state_dict, config = load_model_artifacts(model_prefix)
+    is_quantized = "quantized" in model_prefix
+    model = setup_pred_model(model_state_dict, config, is_quantized)
 
     start, end = get_date_range("3M", today)
     sp_tickers = get_sp500_tickers()
@@ -19,13 +21,15 @@ def optimal_picks(model, today = pd.Timestamp.today().normalize()):
         return None, None
     sp_tickers.append("^SPX")
 
+    processed_tickers = [t.replace(".", "-") for t in sp_tickers]
+    all_historical_data = get_historical_data(processed_tickers, start, end)
+    all_close_data = all_historical_data["Close"]
+
     all_predictions = []
-    for ticker in sp_tickers:
-        if "." in ticker:
-            ticker = ticker.replace(".", "-")
+    for ticker in processed_tickers:
         try:
-            input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction(ticker, start, end)
-            prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+            input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction(all_close_data[ticker], ticker)
+            prediction = pred_next_day_no_ticker(input_tensor, model, mean, std)
             delta = ((prediction - latest_close_price) / latest_close_price).item()
             all_predictions.append((ticker, delta))
         except ValueError as e:
@@ -41,7 +45,9 @@ def predict_single_ticker(ticker):
     model_state_dict, config = load_model_artifacts()
 
     start, end = get_date_range("3M")
-    input_tensor, _, mean, std = _prepare_data_for_prediction(ticker, start, end)
+    data = get_historical_data(ticker, start, end)
+    close_data = data["Close"]
+    input_tensor, _, mean, std = _prepare_data_for_prediction(close_data, ticker)
     prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
 
     print(f"Predicted value: {prediction}")
@@ -59,18 +65,15 @@ def get_historical_volatility(ticker, start, end):
         return 10000000
 
 
-def _prepare_data_for_prediction(ticker, start, end):
-    df = get_historical_data(ticker, start, end)
-    data = df["Close"]
-
+def _prepare_data_for_prediction(data, ticker):
     if len(data) < SEQUENCE_SIZE:
         raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQUENCE_SIZE} points, got {len(data)}.")
 
-    latest_close_price = df["Close"].iloc[-1]
+    latest_close_price = data.iloc[-1]
     input_sequence = data[-SEQUENCE_SIZE:]
 
     normalized_window, mean, std = normalize_window(input_sequence)
-    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
+    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0).unsqueeze(2)
 
     return input_tensor, latest_close_price, mean, std
 
@@ -89,12 +92,13 @@ def calculate_kelly_allocations(model, end=None):
     kelly_allocations = []
     for ticker, predicted_delta in predictions:
         mu = predicted_delta
+        if math.isnan(mu):
+            print(f"Skipping {ticker}: mu is NaN")
+            continue
         try:
             sigma_squared = get_historical_volatility(ticker, start, end)
-
-            # Ensure variance is positive to avoid division by zero or errors
-            if sigma_squared <= 0:
-                print(f"Skipping {ticker}: Volatility (sigma^2) is zero or negative.")
+            if sigma_squared is None or math.isnan(sigma_squared) or sigma_squared <= 0:
+                print(f"Skipping {ticker}: sigma^2 is NaN or vol neg")
                 continue
 
             kelly_fraction = (mu - RISK_FREE_RATE) / sigma_squared
@@ -105,9 +109,12 @@ def calculate_kelly_allocations(model, end=None):
             elif allocation > 1.0:
                 allocation = 1.0
 
+            if math.isnan(allocation) or math.isinf(allocation):
+                print(f"Skipping {ticker}: allocation ended up NaN/inf")
+                continue
+
             kelly_allocations.append((ticker, allocation, mu, sigma_squared))
         except Exception as e:
-            # Handle any failure during volatility calculation and skip the ticker for the day.
 
             print(f"Warning {model}: Skipping {ticker} from Kelly allocation due to data/calculation error: {e}")
             continue
@@ -143,5 +150,5 @@ def tune(model, date):
     for ticker in snp:
         list_of_df.append(get_historical_data(ticker, start, end))
     new_model_dict, new_config = fine_tune_model(model_dict, config, list_of_df)
-    save_model_artifacts(new_model_dict, new_config, model)
+    save_model_artifacts(model, new_model_dict, new_config)
     return True
