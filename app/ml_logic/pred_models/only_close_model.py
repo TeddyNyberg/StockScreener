@@ -9,6 +9,7 @@ from app.data.preprocessor_utils import to_seq, normalize_window
 from app.data.s3_handler import DataHandler
 from config import *
 import numpy as np
+import torch.ao.quantization as quantization
 
 class StockTransformerModel(nn.Module):
     def __init__(self, num_features_in, embedding_dim, max_len=50, num_layers=3):
@@ -318,3 +319,27 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
         print(f"Fine-tune Epoch {epoch+1}/{num_epochs}, Avg Loss: {epoch_loss/len(tune_loader):.6f}")
 
     return model.state_dict(), config
+
+
+
+def setup_pred_model(model_state_dict, config, is_quantized):
+    device = torch.device("cpu")
+
+    model = StockTransformerModel(
+        num_features_in=config["num_features_in"],
+        embedding_dim=config["embedding_dim"],
+        max_len=config["max_len"]
+    )
+
+    model.load_state_dict(model_state_dict)
+    model.eval()
+
+    if is_quantized:
+        model = quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+    model.to(device)
+
+    if hasattr(model.positional_encoding, 'pe'):
+        model.positional_encoding.pe = model.positional_encoding.pe.to(device)
+    model.share_memory()
+
+    return model, device

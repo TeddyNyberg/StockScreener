@@ -1,7 +1,7 @@
 import pandas as pd
 from pandas.tseries.offsets import CustomBusinessDay
 from app.data.yfinance_fetcher import get_close_on
-from app.ml_logic.strategy import calculate_kelly_allocations, tune
+from app.ml_logic.strategy import calculate_kelly_allocations, tune, calculate_kelly_allocations_new
 from config import *
 from app.ml_logic.helpers import is_tuning_day
 from datetime import datetime
@@ -11,7 +11,7 @@ import traceback
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
-                    model=MODEL_MAP["A"]["prefix"], tuning_period = None):
+                    model=MODEL_MAP["A"]["prefix"], tuning_period = None, switch=True):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -42,7 +42,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
         trading_today = True
 
 
-        for i in range(1, len(date_range)):
+        for i in range(1,6):
 
             current_day = date_range[i]
             prev_day = date_range[i - 1]
@@ -54,7 +54,10 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 
             if trading_today:
-                kelly_allocations = calculate_kelly_allocations(model, current_day)
+                if switch:
+                    kelly_allocations = calculate_kelly_allocations(model, current_day)
+                else:
+                    kelly_allocations = calculate_kelly_allocations_new(model, current_day)
 
                 total_capital_available = portfolio_df.loc[current_day, 'Cash_At_Open']
                 cash_for_trading = total_capital_available
@@ -156,20 +159,9 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             print(current_day, " total at close: ", total_value)
 
-        if model == MODEL_MAP["A"]["prefix"]:
-            file_path = 'backtest_portfolio_PL.xlsx'
-            writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
-
-            for date_str, df in daily_position_reports.items():
-                sheet_name = f"{date_str}_Allocations"
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-            for date_str, df in daily_pnl_reports.items():
-                sheet_name = f"{date_str}_PnL"
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
 
 
-            writer.close()
+
         print("\n" + "=" * 50)
         print(f"Backtest complete. Final Value: ${portfolio_df.iloc[-1]['Total_Value_At_Close']:,.2f}")
 
@@ -186,7 +178,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 #TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
-def continue_backtest(version, tuning_period=None):
+def continue_backtest(version, tuning_period=None, switch_new = True):
 
     model = MODEL_MAP[version]["prefix"]
     file_path = MODEL_MAP[version]["filepath"]
@@ -218,7 +210,8 @@ def continue_backtest(version, tuning_period=None):
         start_date_str=start_date_str,
         initial_capital=last_day_total_value,
         model=model,
-        tuning_period=tuning_period
+        tuning_period=tuning_period,
+        switch = switch_new
     )
 
     new_trading_days_df = new_results_df.iloc[1:]
@@ -228,9 +221,9 @@ def continue_backtest(version, tuning_period=None):
         return
 
 
-    mode = "a" if os.path.exists(file_path) else "w"
-    header = not os.path.exists(file_path)
-    new_trading_days_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
+    #mode = "a" if os.path.exists(file_path) else "w"
+    #header = not os.path.exists(file_path)
+    #new_trading_days_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
 
 
 

@@ -30,5 +30,10 @@ MODEL_MAP = {
         "name": "NYBERG TUNED MODEL",
         "filepath": "nyberg_results_tune.csv",
         "prefix": "fine_tuned_models/only_close_model_original_not_fine_tuned.gz"
+    },
+    "D": {
+        "name": "NYBERG TEST MODEL",
+        "filepath": "testing.csv",
+        "prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
     }
 }
