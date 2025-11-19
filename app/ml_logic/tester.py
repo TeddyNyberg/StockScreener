@@ -65,11 +65,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
                 daily_allocations_list = []
 
-
                 total_allocation_value = 0
-                # 0.0005 5bp
-                # 0 for now
-
 
                 for ticker, kelly_fraction, _ in kelly_allocations:
                     target_value = total_capital_available * kelly_fraction
@@ -162,6 +158,10 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             if model == MODEL_MAP["C"]["prefix"]:
                 mode = "a" if os.path.exists("nyberg_results_static_quantized.csv") else "w"
                 header = not os.path.exists("nyberg_results_static_quantized.csv")
+
+                portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] = \
+                    (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
+
                 portfolio_df.loc[current_day:current_day].to_csv(
                     "nyberg_results_static_quantized.csv",
                     mode=mode,

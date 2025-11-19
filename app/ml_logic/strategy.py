@@ -26,6 +26,32 @@ def threaded_prediction_worker(ticker, input_tensor, latest_close_price, mean, s
     except Exception as e:
         raise Exception(f"Prediction failed for {ticker}: {e}")
 
+def kelly_worker(triple):
+    ticker, pred_delta, sigma_squared = triple
+
+    mu = pred_delta
+    if math.isnan(mu):
+        print(f"{ticker} skipped mu is nan")
+        return None
+    if sigma_squared <= 0 or math.isnan(sigma_squared):
+        print(f"{ticker} skipped sig_sq is nan")
+        return None
+
+    try:
+        kelly_fraction = (mu - RISK_FREE_RATE) / sigma_squared
+        allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+
+        allocation = max(0.0, min(1.0, allocation))
+        if math.isnan(allocation) or math.isinf(allocation):
+            print(f"{ticker} skipped alloc is nan")
+            return None
+
+        return ticker, allocation, mu, sigma_squared
+
+    except Exception as e:
+        print(f"Warning: Skipping {ticker} due to calculation error: {e}")
+        return None
+
 
 
 def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
@@ -33,7 +59,8 @@ def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
     is_quantized = "quantized" in model_prefix
     model, device = setup_pred_model(model_state_dict, config, is_quantized)
 
-    start, end = get_date_range("3M", today)
+    start, end = get_date_range(lookback_period, today)
+
     sp_tickers = get_sp500_tickers()
     if not sp_tickers:
         return None, None
@@ -46,7 +73,8 @@ def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
     tasks = []
     for ticker in processed_tickers:
         try:
-            input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction(all_close_data[ticker], ticker)
+            prediction_data = all_close_data[ticker].tail(SEQUENCE_SIZE)
+            input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction(prediction_data, ticker)
             input_tensor.share_memory_()
             tasks.append({
                 "ticker": ticker,
@@ -82,14 +110,12 @@ def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
             try:
                 result = future.result()
                 all_predictions.append(result)
-
                 if ticker == "^SPX":
                     spx = result
-
             except Exception as e:
                 print(f"Warning: Skipping {ticker} due to process error: {e}")
 
-    return all_predictions, spx
+    return all_predictions, spx, all_close_data
 
 def predict_single_ticker(ticker):
     model_state_dict, config = load_model_artifacts()
@@ -103,16 +129,16 @@ def predict_single_ticker(ticker):
     print(f"Predicted value: {prediction}")
     return prediction
 
-def get_historical_volatility(ticker, start, end):
-    df = get_historical_data(ticker, start, end)
-    try:
-        df['Returns'] = df['Close'].pct_change(fill_method=None).dropna()
-        daily_variance = df['Returns'].var()
-        annualized_variance = daily_variance * 252
-        return annualized_variance
-    except Exception as e:
-        print(f"ticker = {ticker} df = {df} e = {e}")
-        return 10000000
+def get_all_volatilities(all_data):
+    returns_df = all_data.pct_change(fill_method=None)
+    returns_df = returns_df.dropna(how='all', axis=0)
+    returns_df = returns_df.dropna(how='all', axis=1)
+
+    daily_variance = returns_df.var()
+    annualized_variance_series = daily_variance * 252 #252 trading days
+
+
+    return annualized_variance_series
 
 
 def _prepare_data_for_prediction(data, ticker):
@@ -129,45 +155,26 @@ def _prepare_data_for_prediction(data, ticker):
 
 
 def calculate_kelly_allocations(model, end=None):
+    predictions, spy_delta, all_vol_data = optimal_picks(model, end)
 
-    # if end is none, get range until today, end = today
-    # if end is not none, backtest
-    start, end = get_date_range(lookback_period, end)
-
-    predictions, spy_delta = optimal_picks(model, end)
     if not predictions:
         print("No predictions available to calculate Kelly bets.")
         return None
+    volatility_series = get_all_volatilities(all_vol_data)
 
-    kelly_allocations = []
+    kelly_tasks = []
     for ticker, predicted_delta in predictions:
-        mu = predicted_delta
-        if math.isnan(mu):
-            print(f"Skipping {ticker}: mu is NaN")
-            continue
-        try:
-            sigma_squared = get_historical_volatility(ticker, start, end)
-            if sigma_squared is None or math.isnan(sigma_squared) or sigma_squared <= 0:
-                print(f"Skipping {ticker}: sigma^2 is NaN or vol neg")
-                continue
+        sigma_squared = volatility_series.get(ticker, -1)
+        kelly_tasks.append((ticker, predicted_delta, sigma_squared))
 
-            kelly_fraction = (mu - RISK_FREE_RATE) / sigma_squared
-            allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+    max_workers = os.cpu_count() or 4
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        results = executor.map(
+            kelly_worker,
+            kelly_tasks
+        )
 
-            if allocation < 0:
-                allocation = 0.0
-            elif allocation > 1.0:
-                allocation = 1.0
-
-            if math.isnan(allocation) or math.isinf(allocation):
-                print(f"Skipping {ticker}: allocation ended up NaN/inf")
-                continue
-
-            kelly_allocations.append((ticker, allocation, mu, sigma_squared))
-        except Exception as e:
-
-            print(f"Warning {model}: Skipping {ticker} from Kelly allocation due to data/calculation error: {e}")
-            continue
+        kelly_allocations = [result for result in results if result is not None]
 
     total_allocation = sum(allocation for _, allocation, _, _ in kelly_allocations)
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
