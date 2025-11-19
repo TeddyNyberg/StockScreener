@@ -313,6 +313,8 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
 
 
 def setup_pred_model(model_state_dict, config, is_quantized):
+    device = torch.device("cpu")
+
     model = StockTransformerModel(
         num_features_in=config["num_features_in"],
         embedding_dim=config["embedding_dim"],
@@ -324,8 +326,10 @@ def setup_pred_model(model_state_dict, config, is_quantized):
 
     if is_quantized:
         model = quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
+    model.to(device)
 
-    return model
+    if hasattr(model.positional_encoding, 'pe'):
+        model.positional_encoding.pe = model.positional_encoding.pe.to(device)
+    model.share_memory()
+
+    return model, device

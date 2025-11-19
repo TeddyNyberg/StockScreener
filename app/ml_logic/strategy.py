@@ -1,5 +1,7 @@
 import torch
 import pandas as pd
+import os
+import concurrent.futures
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
 from app.data.preprocessor_utils import normalize_window, to_seq
@@ -7,13 +9,29 @@ from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, f
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
 import math
+import numpy as np
 from config import *
+
+
+def threaded_prediction_worker(ticker, input_tensor, latest_close_price, mean, std, model):
+    try:
+        with torch.no_grad():
+            normalized_prediction = model(input_tensor)
+        last_prediction = normalized_prediction[-1][0]
+        prediction_np = np.array(last_prediction.item()).reshape(1, -1)
+        prediction = (prediction_np[0][0] * std) + mean
+        delta = ((prediction - latest_close_price) / latest_close_price).item()
+        return ticker, delta
+
+    except Exception as e:
+        raise Exception(f"Prediction failed for {ticker}: {e}")
+
 
 
 def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
     model_state_dict, config = load_model_artifacts(model_prefix)
     is_quantized = "quantized" in model_prefix
-    model = setup_pred_model(model_state_dict, config, is_quantized)
+    model, device = setup_pred_model(model_state_dict, config, is_quantized)
 
     start, end = get_date_range("3M", today)
     sp_tickers = get_sp500_tickers()
@@ -25,21 +43,53 @@ def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
     all_historical_data = get_historical_data(processed_tickers, start, end)
     all_close_data = all_historical_data["Close"]
 
-    all_predictions = []
+    tasks = []
     for ticker in processed_tickers:
         try:
             input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction(all_close_data[ticker], ticker)
-            prediction = pred_next_day_no_ticker(input_tensor, model, mean, std)
-            delta = ((prediction - latest_close_price) / latest_close_price).item()
-            all_predictions.append((ticker, delta))
-        except ValueError as e:
-            print(f"Warning: Skipping {ticker}. {e}")
-            continue
+            input_tensor.share_memory_()
+            tasks.append({
+                "ticker": ticker,
+                "input_tensor": input_tensor.to(device),
+                "latest_close_price": latest_close_price,
+                "mean": mean,
+                "std": std
+            })
         except Exception as e:
             print(f"Warning: Skipping {ticker} for prediction due to data/network error: {e}")
             continue
 
-    return all_predictions, all_predictions[-1]
+    all_predictions = []
+    max_workers = os.cpu_count() or 4
+    print(f"Starting parallel prediction for {len(tasks)} tickers using {max_workers} processes.")
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(
+                threaded_prediction_worker,
+                t["ticker"],
+                t["input_tensor"],
+                t["latest_close_price"],
+                t["mean"],
+                t["std"],
+                model
+            ): t["ticker"] for t in tasks
+        }
+
+        spx = None
+        for future in concurrent.futures.as_completed(futures):
+            ticker = futures[future]
+            try:
+                result = future.result()
+                all_predictions.append(result)
+
+                if ticker == "^SPX":
+                    spx = result
+
+            except Exception as e:
+                print(f"Warning: Skipping {ticker} due to process error: {e}")
+
+    return all_predictions, spx
 
 def predict_single_ticker(ticker):
     model_state_dict, config = load_model_artifacts()
