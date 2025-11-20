@@ -54,9 +54,8 @@ def kelly_worker(triple):
 
 
 
-def optimal_picks(model_prefix, today = pd.Timestamp.today().normalize()):
+def optimal_picks(model_prefix, is_quantized, today = pd.Timestamp.today().normalize()):
     model_state_dict, config = load_model_artifacts(model_prefix)
-    is_quantized = "quantized" in model_prefix
     model, device = setup_pred_model(model_state_dict, config, is_quantized)
 
     start, end = get_date_range(lookback_period, today)
@@ -154,10 +153,13 @@ def _prepare_data_for_prediction(data, ticker):
     return input_tensor, latest_close_price, mean, std
 
 
-def calculate_kelly_allocations(model, end=None):
-    predictions, spy_delta, all_vol_data = optimal_picks(model, end)
+def calculate_kelly_allocations(model_prefix, is_quantized, end=None):
+
+
+    predictions, spy_delta, all_vol_data = optimal_picks(model_prefix, is_quantized, end)
 
     if not predictions:
+
         print("No predictions available to calculate Kelly bets.")
         return None
     volatility_series = get_all_volatilities(all_vol_data)

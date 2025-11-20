@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
 from app.utils import get_date_range
 from app.data.yfinance_fetcher import get_historical_data
 from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker
-from app.ml_logic.tester import handle_backtest, continue_backtest
+from app.ml_logic.tester import continue_backtest
 import subprocess
 import sys
 from settings import *
@@ -77,18 +77,16 @@ class ModelWindow(QMainWindow):
     def update_status_message(self, message):
         self.result_label = QLabel(message)
 
-
+    # This will only be used w base model
     def get_next_day(self):
         ticker = self.search_bar_input.text().strip().upper()
         if not ticker:
             self.update_status_message("Please enter a ticker symbol.")
             return
         try:
-            prediction = predict_single_ticker(ticker)
+            prediction, latest_close_price = predict_single_ticker(ticker)
 
-            start, end = get_date_range("1M")
-            df = get_historical_data(ticker, start, end)
-            print(f"most recent day {df['Close'].iloc[-1]}")
+            print(f"most recent day {latest_close_price}")
             print(f"Predicted next day value: {prediction}")
 
         except Exception as e:
@@ -96,7 +94,7 @@ class ModelWindow(QMainWindow):
             print(f"Prediction error: {e}")
 
     def show_kelly_bet(self):
-        final_allocations = calculate_kelly_allocations(MODEL_MAP["A"]["version"])
+        final_allocations = calculate_kelly_allocations("A", False)
 
         self.third_layout.addWidget(QLabel("Ticker"), 0, 0)
         self.third_layout.addWidget(QLabel("Allocation"), 0, 1)

@@ -11,12 +11,13 @@ import traceback
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
-                    model=MODEL_MAP["A"]["prefix"], tuning_period = None):
+                    model_version="A", tuning_period = None):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
     daily_pnl_reports = {}
-
+    model_prefix = MODEL_MAP[model_version]["prefix"]
+    is_quantized = "quantized" in MODEL_MAP[model_version]["filepath"]
     try:
         start_date = pd.to_datetime(start_date_str)
 
@@ -50,13 +51,13 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             #TODO: make it trian after i buy on firday to make faster
             if is_tuning_day(current_day, tuning_period):
-                ok = tune(model, prev_day)
+                ok = tune(model_prefix, prev_day)
                 if not ok:
                     print("tune was not successful")
                     return None
 
             if trading_today:
-                kelly_allocations = calculate_kelly_allocations(model, current_day)
+                kelly_allocations = calculate_kelly_allocations(model_prefix, is_quantized, current_day)
                 if not kelly_allocations:
                     print("no kelly allocations")
                     return None
@@ -155,7 +156,8 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                     portfolio_df.loc[date_range[i+1], 'Cash_At_Open'] = cash_for_trading
 
             print(current_day, " total at close: ", total_value)
-            if model == MODEL_MAP["C"]["prefix"]:
+
+            if model_version == "C":
                 mode = "a" if os.path.exists("nyberg_results_static_quantized.csv") else "w"
                 header = not os.path.exists("nyberg_results_static_quantized.csv")
 
@@ -170,7 +172,9 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                 )
                 print(portfolio_df.loc[current_day])
 
-        if model == MODEL_MAP["A"]["prefix"]:
+
+
+        if model_version == "A":
             file_path = 'backtest_portfolio_PL.xlsx'
             writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
 
@@ -202,14 +206,14 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 def continue_backtest(version, tuning_period=None):
 
-    model = MODEL_MAP[version]["prefix"]
+
     file_path = MODEL_MAP[version]["filepath"]
     data = pd.read_csv(file_path, index_col=0)
-    print(data, " in model ", model)
+    print(data, " in model ", version)
     data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
     start_date = data.index[-1]
 
-    print("start date: ", start_date, " in ", model)
+    print("start date: ", start_date, " in ", version)
     last_day_total_value = data.loc[start_date, 'Total_Value_At_Close']
 
 
@@ -222,7 +226,7 @@ def continue_backtest(version, tuning_period=None):
         return
 
     start_date_str = start_date.strftime('%m/%d/%Y')
-    print("START: ", start_date_str, " using ", model)
+    print("START: ", start_date_str, " using ", version)
     print("-" * 50)
     print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
     print(f"New initial capital: ${last_day_total_value:,.2f}")
@@ -231,7 +235,7 @@ def continue_backtest(version, tuning_period=None):
     new_results_df = handle_backtest(
         start_date_str=start_date_str,
         initial_capital=last_day_total_value,
-        model=model,
+        model_version=version,
         tuning_period=tuning_period
     )
 

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSpacerItem, QSizePolicy
 from app.search.ticker_lookup import lookup_tickers
-from app.ml_logic.tester import handle_backtest, continue_backtest
+from app.ml_logic.tester import continue_backtest
 from app.db.db_handler import DB, init_db
 from app.data.data_cache import get_yfdata_cache
 import pandas as pd
