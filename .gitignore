@@ -22,3 +22,6 @@ backtest_results_jan.xlsx
 *.spec
 build/
 dist/
+
+nyberg_static.pth
+tuned_model.pth
