@@ -1,13 +1,13 @@
 from PySide6.QtWidgets import QApplication
 from app.ui import start_application
 
-
 ## pyinstaller app/main.py --onedir --name stock_screener
 
 ## alt do --onefile for cleaner exp but slowwwwwwwwwwww
 
 ## docker-compose up -d
 ## --build
+
 
 def main():
     app = QApplication([])

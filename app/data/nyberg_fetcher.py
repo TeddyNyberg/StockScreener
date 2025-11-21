@@ -36,5 +36,5 @@ def get_nyberg_name(ticker):
 
 def _read_nyberg_file(ticker):
     version = ticker[7]
-    filepath = MODEL_MAP[version]["filepath"]
+    filepath = MODEL_MAP[version]["csv_filepath"]
     return pd.read_csv(filepath, index_col=0, parse_dates=True)

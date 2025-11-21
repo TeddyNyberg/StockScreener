@@ -15,7 +15,7 @@ S3_CLIENT = boto3.client(
     )
 
 # for static model use model_key= MODEL_MAP["A"]["prefix"]
-def load_model_artifacts(model_key = MODEL_MAP["A"]["prefix"]):
+def load_model_artifacts_s3(model_key = MODEL_MAP["A"]["s3_prefix"]):
     global MODEL_CACHE
 
     if model_key in MODEL_CACHE:
@@ -60,7 +60,7 @@ def load_model_artifacts(model_key = MODEL_MAP["A"]["prefix"]):
     return MODEL_STATE_DICT, CONFIG
 
 
-def save_model_artifacts(s3_key, model_state_dict, config):
+def save_model_artifacts_s3(s3_key, model_state_dict, config):
 
     checkpoint = {
         "model_state": model_state_dict,
@@ -82,3 +82,31 @@ def save_model_artifacts(s3_key, model_state_dict, config):
     except Exception as e:
         print(f"Error saving model to S3 at {s3_key}: {e}")
 
+
+
+def save_model_artifacts(model_state_dict, config, filename):
+    checkpoint = {
+        "model_state": model_state_dict,
+        "config": config
+    }
+    torch.save(checkpoint, filename)
+    MODEL_CACHE[filename] = (model_state_dict, config)
+
+def load_model_artifacts(filename):
+    global MODEL_CACHE
+
+    if filename in MODEL_CACHE:
+        print(f"Using cached model artifacts for: {filename}")
+        return MODEL_CACHE[filename]
+
+    loaded_data = torch.load(filename)
+
+    loaded_state_dict = loaded_data.get("model_state")
+    loaded_config = loaded_data.get("config")
+
+    if loaded_state_dict is None:
+        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+
+    MODEL_CACHE[filename] = (loaded_state_dict, loaded_config)
+
+    return loaded_state_dict, loaded_config

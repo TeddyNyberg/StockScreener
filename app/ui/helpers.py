@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSpacerItem, QSizePolicy
+
 from app.search.ticker_lookup import lookup_tickers
 from app.ml_logic.tester import continue_backtest
 from app.db.db_handler import DB, init_db
@@ -6,14 +7,8 @@ from app.data.data_cache import get_yfdata_cache
 import pandas as pd
 import threading
 
-from app.data.ticker_source import get_sp500_tickers
-from app.data.yfinance_fetcher import get_historical_data
-from app.utils import get_date_range
 import time
-import torch
 
-from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
-from config import *
 # just window stuff how it looks, buttons, etc.
 
 open_detail_windows = []
@@ -22,12 +17,13 @@ def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
     #print_model_characteristics("NYBERG-A")
-
-    backtest_thread = threading.Thread(target=background_backtesting, args=[])
-    backtest_thread.daemon = True
-    backtest_thread.start()
     with DB() as conn:
         init_db(conn)
+
+    background_backtesting()
+    #backtest_thread = threading.Thread(target=background_backtesting, args=[])
+    #backtest_thread.daemon = True
+    #backtest_thread.start()
     window = MainWindow()
     window.show()
 

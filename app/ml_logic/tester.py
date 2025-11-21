@@ -16,8 +16,8 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
     daily_pnl_reports = {}
-    model_prefix = MODEL_MAP[model_version]["prefix"]
-    is_quantized = "quantized" in MODEL_MAP[model_version]["filepath"]
+    is_quantized = "QUANTIZED" in MODEL_MAP[model_version]["name"]
+    filepath = MODEL_MAP[model_version]["model_filepath"]
     try:
         start_date = pd.to_datetime(start_date_str)
 
@@ -51,13 +51,13 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             #TODO: make it trian after i buy on firday to make faster
             if is_tuning_day(current_day, tuning_period):
-                ok = tune(model_prefix, prev_day)
+                ok = tune(filepath, prev_day)
                 if not ok:
                     print("tune was not successful")
                     return None
 
             if trading_today:
-                kelly_allocations = calculate_kelly_allocations(model_prefix, is_quantized, current_day)
+                kelly_allocations = calculate_kelly_allocations(model_version, is_quantized, current_day)
                 if not kelly_allocations:
                     print("no kelly allocations")
                     return None
@@ -207,7 +207,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 def continue_backtest(version, tuning_period=None):
 
 
-    file_path = MODEL_MAP[version]["filepath"]
+    file_path = MODEL_MAP[version]["csv_filepath"]
     data = pd.read_csv(file_path, index_col=0)
     print(data, " in model ", version)
     data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
