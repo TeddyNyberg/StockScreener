@@ -4,7 +4,7 @@
 # job interact w yfinance api
 
 import yfinance as yf
-import pandas as pd
+from datetime import timedelta
 
 
 # this may lead to errors, understand some may want ticker col some dont
@@ -20,20 +20,9 @@ def get_info(ticker):
 
 # Ensure `date` is a string like '2024-10-15'
 def get_close_on(ticker, date):
-    date = pd.to_datetime(date)
-    next_day = date + pd.Timedelta(days=1)
-    data = yf.Ticker(ticker).history(start=date, end=next_day)
+    data = yf.Ticker(ticker).history(start=date, end=date + timedelta(days=1))
     if not data.empty:
         return data["Close"].iloc[0]
-    else:
-        return None
-
-def get_open_on(ticker, date):
-    date = pd.to_datetime(date)
-    next_day = date + pd.Timedelta(days=1)
-    data = yf.Ticker(ticker).history(start=date, end=next_day)
-    if not data.empty:
-        return data["Open"].iloc[0]
     else:
         return None
 

@@ -1,18 +1,28 @@
-from PySide6.QtWidgets import QApplication
-from app.ui import start_application
+from app.ml_logic.tester import continue_backtest
 
-## pyinstaller app/main.py --onedir --name stock_screener
-
-## alt do --onefile for cleaner exp but slowwwwwwwwwwww
-
-## docker-compose up -d
-## --build
-
+def background_backtesting():
+    continue_backtest("A")
+    continue_backtest("B", "weekly")
+    continue_backtest("C")
 
 def main():
+    print("IN MAIN")
+    #This will chnage eventually
+    background_backtesting()
+    # backtest_thread = threading.Thread(target=background_backtesting, args=[])
+    # backtest_thread.daemon = True
+    # backtest_thread.start()
+
+    from PySide6.QtWidgets import QApplication
+    from app.ui import start_application
+
     app = QApplication([])
     start_application()
     app.exec()
+
+
+if __name__ == "__main__":
+    main()
 
 
 
@@ -54,6 +64,9 @@ def initialize_database():
     return all_stock_data
 """
 
-if __name__ == "__main__":
-    main()
+## pyinstaller app/main.py --onedir --name stock_screener
 
+## alt do --onefile for cleaner exp but slowwwwwwwwwwww
+
+## docker-compose up -d
+## --build

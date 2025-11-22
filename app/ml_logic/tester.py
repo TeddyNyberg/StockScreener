@@ -1,17 +1,21 @@
-import pandas as pd
-from pandas.tseries.offsets import CustomBusinessDay
-from app.data.yfinance_fetcher import get_close_on
-from app.ml_logic.strategy import calculate_kelly_allocations, tune
 from config import *
-from app.ml_logic.helpers import is_tuning_day
 from datetime import datetime
 import os
-import numpy as np
 import traceback
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
                     model_version="A", tuning_period = None):
+
+    import numpy as np
+    import pandas as pd
+    from app.data.yfinance_fetcher import get_close_on
+    from app.ml_logic.strategy import calculate_kelly_allocations, tune
+    from app.ml_logic.helpers import is_tuning_day
+
+
+
+
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -57,7 +61,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                     return None
 
             if trading_today:
-                kelly_allocations = calculate_kelly_allocations(model_version, is_quantized, current_day)
+                kelly_allocations, all_closes = calculate_kelly_allocations(model_version, is_quantized, current_day)
                 if not kelly_allocations:
                     print("no kelly allocations")
                     return None
@@ -71,7 +75,8 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                 for ticker, kelly_fraction, _ in kelly_allocations:
                     target_value = total_capital_available * kelly_fraction
                     # buy at prev days close
-                    close_price = get_close_on(ticker, prev_day)
+                    close_price = all_closes[ticker]
+
 
                     if close_price is not None:
                         buy_value = min(target_value, cash_for_trading)
@@ -106,6 +111,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
             total_value = cash_for_trading
 
             tickers_to_remove = list(new_holdings.keys())
+            #TODO: again, get all selling data at once, or get it with the other data? nawww
             for ticker in tickers_to_remove: #LIQUIDATE, SELL AT EOD
                 holding = new_holdings.get(ticker, {})
                 shares = holding.get("shares", 0)
@@ -157,20 +163,6 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             print(current_day, " total at close: ", total_value)
 
-            if model_version == "C":
-                mode = "a" if os.path.exists("nyberg_results_static_quantized.csv") else "w"
-                header = not os.path.exists("nyberg_results_static_quantized.csv")
-
-                portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] = \
-                    (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
-
-                portfolio_df.loc[current_day:current_day].to_csv(
-                    "nyberg_results_static_quantized.csv",
-                    mode=mode,
-                    header=header,
-                    date_format="%m/%d/%Y"
-                )
-                print(portfolio_df.loc[current_day])
 
 
 
@@ -205,35 +197,34 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 #TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
 def continue_backtest(version, tuning_period=None):
-
+    import pandas as pd
 
     file_path = MODEL_MAP[version]["csv_filepath"]
-    data = pd.read_csv(file_path, index_col=0)
-    print(data, " in model ", version)
+    data = pd.read_csv(file_path, index_col=0, parse_dates=True)
     data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
-    start_date = data.index[-1]
-
-    print("start date: ", start_date, " in ", version)
-    last_day_total_value = data.loc[start_date, 'Total_Value_At_Close']
 
 
-    today = pd.to_datetime(datetime.now().strftime('%m/%d/%Y'))
-    business_day_offset = CustomBusinessDay(n=1)
-    most_recent_business_day = today - business_day_offset
-    print(most_recent_business_day, "mrbd")
-    if start_date >= most_recent_business_day:
+    last_day_tested = data.index.max()
+    print("start date: ", last_day_tested, " in ", version)
+    last_day_total_value = data.loc[last_day_tested, 'Total_Value_At_Close']
+
+
+    today = pd.Timestamp(datetime.now().date())
+    last_trading_day = today - pd.offsets.BDay(1)
+
+    print(last_trading_day, "ltd")
+    if last_day_tested.normalize() >= last_trading_day.normalize():
         print("Backtest is already up-to-date. No new trading days to process.")
         return
 
-    start_date_str = start_date.strftime('%m/%d/%Y')
-    print("START: ", start_date_str, " using ", version)
     print("-" * 50)
-    print(f"Last backtest day: {start_date_str} with total value: ${last_day_total_value:,.2f}")
+    print(f"Last backtest day: {last_day_tested} with total value: ${last_day_total_value:,.2f}")
+    #if error w last day total value, check csv if repeated dates
     print(f"New initial capital: ${last_day_total_value:,.2f}")
     print("-" * 50)
 
     new_results_df = handle_backtest(
-        start_date_str=start_date_str,
+        start_date_str=last_day_tested.strftime('%m/%d/%Y'),
         initial_capital=last_day_total_value,
         model_version=version,
         tuning_period=tuning_period

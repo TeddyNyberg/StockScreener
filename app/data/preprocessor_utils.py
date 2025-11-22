@@ -2,7 +2,7 @@
 import torch
 from torch.utils.data import Dataset
 import numpy as np
-
+from config import *
 
 
 def create_sequences(data, sequence_length):
@@ -74,3 +74,15 @@ class StockDataset(Dataset): # make iterable instead?
 
     def __getitem__(self, idx):
         return self.data[idx]
+
+def prepare_data_for_prediction(data, ticker):
+    if len(data) < SEQUENCE_SIZE:
+        raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQUENCE_SIZE} points, got {len(data)}.")
+
+    latest_close_price = data.iloc[-1]
+    input_sequence = data[-SEQUENCE_SIZE:]
+
+    normalized_window, mean, std = normalize_window(input_sequence)
+    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0).unsqueeze(2)
+
+    return input_tensor, latest_close_price, mean, std

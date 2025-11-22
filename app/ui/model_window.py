@@ -94,7 +94,7 @@ class ModelWindow(QMainWindow):
             print(f"Prediction error: {e}")
 
     def show_kelly_bet(self):
-        final_allocations = calculate_kelly_allocations("A", False)
+        final_allocations, _ = calculate_kelly_allocations("A", False)
 
         self.third_layout.addWidget(QLabel("Ticker"), 0, 0)
         self.third_layout.addWidget(QLabel("Allocation"), 0, 1)

@@ -19,11 +19,6 @@ def start_application():
     #print_model_characteristics("NYBERG-A")
     with DB() as conn:
         init_db(conn)
-
-    background_backtesting()
-    #backtest_thread = threading.Thread(target=background_backtesting, args=[])
-    #backtest_thread.daemon = True
-    #backtest_thread.start()
     window = MainWindow()
     window.show()
 
@@ -81,10 +76,7 @@ def lookup_and_open_details(ticker, display_error_func=None):
     open_window_from_ticker(result)
 
 
-def background_backtesting():
-    continue_backtest("A")
-    continue_backtest("B", "weekly")
-    continue_backtest("C")
+
 
 
 #TODO: this may go into search helpers....
