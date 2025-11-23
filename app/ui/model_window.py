@@ -113,7 +113,7 @@ class ModelWindow(QMainWindow):
 
         print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a, _ in final_allocations) * 100:.2f}%")
 
-        start, end = get_date_range("6M")
+        start, end = get_date_range("1M")
         goog = get_historical_data("GOOG", start, end) # sanity check, shows latest data available for model
         print(goog.tail(1))
 

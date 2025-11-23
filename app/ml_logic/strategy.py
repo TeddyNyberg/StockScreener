@@ -85,13 +85,10 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
         return None
     volatility_series = get_all_volatilities(all_vol_data)
 
-
-
     kelly_tasks = []
     for ticker, predicted_delta in predictions:
         sigma_squared = volatility_series.get(ticker, -1)
         kelly_tasks.append((ticker, predicted_delta, sigma_squared))
-
 
     max_workers = os.cpu_count() or 4
     print(f"Starting parallel kelly alloc for {len(kelly_tasks)} tickers using {max_workers} processes.")
