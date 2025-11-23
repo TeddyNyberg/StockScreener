@@ -7,6 +7,7 @@ from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, f
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
 from config import *
+import numpy as np
 
 
 
@@ -74,8 +75,8 @@ def get_all_volatilities(all_data):
 
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None):
-
-    from app.ml_logic.workers.kelly_worker import kelly_worker
+    import pandas as pd
+    from config import RISK_FREE_RATE, HALF_KELLY_MULTIPLIER
 
     predictions, all_vol_data = optimal_picks(model_version, is_quantized, end)
     all_closes = all_vol_data.iloc[-1]
@@ -85,41 +86,50 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
         return None
     volatility_series = get_all_volatilities(all_vol_data)
 
-    kelly_tasks = []
+    tickers = []
+    mu_list = []
+    s2_list = []
+
     for ticker, predicted_delta in predictions:
         sigma_squared = volatility_series.get(ticker, -1)
-        kelly_tasks.append((ticker, predicted_delta, sigma_squared))
+        tickers.append(ticker)
+        mu_list.append(predicted_delta)
+        s2_list.append(sigma_squared)
 
-    max_workers = os.cpu_count() or 4
-    print(f"Starting parallel kelly alloc for {len(kelly_tasks)} tickers using {max_workers} processes.")
-    kelly_allocations = []
+    mus = pd.Series(mu_list, index=tickers)
+    sigma_squareds = pd.Series(s2_list, index=tickers)
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        results = executor.map(
-            kelly_worker,
-            kelly_tasks
-        )
+    valid_mask = (sigma_squareds > 0) & (~np.isnan(sigma_squareds)) & (~np.isnan(mus))
 
-        kelly_allocations = [result for result in results if result is not None]
+    valid_mus = mus[valid_mask]
+    valid_sigma_squareds = sigma_squareds[valid_mask]
 
-    total_allocation = sum(allocation for _, allocation, _, _ in kelly_allocations)
+    kelly_fraction = (valid_mus - RISK_FREE_RATE) / valid_sigma_squareds
+
+    allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+    kelly_allocations_series = np.clip(allocation, 0.0, 1.0)
+
+    final_allocations_series = kelly_allocations_series[kelly_allocations_series > 0.0]
+
+
+    total_allocation = final_allocations_series.sum()
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
 
     print("\n--- Continuous Kelly-Based Position Sizing ---")
     print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
     print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
 
-    final_allocations_unsorted = []
-    for ticker, allocation, mu, sigma_squared in kelly_allocations:
-        normalized_allocation = allocation * normalization_factor
-        if normalized_allocation > 0:
-            final_allocations_unsorted.append((ticker, normalized_allocation, mu))
-            print(
-                f"Stock: {ticker}, μ: {mu:+.4f}, σ²: {sigma_squared:.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+    normalized_allocations = final_allocations_series * normalization_factor
 
-    #TODO see how this work behind the scenes maybe have workers reutnr sorted lsit
-    #also doesnt NEED to be sorted
-    final_allocations = sorted(final_allocations_unsorted, key=lambda x: x[1], reverse=True)
+    final_allocations = []
+
+    for ticker, normalized_allocation in normalized_allocations.items():
+        mu = mus.loc[ticker]
+        final_allocations.append((ticker, normalized_allocation, mu))
+        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+
+
+    final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
 
     return final_allocations, all_closes
 
