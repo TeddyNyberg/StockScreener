@@ -35,6 +35,8 @@ Achievements
       - Data-level parallelization across the CPU's multi-core architecture
       - More efficient data-loading
   - This speed increase does NOT include the model quantization which will also increase speed but is currently untested
+  - Enhanced stability and scalability. Resolved critical memory error on Windows spawned processes.
+
 
 
 
