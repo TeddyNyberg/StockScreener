@@ -23,7 +23,6 @@ def quantized_prediction_worker(ticker, input_tensor, latest_close_price, mean, 
         raise Exception(f"Prediction failed for {ticker}: {e}")
 
 def prediction_worker(ticker, input_tensor, latest_close_price, mean, std, model):
-    print("GOT TO PRED WORKER")
     try:
         with torch.no_grad():
             normalized_prediction = model(input_tensor)
