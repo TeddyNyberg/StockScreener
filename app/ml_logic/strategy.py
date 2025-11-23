@@ -12,11 +12,11 @@ import numpy as np
 
 
 
-def optimal_picks(model_version, is_quantized, today=None):
+def optimal_picks(model_version, is_quantized, today=None, new_method=False):
 
     filepath = MODEL_MAP[model_version]["model_filepath"]
     model_state_dict, config = load_model_artifacts(filepath)
-    model, _ = setup_pred_model(model_state_dict, config, is_quantized)
+    model = setup_pred_model(model_state_dict, config, is_quantized)
     start, end = get_date_range(lookback_period, today)
 
     sp_tickers = get_sp500_tickers()
@@ -31,7 +31,7 @@ def optimal_picks(model_version, is_quantized, today=None):
     for ticker in processed_tickers:
         try:
             prediction_data = all_close_data[ticker].tail(SEQUENCE_SIZE)
-            input_tensor, latest_close_price, mean, std = prepare_data_for_prediction(prediction_data, ticker)
+            input_tensor, latest_close_price, mean, std = prepare_data_for_prediction(prediction_data)
             tasks.append({
                 "ticker": ticker,
                 "input_tensor": input_tensor,
@@ -48,6 +48,7 @@ def optimal_picks(model_version, is_quantized, today=None):
     else:
         all_predictions = setup_for_pred(tasks, model)
 
+
     return all_predictions, all_close_data
 
 def predict_single_ticker(ticker):
@@ -56,7 +57,7 @@ def predict_single_ticker(ticker):
     start, end = get_date_range("3M")
     data = get_historical_data(ticker, start, end)
     close_data = data["Close"]
-    input_tensor, _, mean, std = prepare_data_for_prediction(close_data, ticker)
+    input_tensor, _, mean, std = prepare_data_for_prediction(close_data)
     prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
 
     print(f"Predicted value: {prediction}")
@@ -69,7 +70,6 @@ def get_all_volatilities(all_data):
 
     daily_variance = returns_df.var()
     annualized_variance_series = daily_variance * 252 #252 trading days
-
 
     return annualized_variance_series
 
@@ -100,17 +100,14 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
     sigma_squareds = pd.Series(s2_list, index=tickers)
 
     valid_mask = (sigma_squareds > 0) & (~np.isnan(sigma_squareds)) & (~np.isnan(mus))
-
     valid_mus = mus[valid_mask]
     valid_sigma_squareds = sigma_squareds[valid_mask]
 
     kelly_fraction = (valid_mus - RISK_FREE_RATE) / valid_sigma_squareds
-
     allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
     kelly_allocations_series = np.clip(allocation, 0.0, 1.0)
 
     final_allocations_series = kelly_allocations_series[kelly_allocations_series > 0.0]
-
 
     total_allocation = final_allocations_series.sum()
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
@@ -127,7 +124,6 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
         mu = mus.loc[ticker]
         final_allocations.append((ticker, normalized_allocation, mu))
         print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
-
 
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
 

@@ -8,7 +8,7 @@ def quantized_prediction_worker(ticker, input_tensor, latest_close_price, mean, 
     global _model_cache
 
     if _model_cache is None:
-        model, _ = setup_pred_model(model_state_dict, config, True)
+        model = setup_pred_model(model_state_dict, config, True)
         _model_cache = model
     model = _model_cache
     try:

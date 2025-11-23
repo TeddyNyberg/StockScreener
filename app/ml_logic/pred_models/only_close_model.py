@@ -335,4 +335,4 @@ def setup_pred_model(model_state_dict, config, is_quantized):
         model.share_memory()
         print("shared mem")
 
-    return model, device
+    return model

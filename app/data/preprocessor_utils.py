@@ -75,9 +75,7 @@ class StockDataset(Dataset): # make iterable instead?
     def __getitem__(self, idx):
         return self.data[idx]
 
-def prepare_data_for_prediction(data, ticker):
-    if len(data) < SEQUENCE_SIZE:
-        raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQUENCE_SIZE} points, got {len(data)}.")
+def prepare_data_for_prediction(data):
 
     latest_close_price = data.iloc[-1]
     input_sequence = data[-SEQUENCE_SIZE:]
