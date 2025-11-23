@@ -31,10 +31,11 @@ Goals
 
 Achievements
   - 19.8% gain YTD as of 11/19/2025, outperforming the S&P Total Return by 9.6 points
-  - 73% speed increase (compared to intial model - commit 60f7cb4)
+  - 85% speed increase (compared to intial model - commit 60f7cb4)
       - Data-level parallelization across the CPU's multi-core architecture
       - More efficient data-loading
   - This speed increase does NOT include the model quantization which will also increase speed but is currently untested
+
 
 
 
