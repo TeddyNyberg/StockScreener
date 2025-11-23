@@ -12,20 +12,15 @@ import time
 open_detail_windows = []
 
 def start_application():
+
+
+
     from app.ui.main_window import MainWindow
     print("Starting app...")
     #print_model_characteristics("NYBERG-A")
 
 
-    start = time.perf_counter()
-    continue_backtest("D", switch_new=True)
-    end = time.perf_counter()
-    print("Elapsed OLD: ", end - start)
 
-    start = time.perf_counter()
-    continue_backtest("D", switch_new=False)
-    end = time.perf_counter()
-    print("Elapsed NEW: ", end - start)
 
 
 

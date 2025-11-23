@@ -9,7 +9,7 @@ from app.data.preprocessor_utils import to_seq, normalize_window
 from app.data.s3_handler import DataHandler
 from config import *
 import numpy as np
-import torch.ao.quantization as quantization
+from torchao.quantization import quantize_, Int8DynamicActivationInt8WeightConfig
 
 class StockTransformerModel(nn.Module):
     def __init__(self, num_features_in, embedding_dim, max_len=50, num_layers=3):
@@ -323,6 +323,7 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
 
 
 def setup_pred_model(model_state_dict, config, is_quantized):
+
     device = torch.device("cpu")
 
     model = StockTransformerModel(
@@ -333,13 +334,14 @@ def setup_pred_model(model_state_dict, config, is_quantized):
 
     model.load_state_dict(model_state_dict)
     model.eval()
-
     if is_quantized:
-        model = quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+        quantize_(model, Int8DynamicActivationInt8WeightConfig())
     model.to(device)
 
     if hasattr(model.positional_encoding, 'pe'):
         model.positional_encoding.pe = model.positional_encoding.pe.to(device)
-    model.share_memory()
+    if not is_quantized:
+        model.share_memory()
+        print("shared mem")
 
     return model, device

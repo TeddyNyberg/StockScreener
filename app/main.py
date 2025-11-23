@@ -1,5 +1,4 @@
-from PySide6.QtWidgets import QApplication
-from app.ui import start_application
+from config import *
 
 
 ## pyinstaller app/main.py --onedir --name stock_screener
@@ -10,6 +9,23 @@ from app.ui import start_application
 ## --build
 
 def main():
+    from app.ml_logic.strategy import calculate_kelly_allocations, calculate_kelly_allocations_new
+
+    import time
+    start = time.perf_counter()
+    for i in range(5):
+        calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
+    end = time.perf_counter()
+    print("Elapsed OLD: ", end - start)
+
+    start = time.perf_counter()
+    for i in range(5):
+        calculate_kelly_allocations_new("A", False)
+    end = time.perf_counter()
+    print("Elapsed NEW: ", end - start)
+
+    from PySide6.QtWidgets import QApplication
+    from app.ui import start_application
     app = QApplication([])
     start_application()
     app.exec()

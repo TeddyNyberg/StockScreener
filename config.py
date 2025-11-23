@@ -23,17 +23,22 @@ S_AND_P_URL = "https://stockanalysis.com/list/sp-500-stocks/"
 MODEL_MAP = {
     "A": {
         "name": "NYBERG STATIC MODEL",
-        "filepath": "nyberg_results_static.csv",
-        "prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
+        "csv_filepath": "nyberg_results_static.csv",
+        "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
+        "prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
+        "model_filepath": "nyberg_static.pth"
+
     },
     "B": {
         "name": "NYBERG TUNED MODEL",
-        "filepath": "nyberg_results_tune.csv",
-        "prefix": "fine_tuned_models/only_close_model_original_not_fine_tuned.gz"
+        "csv_filepath": "nyberg_results_tune.csv",
+        "s3_prefix": "fine_tuned_models/only_close_model_original_not_fine_tuned.gz",
+        "model_filepath": "tuned_model.pth"
     },
-    "D": {
-        "name": "NYBERG TEST MODEL",
-        "filepath": "testing.csv",
-        "prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz"
+    "C":{
+        "name": "NYBERG STATIC QUANTIZED MODEL",
+        "csv_filepath": "nyberg_results_static_quantized.csv",
+        "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
+        "model_filepath": "nyberg_static.pth"
     }
 }

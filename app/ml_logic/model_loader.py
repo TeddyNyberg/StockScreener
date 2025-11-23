@@ -81,3 +81,23 @@ def save_model_artifacts(model_state_dict, config, s3_key):
         print(f"Model artifacts successfully saved to s3://{S3_TRAINING_BUCKET}/{s3_key}")
     except Exception as e:
         print(f"Error saving model to S3 at {s3_key}: {e}")
+
+
+def load_model_artifacts_local(filename):
+    global MODEL_CACHE
+
+    if filename in MODEL_CACHE:
+        print(f"Using cached model artifacts for: {filename}")
+        return MODEL_CACHE[filename]
+
+    loaded_data = torch.load(filename)
+
+    loaded_state_dict = loaded_data.get("model_state")
+    loaded_config = loaded_data.get("config")
+
+    if loaded_state_dict is None:
+        raise KeyError("Could not find 'model_state' key in the loaded dictionary.")
+
+    MODEL_CACHE[filename] = (loaded_state_dict, loaded_config)
+
+    return loaded_state_dict, loaded_config

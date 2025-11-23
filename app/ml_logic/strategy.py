@@ -2,10 +2,10 @@ import torch
 import pandas as pd
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
-from app.data.preprocessor_utils import normalize_window, to_seq
+from app.data.preprocessor_utils import normalize_window, to_seq, prepare_data_for_prediction
 from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model
 from app.utils import get_date_range
-from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
+from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts, load_model_artifacts_local
 
 from config import *
 
@@ -82,16 +82,11 @@ def _prepare_data_for_prediction(ticker, start, end):
 
 
 def calculate_kelly_allocations(model, end=None):
-
-    # if end is none, get range until today, end = today
-    # if end is not none, backtest
     start, end = get_date_range(lookback_period, end)
-
     predictions, spy_delta = optimal_picks(model, end)
     if not predictions:
         print("No predictions available to calculate Kelly bets.")
         return None
-
     kelly_allocations = []
     for ticker, predicted_delta in predictions:
         mu = predicted_delta
@@ -103,8 +98,6 @@ def calculate_kelly_allocations(model, end=None):
             if sigma_squared is None or math.isnan(sigma_squared) or sigma_squared <= 0:
                 print(f"Skipping {ticker}: sigma^2 is NaN or vol neg")
                 continue
-
-            # Ensure variance is positive to avoid division by zero or errors
             if sigma_squared <= 0:
                 print(f"Skipping {ticker}: Volatility (sigma^2) is zero or negative.")
                 continue
@@ -124,8 +117,6 @@ def calculate_kelly_allocations(model, end=None):
 
             kelly_allocations.append((ticker, allocation, mu, sigma_squared))
         except Exception as e:
-            # Handle any failure during volatility calculation and skip the ticker for the day.
-
             print(f"Warning {model}: Skipping {ticker} from Kelly allocation due to data/calculation error: {e}")
             continue
 
@@ -203,17 +194,16 @@ def kelly_worker(triple):
         return None
 
 
-def optimal_picks_new(model_prefix, today = pd.Timestamp.today().normalize()):
-    model_state_dict, config = load_model_artifacts(model_prefix)
-    is_quantized = "quantized" in model_prefix
-    model, device = setup_pred_model(model_state_dict, config, is_quantized)
+def optimal_picks_new(model_version, is_quantized, today=None):
 
+    filepath = MODEL_MAP[model_version]["model_filepath"]
+    model_state_dict, config = load_model_artifacts_local(filepath)
+    model, _ = setup_pred_model(model_state_dict, config, is_quantized)
     start, end = get_date_range(lookback_period, today)
 
     sp_tickers = get_sp500_tickers()
     if not sp_tickers:
         return None, None
-    sp_tickers.append("^SPX")
 
     processed_tickers = [t.replace(".", "-") for t in sp_tickers]
     all_historical_data = get_historical_data(processed_tickers, start, end)
@@ -223,11 +213,10 @@ def optimal_picks_new(model_prefix, today = pd.Timestamp.today().normalize()):
     for ticker in processed_tickers:
         try:
             prediction_data = all_close_data[ticker].tail(SEQUENCE_SIZE)
-            input_tensor, latest_close_price, mean, std = _prepare_data_for_prediction_new(prediction_data, ticker)
-            input_tensor.share_memory_()
+            input_tensor, latest_close_price, mean, std = prepare_data_for_prediction(prediction_data, ticker)
             tasks.append({
                 "ticker": ticker,
-                "input_tensor": input_tensor.to(device),
+                "input_tensor": input_tensor,
                 "latest_close_price": latest_close_price,
                 "mean": mean,
                 "std": std
@@ -236,51 +225,20 @@ def optimal_picks_new(model_prefix, today = pd.Timestamp.today().normalize()):
             print(f"Warning: Skipping {ticker} for prediction due to data/network error: {e}")
             continue
 
-    all_predictions = []
-    max_workers = os.cpu_count() or 4
-    print(f"Starting parallel prediction for {len(tasks)} tickers using {max_workers} processes.")
+    if is_quantized:
+        all_predictions = setup_quantized(tasks, model_state_dict, config)
+    else:
+        all_predictions = setup_for_pred(tasks, model)
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(
-                threaded_prediction_worker,
-                t["ticker"],
-                t["input_tensor"],
-                t["latest_close_price"],
-                t["mean"],
-                t["std"],
-                model
-            ): t["ticker"] for t in tasks
-        }
-
-        spx = None
-        for future in concurrent.futures.as_completed(futures):
-            ticker = futures[future]
-            try:
-                result = future.result()
-                all_predictions.append(result)
-                if ticker == "^SPX":
-                    spx = result
-            except Exception as e:
-                print(f"Warning: Skipping {ticker} due to process error: {e}")
-
-    return all_predictions, spx, all_close_data
-
-def _prepare_data_for_prediction_new(data, ticker):
-    if len(data) < SEQUENCE_SIZE:
-        raise ValueError(f"Insufficient data for {ticker}. Need at least {SEQUENCE_SIZE} points, got {len(data)}.")
-
-    latest_close_price = data.iloc[-1]
-    input_sequence = data[-SEQUENCE_SIZE:]
-
-    normalized_window, mean, std = normalize_window(input_sequence)
-    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0).unsqueeze(2)
-
-    return input_tensor, latest_close_price, mean, std
+    return all_predictions, all_close_data
 
 
-def calculate_kelly_allocations_new(model, end=None):
-    predictions, spy_delta, all_vol_data = optimal_picks_new(model, end)
+def calculate_kelly_allocations_new(model_version, is_quantized, end=None):
+
+    from app.ml_logic.workers.kelly_worker import kelly_worker
+
+    predictions, all_vol_data = optimal_picks_new(model_version, is_quantized, end)
+    all_closes = all_vol_data.iloc[-1]
 
     if not predictions:
         print("No predictions available to calculate Kelly bets.")
@@ -293,8 +251,9 @@ def calculate_kelly_allocations_new(model, end=None):
         kelly_tasks.append((ticker, predicted_delta, sigma_squared))
 
     max_workers = os.cpu_count() or 4
-
     print(f"Starting parallel kelly alloc for {len(kelly_tasks)} tickers using {max_workers} processes.")
+    kelly_allocations = []
+
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
         results = executor.map(
             kelly_worker,
@@ -318,9 +277,11 @@ def calculate_kelly_allocations_new(model, end=None):
             print(
                 f"Stock: {ticker}, μ: {mu:+.4f}, σ²: {sigma_squared:.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
+    #TODO see how this work behind the scenes maybe have workers reutnr sorted lsit
+    #also doesnt NEED to be sorted
     final_allocations = sorted(final_allocations_unsorted, key=lambda x: x[1], reverse=True)
 
-    return final_allocations
+    return final_allocations, all_closes
 
 def get_all_volatilities(all_data):
     returns_df = all_data.pct_change(fill_method=None)
@@ -330,5 +291,62 @@ def get_all_volatilities(all_data):
     daily_variance = returns_df.var()
     annualized_variance_series = daily_variance * 252 #252 trading days
 
-
     return annualized_variance_series
+
+
+
+
+def setup_quantized(tasks, model_state_dict, config):
+    from app.ml_logic.workers.prediction_worker import quantized_prediction_worker
+    all_predictions = []
+    max_workers = os.cpu_count() or 4
+    print(f"Starting parallel prediction for {len(tasks)} tickers using {max_workers} processes.")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(
+                quantized_prediction_worker,
+                t["ticker"],
+                t["input_tensor"],
+                t["latest_close_price"],
+                t["mean"],
+                t["std"],
+                model_state_dict,
+                config
+            ): t["ticker"] for t in tasks
+        }
+
+        for future in concurrent.futures.as_completed(futures):
+            ticker = futures[future]
+            try:
+                result = future.result()
+                all_predictions.append(result)
+            except Exception as e:
+                print(f"Warning: Skipping {ticker} due to process error: {e}")
+    return all_predictions
+
+def setup_for_pred(tasks, model):
+    from app.ml_logic.workers.prediction_worker import prediction_worker
+    all_predictions = []
+    max_workers = os.cpu_count() or 4
+    print(f"Starting parallel prediction for {len(tasks)} tickers using {max_workers} processes.")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(
+                prediction_worker,
+                t["ticker"],
+                t["input_tensor"],
+                t["latest_close_price"],
+                t["mean"],
+                t["std"],
+                model
+            ): t["ticker"] for t in tasks
+        }
+
+        for future in concurrent.futures.as_completed(futures):
+            ticker = futures[future]
+            try:
+                result = future.result()
+                all_predictions.append(result)
+            except Exception as e:
+                print(f"Warning: Skipping {ticker} due to process error: {e}")
+    return all_predictions
