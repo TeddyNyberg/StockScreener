@@ -6,7 +6,7 @@ from app.data.preprocessor_utils import normalize_window, to_seq, prepare_data_f
 from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts, load_model_artifacts_local
-
+import time
 from config import *
 
 
@@ -82,6 +82,11 @@ def _prepare_data_for_prediction(ticker, start, end):
 
 
 def calculate_kelly_allocations(model, end=None):
+
+
+
+
+
     start, end = get_date_range(lookback_period, end)
     predictions, spy_delta = optimal_picks(model, end)
     if not predictions:
@@ -153,46 +158,6 @@ def tune(model, date):
 
 
 
-def threaded_prediction_worker(ticker, input_tensor, latest_close_price, mean, std, model):
-    try:
-        with torch.no_grad():
-            normalized_prediction = model(input_tensor)
-        last_prediction = normalized_prediction[-1][0]
-        prediction_np = np.array(last_prediction.item()).reshape(1, -1)
-        prediction = (prediction_np[0][0] * std) + mean
-        delta = ((prediction - latest_close_price) / latest_close_price).item()
-        return ticker, delta
-
-    except Exception as e:
-        raise Exception(f"Prediction failed for {ticker}: {e}")
-
-
-def kelly_worker(triple):
-    ticker, pred_delta, sigma_squared = triple
-
-    mu = pred_delta
-    if math.isnan(mu):
-        print(f"{ticker} skipped mu is nan")
-        return None
-    if sigma_squared <= 0 or math.isnan(sigma_squared):
-        print(f"{ticker} skipped sig_sq is nan")
-        return None
-
-    try:
-        kelly_fraction = (mu - RISK_FREE_RATE) / sigma_squared
-        allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
-
-        allocation = max(0.0, min(1.0, allocation))
-        if math.isnan(allocation) or math.isinf(allocation):
-            print(f"{ticker} skipped alloc is nan")
-            return None
-
-        return ticker, allocation, mu, sigma_squared
-
-    except Exception as e:
-        print(f"Warning: Skipping {ticker} due to calculation error: {e}")
-        return None
-
 
 def optimal_picks_new(model_version, is_quantized, today=None):
 
@@ -245,6 +210,7 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None):
         return None
     volatility_series = get_all_volatilities(all_vol_data)
 
+    begin_time = time.perf_counter()
     kelly_tasks = []
     for ticker, predicted_delta in predictions:
         sigma_squared = volatility_series.get(ticker, -1)
@@ -270,16 +236,18 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None):
     print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
 
     final_allocations_unsorted = []
-    for ticker, allocation, mu, sigma_squared in kelly_allocations:
+    for ticker, allocation, mu, _ in kelly_allocations:
         normalized_allocation = allocation * normalization_factor
         if normalized_allocation > 0:
             final_allocations_unsorted.append((ticker, normalized_allocation, mu))
-            print(
-                f"Stock: {ticker}, μ: {mu:+.4f}, σ²: {sigma_squared:.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+            print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
     #TODO see how this work behind the scenes maybe have workers reutnr sorted lsit
     #also doesnt NEED to be sorted
     final_allocations = sorted(final_allocations_unsorted, key=lambda x: x[1], reverse=True)
+    stop_time = time.perf_counter()
+
+    print("time in one run worker: ", stop_time - begin_time)
 
     return final_allocations, all_closes
 
@@ -350,3 +318,70 @@ def setup_for_pred(tasks, model):
             except Exception as e:
                 print(f"Warning: Skipping {ticker} due to process error: {e}")
     return all_predictions
+
+
+
+def calculate_kelly_allocations_new_alt(model_version, is_quantized, end=None):
+    import pandas as pd
+    from config import RISK_FREE_RATE, HALF_KELLY_MULTIPLIER
+
+    predictions, all_vol_data = optimal_picks_new(model_version, is_quantized, end)
+    all_closes = all_vol_data.iloc[-1]
+
+    if not predictions:
+        print("No predictions available to calculate Kelly bets.")
+        return None
+    volatility_series = get_all_volatilities(all_vol_data)
+
+
+    begin_time = time.perf_counter()
+
+    tickers = []
+    mu_list = []
+    s2_list = []
+
+    for ticker, predicted_delta in predictions:
+        sigma_squared = volatility_series.get(ticker, -1)
+        tickers.append(ticker)
+        mu_list.append(predicted_delta)
+        s2_list.append(sigma_squared)
+
+    mus = pd.Series(mu_list, index=tickers)
+    sigma_squareds = pd.Series(s2_list, index=tickers)
+
+    valid_mask = (sigma_squareds > 0) & (~np.isnan(sigma_squareds)) & (~np.isnan(mus))
+
+    valid_mus = mus[valid_mask]
+    valid_sigma_squareds = sigma_squareds[valid_mask]
+
+    kelly_fraction = (valid_mus - RISK_FREE_RATE) / valid_sigma_squareds
+
+    allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+    kelly_allocations_series = np.clip(allocation, 0.0, 1.0)
+
+    final_allocations_series = kelly_allocations_series[kelly_allocations_series > 0.0]
+
+
+    total_allocation = final_allocations_series.sum()
+    normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
+
+    print("\n--- Continuous Kelly-Based Position Sizing ---")
+    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+    print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
+
+    normalized_allocations = final_allocations_series * normalization_factor
+
+    final_allocations = []
+
+    for ticker, normalized_allocation in normalized_allocations.items():
+        mu = mus.loc[ticker]
+        final_allocations.append((ticker, normalized_allocation, mu))
+        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+
+
+    final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
+    stop_time = time.perf_counter()
+
+    print("time in one run vectors: ", stop_time - begin_time)
+
+    return final_allocations, all_closes
