@@ -340,8 +340,6 @@ def setup_pred_model(model_state_dict, config, is_quantized):
 
     if hasattr(model.positional_encoding, 'pe'):
         model.positional_encoding.pe = model.positional_encoding.pe.to(device)
-    if not is_quantized:
-        model.share_memory()
-        print("shared mem")
+    # removed else, share mem
 
-    return model, device
+    return model

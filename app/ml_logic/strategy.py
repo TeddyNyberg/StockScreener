@@ -254,7 +254,7 @@ def optimal_picks_new(model_version, is_quantized, today=None):
 
     filepath = MODEL_MAP[model_version]["model_filepath"]
     model_state_dict, config = load_model_artifacts_local(filepath)
-    model, _ = setup_pred_model(model_state_dict, config, is_quantized)
+    model = setup_pred_model(model_state_dict, config, is_quantized)
 
     try:
         with torch.no_grad():
