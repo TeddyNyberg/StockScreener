@@ -1,5 +1,3 @@
-import os
-import concurrent.futures
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
 from app.data.preprocessor_utils import prepare_data_for_prediction
@@ -8,15 +6,12 @@ from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
 from config import *
 import numpy as np
+import torch
+import pandas as pd
 
 
 
-
-def optimal_picks(model_version, is_quantized, today=None, new_method=False):
-
-    filepath = MODEL_MAP[model_version]["model_filepath"]
-    model_state_dict, config = load_model_artifacts(filepath)
-    model = setup_pred_model(model_state_dict, config, is_quantized)
+def optimal_picks(model_version, is_quantized, today=None):
     start, end = get_date_range(lookback_period, today)
 
     sp_tickers = get_sp500_tickers()
@@ -25,58 +20,51 @@ def optimal_picks(model_version, is_quantized, today=None, new_method=False):
 
     processed_tickers = [t.replace(".", "-") for t in sp_tickers]
     all_historical_data = get_historical_data(processed_tickers, start, end)
-    all_close_data = all_historical_data["Close"]
+    all_close_data_full = all_historical_data["Close"]
 
-    tasks = []
-    for ticker in processed_tickers:
-        try:
-            prediction_data = all_close_data[ticker].tail(SEQUENCE_SIZE)
-            input_tensor, latest_close_price, mean, std = prepare_data_for_prediction(prediction_data)
-            tasks.append({
-                "ticker": ticker,
-                "input_tensor": input_tensor,
-                "latest_close_price": latest_close_price,
-                "mean": mean,
-                "std": std
-            })
-        except Exception as e:
-            print(f"Warning: Skipping {ticker} for prediction due to data/network error: {e}")
-            continue
+    all_close_data = all_close_data_full.iloc[-SEQUENCE_SIZE:]
+    latest_closes = all_close_data.iloc[-1]
+    windows_means = all_close_data.mean(axis=0)
+    windows_stds = all_close_data.std(axis=0)
 
-    if is_quantized:
-        all_predictions = setup_quantized(tasks, model_state_dict, config)
-    else:
-        all_predictions = setup_for_pred(tasks, model)
+    windows_stds[windows_stds <= 0] = 1
+    normalized_windows = (all_close_data - windows_means) / windows_stds
 
+    valid_tickers = normalized_windows.columns[~normalized_windows.isnull().any()]
 
-    return all_predictions, all_close_data
+    normalized_windows = normalized_windows[valid_tickers]
+    windows_means = windows_means[valid_tickers]
+    windows_stds = windows_stds[valid_tickers]
+    latest_closes = latest_closes[valid_tickers]
 
-def predict_single_ticker(ticker):
-    model_state_dict, config = load_model_artifacts()
+    input_array = normalized_windows.to_numpy()
+    input_tensor_batch = (
+        torch.tensor(input_array, dtype=torch.float32)
+        .transpose(0, 1)
+        .unsqueeze(2)
+    )
 
-    start, end = get_date_range("3M")
-    data = get_historical_data(ticker, start, end)
-    close_data = data["Close"]
-    input_tensor, _, mean, std = prepare_data_for_prediction(close_data)
-    prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+    filepath = MODEL_MAP[model_version]["model_filepath"]
+    model_state_dict, config = load_model_artifacts(filepath)
+    model, _ = setup_pred_model(model_state_dict, config, is_quantized)
 
-    print(f"Predicted value: {prediction}")
-    return prediction
+    try:
+        with torch.no_grad():
+            predictions_tensor = model(input_tensor_batch)
+            #print(predictions_tensor)
+    except Exception as e:
+        print(f"Prediction failed: {e}")
+        return None, None
 
-def get_all_volatilities(all_data):
-    returns_df = all_data.pct_change(fill_method=None)
-    returns_df = returns_df.dropna(how='all', axis=0)
-    returns_df = returns_df.dropna(how='all', axis=1)
+    predictions = pd.Series(predictions_tensor.cpu().numpy().flatten(), index=valid_tickers)
+    deltas = (((predictions * windows_stds) + windows_means) - latest_closes) / latest_closes
+    all_predictions = [(ticker, delta) for ticker, delta in deltas.items()]
 
-    daily_variance = returns_df.var()
-    annualized_variance_series = daily_variance * 252 #252 trading days
+    return all_predictions, all_close_data_full
 
-    return annualized_variance_series
 
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None):
-    import pandas as pd
-    from config import RISK_FREE_RATE, HALF_KELLY_MULTIPLIER
 
     predictions, all_vol_data = optimal_picks(model_version, is_quantized, end)
     all_closes = all_vol_data.iloc[-1]
@@ -129,6 +117,29 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
 
     return final_allocations, all_closes
 
+def predict_single_ticker(ticker):
+    model_state_dict, config = load_model_artifacts()
+
+    start, end = get_date_range("3M")
+    data = get_historical_data(ticker, start, end)
+    close_data = data["Close"]
+    input_tensor, _, mean, std = prepare_data_for_prediction(close_data)
+    prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+
+    print(f"Predicted value: {prediction}")
+    return prediction
+
+def get_all_volatilities(all_data):
+    returns_df = all_data.pct_change(fill_method=None)
+    returns_df = returns_df.dropna(how='all', axis=0)
+    returns_df = returns_df.dropna(how='all', axis=1)
+
+    daily_variance = returns_df.var()
+    annualized_variance_series = daily_variance * 252 #252 trading days
+
+    return annualized_variance_series
+
+
 
 def tune(filepath, date):
     model_dict, config = load_model_artifacts(filepath)
@@ -143,58 +154,3 @@ def tune(filepath, date):
     new_model_dict, new_config = fine_tune_model(model_dict, config, list_of_df)
     save_model_artifacts(new_model_dict, new_config, filepath)
     return True
-
-def setup_quantized(tasks, model_state_dict, config):
-    from app.ml_logic.workers.prediction_worker import quantized_prediction_worker
-    all_predictions = []
-    max_workers = os.cpu_count() or 4
-    print(f"Starting parallel prediction for {len(tasks)} tickers using {max_workers} processes.")
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(
-                quantized_prediction_worker,
-                t["ticker"],
-                t["input_tensor"],
-                t["latest_close_price"],
-                t["mean"],
-                t["std"],
-                model_state_dict,
-                config
-            ): t["ticker"] for t in tasks
-        }
-
-        for future in concurrent.futures.as_completed(futures):
-            ticker = futures[future]
-            try:
-                result = future.result()
-                all_predictions.append(result)
-            except Exception as e:
-                print(f"Warning: Skipping {ticker} due to process error: {e}")
-    return all_predictions
-
-def setup_for_pred(tasks, model):
-    from app.ml_logic.workers.prediction_worker import prediction_worker
-    all_predictions = []
-    max_workers = os.cpu_count() or 4
-    print(f"Starting parallel prediction for {len(tasks)} tickers using {max_workers} processes.")
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(
-                prediction_worker,
-                t["ticker"],
-                t["input_tensor"],
-                t["latest_close_price"],
-                t["mean"],
-                t["std"],
-                model
-            ): t["ticker"] for t in tasks
-        }
-
-        for future in concurrent.futures.as_completed(futures):
-            ticker = futures[future]
-            try:
-                result = future.result()
-                all_predictions.append(result)
-            except Exception as e:
-                print(f"Warning: Skipping {ticker} due to process error: {e}")
-    return all_predictions
