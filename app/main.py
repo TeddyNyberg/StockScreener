@@ -9,20 +9,21 @@ from config import *
 ## --build
 
 def main():
-    from app.ml_logic.strategy import calculate_kelly_allocations, calculate_kelly_allocations_new, calculate_kelly_allocations_new_alt
+    from app.ml_logic.strategy import calculate_kelly_allocations, calculate_kelly_allocations_new
+    from app.ml_logic.strategy import optimal_picks_new
 
     import time
     start = time.perf_counter()
     for i in range(5):
-        calculate_kelly_allocations_new("A", False)
+        calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
     end = time.perf_counter()
-    print("Elapsed w workers after 5: ", end - start)
+    print("Elapsed original: ", end - start)
 
     start = time.perf_counter()
     for i in range(5):
-        calculate_kelly_allocations_new_alt("A", False)
+        calculate_kelly_allocations_new("A", False)
     end = time.perf_counter()
-    print("Elapsed vectorized after 5: ", end - start)
+    print("Elapsed vector: ", end - start)
 
     from PySide6.QtWidgets import QApplication
     from app.ui import start_application
