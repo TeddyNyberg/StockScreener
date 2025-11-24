@@ -17,6 +17,7 @@ def main():
     for i in range(10):
         #calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
         #calculate_kelly_allocations_new_noch("A", False)
+        pass
     end = time.perf_counter()
     print("Elapsed good pass: ", end - start)
 
