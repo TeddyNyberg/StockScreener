@@ -47,7 +47,7 @@ def optimal_picks(model_version, is_quantized, today=None):
 
     filepath = MODEL_MAP[model_version]["model_filepath"]
     model_state_dict, config = load_model_artifacts(filepath)
-    model, _ = setup_pred_model(model_state_dict, config, is_quantized)
+    model = setup_pred_model(model_state_dict, config, is_quantized)
 
     try:
         with torch.no_grad():
@@ -109,13 +109,13 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
 
 
 def predict_single_ticker(ticker):
-    model_state_dict, config = load_model_artifacts()
-
+    model_state_dict, config = load_model_artifacts(MODEL_MAP["A"]["filename"])
+    model = setup_pred_model(model_state_dict, config, False)
     start, end = get_date_range("3M")
     data = get_historical_data(ticker, start, end)
     close_data = data["Close"]
     input_tensor, _, mean, std = prepare_data_for_prediction(close_data)
-    prediction = pred_next_day_no_ticker(input_tensor, model_state_dict, config, mean, std)
+    prediction = pred_next_day_no_ticker(model, config, mean, std)
 
     print(f"Predicted value: {prediction}")
     return prediction
