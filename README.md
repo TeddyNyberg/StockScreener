@@ -35,7 +35,8 @@ Achievements
       - Optimized model pipeline by implementing batch prediction/vectorization for 500 tickers (S&P 500), drastically reducing computation time from minutes to seconds
       - More efficient data-loading
   - This speed increase does NOT include the model quantization which will also increase speed but is currently untested
-  - Enhanced stability and scalability. Resolved critical memory error on Windows spawned processes.
+ 
+
 
 
 
