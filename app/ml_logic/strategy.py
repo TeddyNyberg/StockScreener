@@ -12,6 +12,7 @@ import pandas as pd
 
 
 def optimal_picks(model_version, is_quantized, today=None):
+
     start, end = get_date_range(lookback_period, today)
 
     sp_tickers = get_sp500_tickers()
@@ -56,10 +57,10 @@ def optimal_picks(model_version, is_quantized, today=None):
         return None, None
 
     predictions = pd.Series(predictions_tensor.cpu().numpy().flatten(), index=valid_tickers)
+
     deltas = (((predictions * windows_stds) + windows_means) - latest_closes) / latest_closes
 
     return deltas, all_close_data_full
-
 
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None):
@@ -67,23 +68,13 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
     mus, all_vol_data = optimal_picks(model_version, is_quantized, end)
     all_closes = all_vol_data.iloc[-1]
 
-    if mus is None or mus.Empty:
+    if mus is None or mus.empty:
         print("No predictions available to calculate Kelly bets.")
         return None
     volatility_series = get_all_volatilities(all_vol_data)
-#
-    tickers = []
-    mu_list = []
-    s2_list = []
 
-    for ticker, predicted_delta in predictions:
-        sigma_squared = volatility_series.get(ticker, -1)
-        tickers.append(ticker)
-        mu_list.append(predicted_delta)
-        s2_list.append(sigma_squared)
-#
-    mus = pd.Series(mu_list, index=tickers)
-    sigma_squareds = pd.Series(s2_list, index=tickers)
+
+    sigma_squareds = volatility_series.reindex(mus.index, fill_value=-1)
 
     valid_mask = (sigma_squareds > 0) & (~np.isnan(sigma_squareds)) & (~np.isnan(mus))
     valid_mus = mus[valid_mask]
@@ -111,9 +102,11 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
         final_allocations.append((ticker, normalized_allocation, mu))
         print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
+
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
 
     return final_allocations, all_closes
+
 
 def predict_single_ticker(ticker):
     model_state_dict, config = load_model_artifacts()
@@ -136,7 +129,6 @@ def get_all_volatilities(all_data):
     annualized_variance_series = daily_variance * 252 #252 trading days
 
     return annualized_variance_series
-
 
 
 def tune(filepath, date):
