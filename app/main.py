@@ -1,5 +1,5 @@
 from config import *
-
+from app.data.ticker_source import get_sp500_tickers
 
 ## pyinstaller app/main.py --onedir --name stock_screener
 
@@ -9,23 +9,33 @@ from config import *
 ## --build
 
 def main():
-    from app.ml_logic.strategy import calculate_kelly_allocations_new, calculate_kelly_allocations_new
+    from app.ml_logic.strategy import calculate_kelly_allocations_new
+    from app.data.yfinance_fetcher import get_historical_data
+    from app.data.ticker_source import get_sp500_tickers
+    from app.utils import get_date_range
+    from app.ml_logic.model_loader import load_model_artifacts
     from app.ml_logic.strategy import optimal_picks_new
 
     import time
-    start = time.perf_counter()
-    for i in range(10):
-        #calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
-        #calculate_kelly_allocations_new_noch("A", False)
-        pass
-    end = time.perf_counter()
-    print("Elapsed good pass: ", end - start)
+
+    sp_tickers = get_sp500_tickers(test=True)
+    start, end = get_date_range(lookback_period, None)
+    processed_tickers = [t.replace(".", "-") for t in sp_tickers]
+    all_historical_data = get_historical_data(processed_tickers, start, end)
+    load_model_artifacts()
+    # calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
 
     start = time.perf_counter()
-    for i in range(10):
-        calculate_kelly_allocations_new("A", False)
+    for i in range(100):
+        calculate_kelly_allocations_new("A", False, all_historical_data=all_historical_data)
     end = time.perf_counter()
-    print("Elapsed bad pass: ", end - start)
+    print("Elapsed pd: ", end - start)
+
+    start = time.perf_counter()
+    for i in range(100):
+        calculate_kelly_allocations_new("A", False, all_historical_data=all_historical_data)
+    end = time.perf_counter()
+    print("Elapsed np: ", end - start)
 
     from PySide6.QtWidgets import QApplication
     from app.ui import start_application

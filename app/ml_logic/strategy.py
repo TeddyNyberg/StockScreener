@@ -166,88 +166,42 @@ def get_all_volatilities(all_data):
 
 
 
-def calculate_kelly_allocations_new(model_version, is_quantized, end=None):
-
-    begin_time = time.perf_counter()
-
-    mus, all_vol_data = optimal_picks_new(model_version, is_quantized, end)
-    all_closes = all_vol_data.iloc[-1]
-
-    if mus is None or mus.empty:
-        print("No predictions available to calculate Kelly bets.")
-        return None
-    volatility_series = get_all_volatilities(all_vol_data)
-
-
-    sigma_squareds = volatility_series.reindex(mus.index, fill_value=-1)
-
-    valid_mask = (sigma_squareds > 0) & (~np.isnan(sigma_squareds)) & (~np.isnan(mus))
-    valid_mus = mus[valid_mask]
-    valid_sigma_squareds = sigma_squareds[valid_mask]
-
-    kelly_fraction = (valid_mus - RISK_FREE_RATE) / valid_sigma_squareds
-    allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
-    kelly_allocations_series = np.clip(allocation, 0.0, 1.0)
-
-    final_allocations_series = kelly_allocations_series[kelly_allocations_series > 0.0]
-
-    total_allocation = final_allocations_series.sum()
-    normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
-
-    print("\n--- Continuous Kelly-Based Position Sizing ---")
-    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
-    print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
-
-    normalized_allocations = final_allocations_series * normalization_factor
-
-    final_allocations = []
-
-    for ticker, normalized_allocation in normalized_allocations.items():
-        mu = mus.loc[ticker]
-        final_allocations.append((ticker, normalized_allocation, mu))
-        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
-
-
-    final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
-    stop_time = time.perf_counter()
-
-    print("time in one run vectors better pass: ", stop_time - begin_time)
-    print(final_allocations)
-
-    return final_allocations, all_closes
-
-
-def optimal_picks_new(model_version, is_quantized, today=None):
+def optimal_picks_new(model_version, is_quantized, today=None, all_historical_data=None):
 
     start, end = get_date_range(lookback_period, today)
+    test = all_historical_data is not None
 
-    sp_tickers = get_sp500_tickers()
+    sp_tickers = get_sp500_tickers(test=test)
     if not sp_tickers:
         return None, None
 
-    processed_tickers = [t.replace(".", "-") for t in sp_tickers]
-    all_historical_data = get_historical_data(processed_tickers, start, end)
+    if not test:
+        processed_tickers = [t.replace(".", "-") for t in sp_tickers]
+        all_historical_data = get_historical_data(processed_tickers, start, end)
     all_close_data_full = all_historical_data["Close"]
 
-    all_close_data = all_close_data_full.iloc[-SEQUENCE_SIZE:]
-    latest_closes = all_close_data.iloc[-1]
-    windows_means = all_close_data.mean(axis=0)
-    windows_stds = all_close_data.std(axis=0)
+    all_close_data = all_close_data_full.iloc[-SEQUENCE_SIZE:].to_numpy()
+    latest_closes = all_close_data[-1,:]
+    windows_means = np.mean(all_close_data, axis=0)
+    windows_stds = np.std(all_close_data, axis=0, ddof=1)
 
     windows_stds[windows_stds <= 0] = 1
     normalized_windows = (all_close_data - windows_means) / windows_stds
 
-    valid_tickers = normalized_windows.columns[~normalized_windows.isnull().any()]
-
-    normalized_windows = normalized_windows[valid_tickers]
-    windows_means = windows_means[valid_tickers]
-    windows_stds = windows_stds[valid_tickers]
-    latest_closes = latest_closes[valid_tickers]
+    valid_mask = ~np.isnan(normalized_windows).any(axis=0)
 
 
-    input_array = normalized_windows.to_numpy()
+
+    normalized_windows = normalized_windows[:, valid_mask]
+    windows_means = windows_means[valid_mask]
+    windows_stds = windows_stds[valid_mask]
+    latest_closes = latest_closes[valid_mask]
+
+    all_tickers = np.array(all_close_data_full.columns.tolist())
+    valid_tickers = all_tickers[valid_mask]
+
     input_tensor_batch = (
-        torch.tensor(input_array, dtype=torch.float32)
+        torch.tensor(normalized_windows, dtype=torch.float32)
         .transpose(0, 1)
         .unsqueeze(2)
     )
@@ -263,9 +217,67 @@ def optimal_picks_new(model_version, is_quantized, today=None):
         print(f"Prediction failed: {e}")
         return None, None
 
-    predictions = pd.Series(predictions_tensor.cpu().numpy().flatten(), index=valid_tickers)
+
+    predictions = predictions_tensor.cpu().numpy().flatten()
 
     deltas = (((predictions * windows_stds) + windows_means) - latest_closes) / latest_closes
 
-    return deltas, all_close_data_full
+    return deltas, valid_tickers, all_close_data_full
 
+def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_historical_data=None):
+
+    begin_time = time.perf_counter()
+
+    mus_arr, valid_tickers, all_vol_data = optimal_picks_new(model_version, is_quantized, end, all_historical_data)
+    all_closes = all_vol_data.iloc[-1]
+
+    if mus_arr is None or len(mus_arr) == 0:
+        print("No predictions available to calculate Kelly bets.")
+        return None
+    volatility_series = get_all_volatilities(all_vol_data)
+
+    sigma_squareds_aligned = volatility_series.reindex(valid_tickers, fill_value=-1)
+    sigma_squareds_array = sigma_squareds_aligned.to_numpy()
+
+    valid_mask = (sigma_squareds_array > 0) & (~np.isnan(sigma_squareds_array)) & (~np.isnan(mus_arr))
+
+    final_tickers = valid_tickers[valid_mask]
+    final_mus = mus_arr[valid_mask]
+    final_sigma_squareds = sigma_squareds_array[valid_mask]
+
+    kelly_fraction = (final_mus - RISK_FREE_RATE) / final_sigma_squareds
+    allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+    allocation = np.clip(allocation, 0.0, 1.0)
+
+    positive_mask = allocation > 0.0
+
+    final_allocation_values = allocation[positive_mask]
+    final_tickers_really = final_tickers[positive_mask]
+    final_mus_to_trade = final_mus[positive_mask]
+
+    total_allocation = final_allocation_values.sum()
+    normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
+
+    print("\n--- Continuous Kelly-Based Position Sizing ---")
+    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+    print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
+
+    normalized_allocations = final_allocation_values * normalization_factor
+
+    final_allocations = []
+
+    for i in range(len(final_tickers_really)):
+        ticker = final_tickers_really[i]
+        normalized_allocation = normalized_allocations[i]
+        mu = final_mus_to_trade[i]
+
+        final_allocations.append((ticker, normalized_allocation, mu))
+        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+
+    final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
+    stop_time = time.perf_counter()
+
+    print("time in one run all numpy: ", stop_time - begin_time)
+    print(final_allocations)
+
+    return final_allocations, all_closes

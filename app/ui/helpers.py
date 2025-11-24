@@ -4,7 +4,6 @@ from app.ml_logic.tester import handle_backtest, continue_backtest
 from app.db.db_handler import DB, init_db
 from app.data.data_cache import get_yfdata_cache
 import pandas as pd
-import threading
 import time
 
 # just window stuff how it looks, buttons, etc.
