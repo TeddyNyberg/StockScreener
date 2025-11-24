@@ -5,7 +5,6 @@ from app.ml_logic.tester import continue_backtest
 from app.db.db_handler import DB, init_db
 from app.data.data_cache import get_yfdata_cache
 import pandas as pd
-import threading
 
 import time
 
@@ -17,6 +16,7 @@ def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
     #print_model_characteristics("NYBERG-A")
+    run_backtesting()
     with DB() as conn:
         init_db(conn)
     window = MainWindow()
@@ -130,3 +130,8 @@ def print_model_characteristics(nyberg_ticker):
     print("\n**SPY's Conditional Performance Breakdown (on Nyberg's better days):**")
     print(f"- **SPY's Avg % Change on UP Days:** {spy_on_nyberg_win_and_spy_up:.4f}%")
     print(f"- **SPY's Avg % Change on DOWN Days:** {spy_on_nyberg_win_and_spy_down:.4f}%")
+
+def run_backtesting():
+    continue_backtest("A")
+    continue_backtest("B", "weekly")
+    continue_backtest("C")
