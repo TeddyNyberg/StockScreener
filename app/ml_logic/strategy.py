@@ -103,20 +103,19 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
 
     normalized_allocations = final_allocation_values * normalization_factor
 
-    final_allocations = []
-
-    for i in range(len(final_tickers_really)):
-        ticker = final_tickers_really[i]
-        normalized_allocation = normalized_allocations[i]
-        mu = final_mus_to_trade[i]
-
-        final_allocations.append((ticker, normalized_allocation, mu))
-        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+    final_allocations = [
+        (ticker, normalized_allocation, mu)
+        for ticker, normalized_allocation, mu in zip(final_tickers_really, normalized_allocations, final_mus_to_trade)
+    ]
 
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
 
     end_kelly = time.perf_counter()
     print("Kelly time ", end_kelly - begin_kelly)
+
+    for ticker, normalized_allocation, mu in final_allocations:
+        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+
     return final_allocations, all_closes
 
 def predict_single_ticker(ticker):
