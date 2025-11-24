@@ -51,29 +51,27 @@ def optimal_picks(model_version, is_quantized, today=None):
     try:
         with torch.no_grad():
             predictions_tensor = model(input_tensor_batch)
-            #print(predictions_tensor)
     except Exception as e:
         print(f"Prediction failed: {e}")
         return None, None
 
     predictions = pd.Series(predictions_tensor.cpu().numpy().flatten(), index=valid_tickers)
     deltas = (((predictions * windows_stds) + windows_means) - latest_closes) / latest_closes
-    all_predictions = [(ticker, delta) for ticker, delta in deltas.items()]
 
-    return all_predictions, all_close_data_full
+    return deltas, all_close_data_full
 
 
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None):
 
-    predictions, all_vol_data = optimal_picks(model_version, is_quantized, end)
+    mus, all_vol_data = optimal_picks(model_version, is_quantized, end)
     all_closes = all_vol_data.iloc[-1]
 
-    if not predictions:
+    if mus is None or mus.Empty:
         print("No predictions available to calculate Kelly bets.")
         return None
     volatility_series = get_all_volatilities(all_vol_data)
-
+#
     tickers = []
     mu_list = []
     s2_list = []
@@ -83,7 +81,7 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
         tickers.append(ticker)
         mu_list.append(predicted_delta)
         s2_list.append(sigma_squared)
-
+#
     mus = pd.Series(mu_list, index=tickers)
     sigma_squareds = pd.Series(s2_list, index=tickers)
 
