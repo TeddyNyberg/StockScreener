@@ -14,7 +14,7 @@ DEFAULT_STYLE = "charles"
 
 #S&P ticker list location
 S_AND_P_URL = "https://stockanalysis.com/list/sp-500-stocks/"
-
+SP_CACHE_FILE = "sp500_tickers.csv"
 
 MODEL_MAP = {
     "A": {

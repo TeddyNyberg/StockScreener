@@ -5,7 +5,8 @@ from app.ml_logic.tester import continue_backtest
 from app.db.db_handler import DB, init_db
 from app.data.data_cache import get_yfdata_cache
 import pandas as pd
-
+from app.ml_logic.strategy import calculate_kelly_allocations
+from app.data.ticker_source import get_sp500_tickers
 import time
 
 # just window stuff how it looks, buttons, etc.
@@ -16,6 +17,7 @@ def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
     #print_model_characteristics("NYBERG-A")
+    calculate_kelly_allocations("A",False)
     run_backtesting()
     with DB() as conn:
         init_db(conn)
@@ -60,8 +62,6 @@ def make_buttons(button_map, layout):
     spacer = QSpacerItem(40, 20, QSizePolicy.Expanding)
     button_layout.addItem(spacer)
     layout.addLayout(button_layout)
-
-
 
 def lookup_and_open_details(ticker, display_error_func=None):
     if not ticker:

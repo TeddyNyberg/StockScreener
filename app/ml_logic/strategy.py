@@ -7,7 +7,7 @@ from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
 from config import *
 import numpy as np
 import torch
-
+import time
 
 def optimal_picks(model_version, is_quantized, today=None):
 
@@ -63,8 +63,11 @@ def optimal_picks(model_version, is_quantized, today=None):
 
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None):
+    begin_kelly = time.perf_counter()
 
     mus_arr, valid_tickers, all_vol_data = optimal_picks(model_version, is_quantized, end)
+    end_opt = time.perf_counter()
+    print("Optimal ", end_opt-begin_kelly)
     all_closes = all_vol_data.iloc[-1]
 
     if mus_arr is None or len(mus_arr) == 0:
@@ -112,6 +115,8 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
 
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
 
+    end_kelly = time.perf_counter()
+    print("Kelly time ", end_kelly - begin_kelly)
     return final_allocations, all_closes
 
 def predict_single_ticker(ticker):
