@@ -81,6 +81,6 @@ def prepare_data_for_prediction(data):
     input_sequence = data[-SEQUENCE_SIZE:]
 
     normalized_window, mean, std = normalize_window(input_sequence)
-    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0).unsqueeze(2)
+    input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
 
     return input_tensor, latest_close_price, mean, std

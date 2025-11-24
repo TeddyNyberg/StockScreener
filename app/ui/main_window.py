@@ -52,7 +52,7 @@ class MainWindow(QWidget):
         main_layout.addLayout(top_layout)
 
         spy, spy_chart, data = lookup_tickers("^SPX")
-        print(data)
+
         self.canvas = CustomChartCanvas(data, spy_chart)
 
         # this is a chart, which takes data and chart ------------|

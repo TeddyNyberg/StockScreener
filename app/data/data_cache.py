@@ -53,6 +53,5 @@ def get_yfdata_cache(tickers, time):
     if len(results) == 1:
         results.append(None)
 
-    print(results, " in yfdatacache")
     return rm_nm(results[0], results[1])
 
