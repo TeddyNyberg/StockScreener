@@ -165,43 +165,31 @@ def get_all_volatilities(all_data):
     return annualized_variance_series
 
 
+
 def calculate_kelly_allocations_new(model_version, is_quantized, end=None):
 
     begin_time = time.perf_counter()
 
-    predictions, all_vol_data = optimal_picks_new(model_version, is_quantized, end)
+    mus, all_vol_data = optimal_picks_new(model_version, is_quantized, end)
     all_closes = all_vol_data.iloc[-1]
 
-    if not predictions:
+    if mus is None or mus.empty:
         print("No predictions available to calculate Kelly bets.")
         return None
     volatility_series = get_all_volatilities(all_vol_data)
 
-    tickers = []
-    mu_list = []
-    s2_list = []
 
-    for ticker, predicted_delta in predictions:
-        sigma_squared = volatility_series.get(ticker, -1)
-        tickers.append(ticker)
-        mu_list.append(predicted_delta)
-        s2_list.append(sigma_squared)
-
-    mus = pd.Series(mu_list, index=tickers)
-    sigma_squareds = pd.Series(s2_list, index=tickers)
+    sigma_squareds = volatility_series.reindex(mus.index, fill_value=-1)
 
     valid_mask = (sigma_squareds > 0) & (~np.isnan(sigma_squareds)) & (~np.isnan(mus))
-
     valid_mus = mus[valid_mask]
     valid_sigma_squareds = sigma_squareds[valid_mask]
 
     kelly_fraction = (valid_mus - RISK_FREE_RATE) / valid_sigma_squareds
-
     allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
     kelly_allocations_series = np.clip(allocation, 0.0, 1.0)
 
     final_allocations_series = kelly_allocations_series[kelly_allocations_series > 0.0]
-
 
     total_allocation = final_allocations_series.sum()
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
@@ -223,7 +211,8 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None):
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
     stop_time = time.perf_counter()
 
-    print("time in one run vectors: ", stop_time - begin_time)
+    print("time in one run vectors better pass: ", stop_time - begin_time)
+    print(final_allocations)
 
     return final_allocations, all_closes
 
@@ -270,7 +259,6 @@ def optimal_picks_new(model_version, is_quantized, today=None):
     try:
         with torch.no_grad():
             predictions_tensor = model(input_tensor_batch)
-            #print(predictions_tensor)
     except Exception as e:
         print(f"Prediction failed: {e}")
         return None, None
@@ -279,6 +267,5 @@ def optimal_picks_new(model_version, is_quantized, today=None):
 
     deltas = (((predictions * windows_stds) + windows_means) - latest_closes) / latest_closes
 
-    all_predictions = [(ticker, delta) for ticker, delta in deltas.items()]
+    return deltas, all_close_data_full
 
-    return all_predictions, all_close_data_full

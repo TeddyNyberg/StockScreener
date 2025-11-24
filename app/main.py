@@ -9,21 +9,22 @@ from config import *
 ## --build
 
 def main():
-    from app.ml_logic.strategy import calculate_kelly_allocations, calculate_kelly_allocations_new
+    from app.ml_logic.strategy import calculate_kelly_allocations_new, calculate_kelly_allocations_new
     from app.ml_logic.strategy import optimal_picks_new
 
     import time
     start = time.perf_counter()
-    for i in range(5):
-        calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
+    for i in range(10):
+        #calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
+        #calculate_kelly_allocations_new_noch("A", False)
     end = time.perf_counter()
-    print("Elapsed original: ", end - start)
+    print("Elapsed good pass: ", end - start)
 
     start = time.perf_counter()
-    for i in range(5):
+    for i in range(10):
         calculate_kelly_allocations_new("A", False)
     end = time.perf_counter()
-    print("Elapsed vector: ", end - start)
+    print("Elapsed bad pass: ", end - start)
 
     from PySide6.QtWidgets import QApplication
     from app.ui import start_application
