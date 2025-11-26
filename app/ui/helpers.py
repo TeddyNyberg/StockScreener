@@ -135,3 +135,4 @@ def run_backtesting():
     continue_backtest("A")
     continue_backtest("B", "weekly")
     continue_backtest("C")
+    continue_backtest("D")

@@ -35,5 +35,11 @@ MODEL_MAP = {
         "csv_filepath": "nyberg_results_static_quantized.csv",
         "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
         "model_filepath": "nyberg_static.pth"
+    },
+    "D":{
+        "name": "NYBERG STATIC MODEL FULL KELLY",
+        "csv_filepath": "nyberg_results_static_full_kelly.csv",
+        "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
+        "model_filepath": "nyberg_static.pth"
     }
 }
