@@ -132,7 +132,7 @@ def print_model_characteristics(nyberg_ticker):
     print(f"- **SPY's Avg % Change on DOWN Days:** {spy_on_nyberg_win_and_spy_down:.4f}%")
 
 def run_backtesting():
-    continue_backtest("A")
-    continue_backtest("B", "weekly")
-    continue_backtest("C")
-    continue_backtest("D")
+    continue_backtest(version="A")
+    continue_backtest(version="B", tuning_period="weekly")
+    continue_backtest(version="C")
+    continue_backtest(version="D", only_largest=True)

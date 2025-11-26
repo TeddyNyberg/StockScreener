@@ -62,7 +62,7 @@ def optimal_picks(model_version, is_quantized, today=None):
     return deltas, valid_tickers, all_close_data_full
 
 
-def calculate_kelly_allocations(model_version, is_quantized, end=None):
+def calculate_kelly_allocations(model_version, is_quantized, end=None, only_largest=False):
     begin_kelly = time.perf_counter()
 
     mus_arr, valid_tickers, all_vol_data = optimal_picks(model_version, is_quantized, end)
@@ -94,21 +94,46 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None):
     final_tickers_really = final_tickers[positive_mask]
     final_mus_to_trade = final_mus[positive_mask]
 
-    total_allocation = final_allocation_values.sum()
-    normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
+
+    if not only_largest:
+        total_allocation = final_allocation_values.sum()
+        normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
+        normalized_allocations = final_allocation_values * normalization_factor
+    else:
+        normalized_allocations = final_allocation_values
+        normalization_factor = 1.0
+        total_allocation = 1
+
+    final_allocations = [
+        (ticker, normalized_allocation, mu)
+        for ticker, normalized_allocation, mu in
+        zip(final_tickers_really, normalized_allocations, final_mus_to_trade)
+    ]
+
+    sorted_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
+
+    if only_largest:
+        final_allocations = []
+        summation = 0
+
+        for ticker, raw_allocation, mu in sorted_allocations:
+            remaining_cap = 1 - summation
+            if remaining_cap <= 1e-6:
+                break
+
+            allocation_to_use = min(raw_allocation, remaining_cap)
+
+            final_allocations.append((ticker, allocation_to_use, mu))
+            summation += allocation_to_use
+    else:
+        final_allocations = sorted_allocations
+
 
     print("\n--- Continuous Kelly-Based Position Sizing ---")
     print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
     print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
 
-    normalized_allocations = final_allocation_values * normalization_factor
 
-    final_allocations = [
-        (ticker, normalized_allocation, mu)
-        for ticker, normalized_allocation, mu in zip(final_tickers_really, normalized_allocations, final_mus_to_trade)
-    ]
-
-    final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
 
     end_kelly = time.perf_counter()
     print("Kelly time ", end_kelly - begin_kelly)

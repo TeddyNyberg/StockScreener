@@ -10,7 +10,7 @@ from app.ml_logic.helpers import is_tuning_day
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
-                    model_version="A", tuning_period = None):
+                    model_version="A", tuning_period = None, only_largest=False):
 
 
 
@@ -58,7 +58,12 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                     return None
 
             if trading_today:
-                kelly_allocations, all_closes = calculate_kelly_allocations(model_version, is_quantized, current_day)
+                kelly_allocations, all_closes = calculate_kelly_allocations(
+                    model_version=model_version,
+                    is_quantized=is_quantized,
+                    end=current_day,
+                    only_largest=only_largest
+                )
                 if not kelly_allocations:
                     print("no kelly allocations")
                     return None
@@ -193,7 +198,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 #TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
-def continue_backtest(version, tuning_period=None):
+def continue_backtest(version, tuning_period=None, only_largest=False):
 
     file_path = MODEL_MAP[version]["csv_filepath"]
     data = pd.read_csv(file_path, index_col=0, parse_dates=True)
@@ -223,7 +228,8 @@ def continue_backtest(version, tuning_period=None):
         start_date_str=last_day_tested.strftime('%m/%d/%Y'),
         initial_capital=last_day_total_value,
         model_version=version,
-        tuning_period=tuning_period
+        tuning_period=tuning_period,
+        only_largest=only_largest
     )
 
     if new_results_df is None:
