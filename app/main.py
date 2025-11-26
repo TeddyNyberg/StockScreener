@@ -4,7 +4,6 @@ from app.ui import start_application
 
 
 def main():
-    print("IN MAIN")
 
     app = QApplication([])
     start_application()

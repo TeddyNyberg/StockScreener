@@ -2,18 +2,15 @@ from config import *
 from datetime import datetime
 import os
 import traceback
+import pandas as pd
+import numpy as np
+from app.data.yfinance_fetcher import get_close_on
+from app.ml_logic.strategy import calculate_kelly_allocations, tune
+from app.ml_logic.helpers import is_tuning_day
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
                     model_version="A", tuning_period = None):
-
-    import numpy as np
-    import pandas as pd
-    from app.data.yfinance_fetcher import get_close_on
-    from app.ml_logic.strategy import calculate_kelly_allocations, tune
-    from app.ml_logic.helpers import is_tuning_day
-
-
 
 
 
@@ -197,7 +194,6 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 #TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
 def continue_backtest(version, tuning_period=None):
-    import pandas as pd
 
     file_path = MODEL_MAP[version]["csv_filepath"]
     data = pd.read_csv(file_path, index_col=0, parse_dates=True)

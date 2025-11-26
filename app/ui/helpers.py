@@ -17,7 +17,7 @@ def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
     #print_model_characteristics("NYBERG-A")
-    calculate_kelly_allocations("A",False)
+    #calculate_kelly_allocations("A",False)
     run_backtesting()
     with DB() as conn:
         init_db(conn)
