@@ -13,6 +13,7 @@ def get_date_range(time, today = None):  # must be all caps
         "3M": DateOffset(months=3),
         "6M": DateOffset(months=6),
         "1Y": DateOffset(years=1),
+        "1.5Y": DateOffset(months=18),
         "3Y": DateOffset(years=3),
         "5Y": DateOffset(years=5),
         "YTD": DateOffset(year=today.year, month=1, day=1)

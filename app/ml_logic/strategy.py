@@ -180,7 +180,20 @@ def optimal_picks_new(model_version, is_quantized, today=None, all_historical_da
         all_historical_data = get_historical_data(processed_tickers, start, end)
     all_close_data_full = all_historical_data["Close"]
 
+
+    #print(all_close_data_full, " ACDF")
+    #print(today, " TODAY")
+
+    if today is not None:
+        all_close_data_full = all_close_data_full.loc[:today]
+        start, end = get_date_range("6M", today)
+        all_close_data_full = all_close_data_full.loc[start:]
+
+    #print(all_close_data_full, " ACDF after cutoff")
+    #print("GOOG close on ", today, all_close_data_full["GOOG"].iloc[-1])
+
     all_close_data = all_close_data_full.iloc[-SEQUENCE_SIZE:].to_numpy()
+
     latest_closes = all_close_data[-1,:]
     windows_means = np.mean(all_close_data, axis=0)
     windows_stds = np.std(all_close_data, axis=0, ddof=1)
@@ -258,9 +271,9 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_h
     total_allocation = final_allocation_values.sum()
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
 
-    print("\n--- Continuous Kelly-Based Position Sizing ---")
-    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
-    print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
+    #print("\n--- Continuous Kelly-Based Position Sizing ---")
+    #print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+    #print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
 
     normalized_allocations = final_allocation_values * normalization_factor
 
@@ -272,12 +285,12 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_h
         mu = final_mus_to_trade[i]
 
         final_allocations.append((ticker, normalized_allocation, mu))
-        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+        #print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
     stop_time = time.perf_counter()
 
-    print("time in one run all numpy: ", stop_time - begin_time)
-    print(final_allocations)
+    #print("time in one run all numpy: ", stop_time - begin_time)
+    #print(final_allocations)
 
     return final_allocations, all_closes
