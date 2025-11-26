@@ -88,10 +88,6 @@ def main():
         (np.floor(portfolio_df[['Total_Value_At_Close']] * 1000) / 1000)
 
     file_path = MODEL_MAP["D"]["csv_filepath"]
-    #mode = "a" if os.path.exists(file_path) else "w"
-    mode = "w"
-    header = not os.path.exists(file_path)
-    portfolio_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
 
 
     """
