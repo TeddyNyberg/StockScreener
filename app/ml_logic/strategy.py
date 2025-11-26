@@ -190,7 +190,7 @@ def optimal_picks_new(model_version, is_quantized, today=None, all_historical_da
         all_close_data_full = all_close_data_full.loc[start:]
 
     #print(all_close_data_full, " ACDF after cutoff")
-    #print("GOOG close on ", today, all_close_data_full["GOOG"].iloc[-1])
+    print("GOOG close on ", today, all_close_data_full["GOOG"].iloc[-1])
 
     all_close_data = all_close_data_full.iloc[-SEQUENCE_SIZE:].to_numpy()
 
@@ -237,9 +237,10 @@ def optimal_picks_new(model_version, is_quantized, today=None, all_historical_da
 
     return deltas, valid_tickers, all_close_data_full
 
-def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_historical_data=None):
+def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_historical_data=None, adjust=True):
 
     begin_time = time.perf_counter()
+    print("TODAY IN KELLY: ", end)
 
     mus_arr, valid_tickers, all_vol_data = optimal_picks_new(model_version, is_quantized, end, all_historical_data)
     all_closes = all_vol_data.iloc[-1]
@@ -269,23 +270,45 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_h
     final_mus_to_trade = final_mus[positive_mask]
 
     total_allocation = final_allocation_values.sum()
+
+
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
 
     #print("\n--- Continuous Kelly-Based Position Sizing ---")
     #print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
     #print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
-
-    normalized_allocations = final_allocation_values * normalization_factor
-
     final_allocations = []
+    if adjust:
+        normalized_allocations = final_allocation_values * normalization_factor
 
-    for i in range(len(final_tickers_really)):
-        ticker = final_tickers_really[i]
-        normalized_allocation = normalized_allocations[i]
-        mu = final_mus_to_trade[i]
+        for i in range(len(final_tickers_really)):
+            ticker = final_tickers_really[i]
+            normalized_allocation = normalized_allocations[i]
+            mu = final_mus_to_trade[i]
 
-        final_allocations.append((ticker, normalized_allocation, mu))
-        #print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+            final_allocations.append((ticker, normalized_allocation, mu))
+            #print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+    else:
+        allocated = 0
+        for i in range(len(final_tickers_really)):
+            ticker = final_tickers_really[i]
+            final_allocation_value = final_allocation_values[i]
+            mu = final_mus_to_trade[i]
+
+            final_allocations.append((ticker, final_allocation_value, mu))
+
+        final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
+        return_allocs = []
+        for ticker, alloc, mu in final_allocations:
+            if allocated + alloc < 1:
+                return_allocs.append((ticker, alloc, mu))
+            else:
+                return_allocs.append((ticker, 1 - allocated, mu))
+                return return_allocs
+        return return_allocs
+
+
+
 
     final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
     stop_time = time.perf_counter()

@@ -11,7 +11,7 @@ import traceback
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
-                    model=MODEL_MAP["A"]["prefix"], tuning_period = None, switch=True):
+                    model=MODEL_MAP["A"]["prefix"], tuning_period = None, switch=True, adjust = True):
 
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
@@ -57,7 +57,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
                 if switch:
                     kelly_allocations = calculate_kelly_allocations(model, current_day)
                 else:
-                    kelly_allocations = calculate_kelly_allocations_new(model, current_day)
+                    kelly_allocations = calculate_kelly_allocations_new(model, current_day, adjust=adjust)
 
                 total_capital_available = portfolio_df.loc[current_day, 'Cash_At_Open']
                 cash_for_trading = total_capital_available
@@ -178,7 +178,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 #TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
-def continue_backtest(version, tuning_period=None, switch_new = True):
+def continue_backtest(version, tuning_period=None, switch_new = True, adjust = True):
 
     model = MODEL_MAP[version]["prefix"]
     file_path = MODEL_MAP[version]["filepath"]
@@ -211,7 +211,8 @@ def continue_backtest(version, tuning_period=None, switch_new = True):
         initial_capital=last_day_total_value,
         model=model,
         tuning_period=tuning_period,
-        switch = switch_new
+        switch = switch_new,
+        adjust = adjust
     )
 
     new_trading_days_df = new_results_df.iloc[1:]
@@ -221,9 +222,9 @@ def continue_backtest(version, tuning_period=None, switch_new = True):
         return
 
 
-    #mode = "a" if os.path.exists(file_path) else "w"
-    #header = not os.path.exists(file_path)
-    #new_trading_days_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
+    mode = "a" if os.path.exists(file_path) else "w"
+    header = not os.path.exists(file_path)
+    new_trading_days_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
 
 
 

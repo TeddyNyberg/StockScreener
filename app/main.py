@@ -4,9 +4,11 @@ from app.ml_logic.strategy import calculate_kelly_allocations_new
 from app.data.yfinance_fetcher import get_historical_data
 import pandas as pd
 from app.utils import get_date_range
-from app.ml_logic.model_loader import load_model_artifacts
+from app.ml_logic.model_loader import load_model_artifacts_local
+from app.ml_logic.pred_models.only_close_model import setup_pred_model
 from app.ml_logic.strategy import optimal_picks_new
 from datetime import datetime
+import os
 import numpy as np
 
 import time
@@ -26,11 +28,12 @@ def main():
     processed_tickers = [t.replace(".", "-") for t in sp_tickers]
     all_historical_data = get_historical_data(processed_tickers, start, end)
 
-
-    spy = get_historical_data("SPY", start, end)
-
-    load_model_artifacts()
+    dict, config = load_model_artifacts_local(MODEL_MAP["D"]["model_filepath"])
     # calculate_kelly_allocations(MODEL_MAP["A"]["prefix"])
+
+    cur_value = 100000
+
+
 
     """start = time.perf_counter()
     for i in range(100):
@@ -44,7 +47,54 @@ def main():
     end = time.perf_counter()
     print("Elapsed np: ", end - start)"""
 
+
+    # use 1/28/2025
     date_range = pd.date_range("1/28/2025", pd.to_datetime(datetime.now().strftime('%m/%d/%Y')) - pd.Timedelta(days=1), freq='B')
+    portfolio_df = pd.DataFrame(index=date_range, columns=['Total_Value_At_Close', 'Cash_At_Open'], dtype=float)
+    portfolio_df.index.name = "Date"
+    portfolio_df.loc[date_range[0], 'Total_Value_At_Close'] = 100000
+    portfolio_df.loc[date_range[1], "Cash_At_Open"] = 100000
+    missed_day = False
+    for i in range(1, len(date_range)):
+        current_day = date_range[i]
+        prev_day = date_range[i - 1]
+        count = 0
+        while missed_day:
+            try:
+                x = all_historical_data["Close"]["GOOG"][prev_day]
+                missed_day = False
+            except:
+                prev_day = date_range[i - 1 - count]
+                count+=1
+
+        try:
+            final_allocs, _ = calculate_kelly_allocations_new("D", False, end=prev_day,
+                                                              all_historical_data=all_historical_data)
+
+            portfolio_return = 0
+            for ticker, alloc, _ in final_allocs:
+                gain = alloc * (
+                        all_historical_data["Close"][ticker][current_day] - all_historical_data["Close"][ticker][
+                    prev_day]) / all_historical_data["Close"][ticker][prev_day]
+                portfolio_return += gain
+            cur_value += cur_value * portfolio_return
+            portfolio_df.loc[current_day, 'Total_Value_At_Close'] = cur_value
+        except:
+            print("skip calc kelly on ", prev_day)
+            missed_day = True
+            continue
+
+    portfolio_df[['Total_Value_At_Close']] = \
+        (np.floor(portfolio_df[['Total_Value_At_Close']] * 1000) / 1000)
+
+    file_path = MODEL_MAP["D"]["csv_filepath"]
+    #mode = "a" if os.path.exists(file_path) else "w"
+    mode = "w"
+    header = not os.path.exists(file_path)
+    portfolio_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
+
+
+    """
     # len(date_range)
     avg_ret_each_pos = [0.0] * 30
     num_trading_days = 0
@@ -117,7 +167,7 @@ def main():
     print("Correlation of Top 30 Position Weights with Daily Portfolio Return")
     print(correlation_with_return.to_markdown(numalign="left", stralign="left"))
 
-
+    """
 
 
     from PySide6.QtWidgets import QApplication
