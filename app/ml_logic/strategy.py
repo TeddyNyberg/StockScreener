@@ -274,9 +274,9 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_h
 
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
 
-    #print("\n--- Continuous Kelly-Based Position Sizing ---")
-    #print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
-    #print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
+    print("\n--- Continuous Kelly-Based Position Sizing ---")
+    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+    print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
     final_allocations = []
     if adjust:
         normalized_allocations = final_allocation_values * normalization_factor
@@ -298,14 +298,17 @@ def calculate_kelly_allocations_new(model_version, is_quantized, end=None, all_h
             final_allocations.append((ticker, final_allocation_value, mu))
 
         final_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
+        print(final_allocations)
         return_allocs = []
         for ticker, alloc, mu in final_allocations:
             if allocated + alloc < 1:
                 return_allocs.append((ticker, alloc, mu))
+                print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {alloc * 100:.2f}%")
+                allocated += alloc
             else:
-                return_allocs.append((ticker, 1 - allocated, mu))
-                return return_allocs
-        return return_allocs
+                return_allocs.append((ticker, 1 - alloc, mu))
+                return return_allocs, None
+        return return_allocs, None
 
 
 
