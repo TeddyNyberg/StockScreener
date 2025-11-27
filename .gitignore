@@ -26,3 +26,4 @@ dist/
 nyberg_static.pth
 tuned_model.pth
 
+sp_tickers.csv
