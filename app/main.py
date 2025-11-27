@@ -49,7 +49,7 @@ def main():
 
 
     # use 1/28/2025
-    date_range = pd.date_range("1/28/2025", pd.to_datetime(datetime.now().strftime('%m/%d/%Y')) - pd.Timedelta(days=1), freq='B')
+    date_range = pd.date_range("11/20/2025", pd.to_datetime(datetime.now().strftime('%m/%d/%Y')) - pd.Timedelta(days=1), freq='B')
     portfolio_df = pd.DataFrame(index=date_range, columns=['Total_Value_At_Close', 'Cash_At_Open'], dtype=float)
     portfolio_df.index.name = "Date"
     portfolio_df.loc[date_range[0], 'Total_Value_At_Close'] = 100000
@@ -76,7 +76,10 @@ def main():
                 gain = alloc * (
                         all_historical_data["Close"][ticker][current_day] - all_historical_data["Close"][ticker][
                     prev_day]) / all_historical_data["Close"][ticker][prev_day]
+
                 portfolio_return += gain
+
+            print("PR: ", portfolio_return)
             cur_value += cur_value * portfolio_return
             portfolio_df.loc[current_day, 'Total_Value_At_Close'] = cur_value
             print("CUR DAY: ", current_day, " TOT AT CLOSE ", cur_value)
@@ -87,11 +90,12 @@ def main():
 
     portfolio_df[['Total_Value_At_Close']] = \
         (np.floor(portfolio_df[['Total_Value_At_Close']] * 1000) / 1000)
+    print(portfolio_df)
 
-    file_path = MODEL_MAP["D"]["csv_filepath"]
-    mode = "w"
-    header = not os.path.exists(file_path)
-    portfolio_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
+    #file_path = MODEL_MAP["D"]["csv_filepath"]
+    #mode = "w"
+    #header = not os.path.exists(file_path)
+    #portfolio_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
 
     """
     # len(date_range)
