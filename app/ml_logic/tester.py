@@ -7,6 +7,7 @@ import numpy as np
 from app.data.yfinance_fetcher import get_close_on
 from app.ml_logic.strategy import calculate_kelly_allocations, tune
 from app.ml_logic.helpers import is_tuning_day
+import time
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
@@ -45,6 +46,8 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 
         for i in range(1, len(date_range)):
+
+            time.sleep(4)
 
             current_day = date_range[i]
             prev_day = date_range[i - 1]
@@ -165,6 +168,12 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             print(current_day, " total at close: ", total_value)
 
+            portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] = \
+                (np.floor(portfolio_df[['Total_Value_At_Close', 'Cash_At_Open']] * 1000) / 1000)
+            mode = "a" if os.path.exists("nyberg_results_static_full_kelly.csv") else "w"
+            header = not os.path.exists("nyberg_results_static_full_kelly.csv")
+            print(portfolio_df.iloc[-1])
+            portfolio_df.iloc[-1].to_csv("nyberg_results_static_full_kelly.csv", mode=mode, header=header, date_format="%m/%d/%Y")
 
 
 
