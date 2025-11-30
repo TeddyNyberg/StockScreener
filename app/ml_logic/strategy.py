@@ -49,6 +49,9 @@ def optimal_picks(model_version, is_quantized, today=None):
     model_state_dict, config = load_model_artifacts(filepath)
     model = setup_pred_model(model_state_dict, config, is_quantized)
 
+    device = next(model.parameters()).device
+    input_tensor_batch = input_tensor_batch.to(device)
+
     try:
         with torch.no_grad():
             predictions_tensor = model(input_tensor_batch)
@@ -63,11 +66,8 @@ def optimal_picks(model_version, is_quantized, today=None):
 
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None, only_largest=False):
-    begin_kelly = time.perf_counter()
 
     mus_arr, valid_tickers, all_vol_data = optimal_picks(model_version, is_quantized, end)
-    end_opt = time.perf_counter()
-    print("Optimal ", end_opt-begin_kelly)
     all_closes = all_vol_data.iloc[-1]
 
     if mus_arr is None or len(mus_arr) == 0:
@@ -133,10 +133,6 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None, only_larg
     print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
     print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
 
-
-
-    end_kelly = time.perf_counter()
-    print("Kelly time ", end_kelly - begin_kelly)
 
     for ticker, normalized_allocation, mu in final_allocations:
         print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")

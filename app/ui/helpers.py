@@ -8,6 +8,7 @@ import pandas as pd
 from app.ml_logic.strategy import calculate_kelly_allocations
 from app.data.ticker_source import get_sp500_tickers
 import time
+import torch
 
 # just window stuff how it looks, buttons, etc.
 
@@ -16,8 +17,12 @@ open_detail_windows = []
 def start_application():
     from app.ui.main_window import MainWindow
     print("Starting app...")
+    print("torch cuda")
+    print(torch.cuda.is_available())
     #print_model_characteristics("NYBERG-A")
-    #calculate_kelly_allocations("A",False)
+
+    calculate_kelly_allocations("A",False)
+
     run_backtesting()
     with DB() as conn:
         init_db(conn)

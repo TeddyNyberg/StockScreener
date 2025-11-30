@@ -248,6 +248,9 @@ if __name__ == "__main__":
 
 
 def pred_next_day_no_ticker(input_tensor, model, mean, std):
+    device = next(model.parameters()).device
+    input_tensor = input_tensor.to(device)
+
     with torch.no_grad():
         normalized_prediction = model(input_tensor)
     last_prediction = normalized_prediction[-1][0]
@@ -315,8 +318,6 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
 
 def setup_pred_model(model_state_dict, config, is_quantized):
 
-    device = torch.device("cpu")
-
     model = StockTransformerModel(
         num_features_in=config["num_features_in"],
         embedding_dim=config["embedding_dim"],
@@ -327,6 +328,10 @@ def setup_pred_model(model_state_dict, config, is_quantized):
     model.eval()
     if is_quantized:
         quantize_(model, Int8DynamicActivationInt8WeightConfig())
+        device = torch.device("cpu")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        #device = torch.device("cpu")
     model.to(device)
 
     if hasattr(model.positional_encoding, 'pe'):

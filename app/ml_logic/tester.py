@@ -7,19 +7,15 @@ import numpy as np
 from app.data.yfinance_fetcher import get_close_on
 from app.ml_logic.strategy import calculate_kelly_allocations, tune
 from app.ml_logic.helpers import is_tuning_day
-import time
 
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capital_fully,
                     model_version="A", tuning_period = None, only_largest=False):
 
-
-
     print(f"Starting backtest from {start_date_str} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
     daily_pnl_reports = {}
     is_quantized = "QUANTIZED" in MODEL_MAP[model_version]["name"]
-    filepath = MODEL_MAP[model_version]["model_filepath"]
     try:
         start_date = pd.to_datetime(start_date_str)
 
@@ -44,9 +40,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
         new_holdings = {}
         trading_today = True
 
-
         for i in range(1, len(date_range)):
-
 
             current_day = date_range[i]
             prev_day = date_range[i - 1]
@@ -54,6 +48,7 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
             #TODO: make it trian after i buy on firday to make faster
             if is_tuning_day(current_day, tuning_period):
+                filepath = MODEL_MAP[model_version]["model_filepath"]
                 ok = tune(filepath, prev_day)
                 if not ok:
                     print("tune was not successful")
@@ -201,15 +196,13 @@ def handle_backtest(start_date_str = "1/28/2025", initial_capital = initial_capi
 
 def continue_backtest(version, tuning_period=None, only_largest=False):
 
-    file_path = MODEL_MAP[version]["csv_filepath"]
-    data = pd.read_csv(file_path, index_col=0, parse_dates=True)
+    filepath = MODEL_MAP[version]["csv_filepath"]
+    data = pd.read_csv(filepath, index_col=0, parse_dates=True)
     data.index = pd.to_datetime(data.index, format="%m/%d/%Y", errors='raise')
-
 
     last_day_tested = data.index.max()
     print("start date: ", last_day_tested, " in ", version)
     last_day_total_value = data.loc[last_day_tested, 'Total_Value_At_Close']
-
 
     today = pd.Timestamp(datetime.now().date())
     last_trading_day = today - pd.offsets.BDay(1)
@@ -244,14 +237,13 @@ def continue_backtest(version, tuning_period=None, only_largest=False):
         return
 
 
-    mode = "a" if os.path.exists(file_path) else "w"
-    header = not os.path.exists(file_path)
-    new_trading_days_df.to_csv(file_path, mode=mode, header=header, date_format="%m/%d/%Y")
-
+    mode = "a" if os.path.exists(filepath) else "w"
+    header = not os.path.exists(filepath)
+    new_trading_days_df.to_csv(filepath, mode=mode, header=header, date_format="%m/%d/%Y")
 
 
     print("\n" + "=" * 50)
     print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
     print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%m/%d/%Y')}")
-    print(f"Results saved to {file_path}")
+    print(f"Results saved to {filepath}")
     print("=" * 50)
