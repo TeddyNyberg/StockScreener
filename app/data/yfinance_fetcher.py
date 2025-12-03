@@ -20,9 +20,9 @@ def get_info(ticker):
 
 # Ensure `date` is a string like '2024-10-15'
 def get_close_on(ticker, date):
-    data = yf.Ticker(ticker).history(start=date, end=date + timedelta(days=1))
+    data = yf.download(ticker, start=date, end=date + timedelta(days=1), progress=False, auto_adjust=True)
     if not data.empty:
-        return data["Close"].iloc[0]
+        return data["Close"]
     else:
         return None
 

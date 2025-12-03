@@ -68,7 +68,7 @@ def optimal_picks(model_version, is_quantized, today=None):
 def calculate_kelly_allocations(model_version, is_quantized, end=None, only_largest=False):
 
     mus_arr, valid_tickers, all_vol_data = optimal_picks(model_version, is_quantized, end)
-    all_closes = all_vol_data.iloc[-1]
+    all_most_recent_closes = all_vol_data.iloc[-1]
 
     if mus_arr is None or len(mus_arr) == 0:
         print("No predictions available to calculate Kelly bets.")
@@ -137,7 +137,7 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None, only_larg
     for ticker, normalized_allocation, mu in final_allocations:
         print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
-    return final_allocations, all_closes
+    return final_allocations, all_most_recent_closes
 
 def predict_single_ticker(ticker):
     model_state_dict, config = load_model_artifacts(MODEL_MAP["A"]["model_filepath"])
@@ -162,16 +162,19 @@ def get_all_volatilities(all_data):
     return annualized_variance_series
 
 
-def tune(filepath, date):
+def tune(version, date):
+    filepath = MODEL_MAP[version]["model_filepath"]
     model_dict, config = load_model_artifacts(filepath)
     start, end = get_date_range("3M", date)
 
     snp = get_sp500_tickers()
     if not snp:
         return False
-    list_of_df = []
-    for ticker in snp:
-        list_of_df.append(get_historical_data(ticker, start, end))
-    new_model_dict, new_config = fine_tune_model(model_dict, config, list_of_df)
+
+    processed_tickers = [t.replace(".", "-") for t in snp]
+    all_data = get_historical_data(processed_tickers, start, end)
+    all_closes = all_data["Close"]
+
+    new_model_dict, new_config = fine_tune_model(model_dict, config, all_closes)
     save_model_artifacts(new_model_dict, new_config, filepath)
     return True

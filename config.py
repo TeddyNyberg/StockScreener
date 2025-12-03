@@ -21,25 +21,28 @@ MODEL_MAP = {
         "name": "NYBERG STATIC MODEL",
         "csv_filepath": "nyberg_results_static.csv",
         "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
-        "model_filepath": "nyberg_static.pth"
-
+        "model_filepath": "nyberg_static.pth",
+        "quantized": False
     },
     "B": {
         "name": "NYBERG TUNED MODEL",
         "csv_filepath": "nyberg_results_tune.csv",
         "s3_prefix": "fine_tuned_models/only_close_model_original_not_fine_tuned.gz",
-        "model_filepath": "tuned_model.pth"
+        "model_filepath": "tuned_model.pth",
+        "quantized": False
     },
     "C":{
         "name": "NYBERG STATIC QUANTIZED MODEL",
         "csv_filepath": "nyberg_results_static_quantized.csv",
         "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
-        "model_filepath": "nyberg_static.pth"
+        "model_filepath": "nyberg_static.pth",
+        "quantized": True
     },
     "D":{
         "name": "NYBERG STATIC MODEL FULL KELLY",
         "csv_filepath": "nyberg_results_static_full_kelly.csv",
         "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
-        "model_filepath": "nyberg_static.pth"
+        "model_filepath": "nyberg_static.pth",
+        "quantized": False
     }
 }

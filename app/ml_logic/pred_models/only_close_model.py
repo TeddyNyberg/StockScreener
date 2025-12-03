@@ -34,6 +34,11 @@ class StockTransformerModel(nn.Module):
         )
 
     def forward(self, x):
+
+        for name, param in self.feature_embedding.named_parameters():
+            if torch.isnan(param.data).any():
+                print(f"!!! NaN in feature_embedding {name} BEFORE calculation !!!")
+
         feature_embeddings = self.feature_embedding(x)
         combined_embeddings = self.positional_encoding(feature_embeddings)
         output = self.transformer_encoder(combined_embeddings)
@@ -55,7 +60,7 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         seq_len = x.size(1)
-        pe_slice = self.pe[:seq_len].transpose(0, 1)
+        pe_slice = self.pe[:seq_len].transpose(0, 1).to(x.device)
         x = x + pe_slice
         return self.dropout(x)
 
@@ -260,7 +265,7 @@ def pred_next_day_no_ticker(input_tensor, model, mean, std):
     return prediction.item()
 
 
-def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3, learning_rate=0.00005, batch_size=32):
+def fine_tune_model(model_state_dict, config, list_close_train, num_epochs=3, learning_rate=0.00005, batch_size=32):
     print("-----TUNING-----")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -274,13 +279,11 @@ def fine_tune_model(model_state_dict, config, list_of_new_data_df, num_epochs=3,
     model.load_state_dict(model_state_dict)
     model.to(device)
 
-    list_close_train = []
-    for df in list_of_new_data_df:
-        list_close_train.append(df["Close"].to_numpy().reshape(-1, 1))
-
     norm_windows, targets = [], []
-    for arr in list_close_train:
-        xt, yt = to_seq(SEQUENCE_SIZE, arr)
+    for _, arr in list_close_train.items():
+        xt, yt = to_seq(SEQUENCE_SIZE, arr.to_numpy())
+        if torch.isnan(xt).any() or torch.isnan(yt).any():
+            continue
         for x_win, y_val in zip(xt, yt):
             x_norm, mean, std = normalize_window(x_win)
             norm_windows.append(x_norm)
