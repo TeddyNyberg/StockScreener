@@ -5,6 +5,9 @@
 
 import yfinance as yf
 from datetime import timedelta
+import asyncio
+import pandas as pd
+from config import *
 
 
 # this may lead to errors, understand some may want ticker col some dont
@@ -40,3 +43,40 @@ def get_balancesheet(ticker):
 
 
 
+
+class LiveMarketTable:
+    def __init__(self):
+        self.ws = None
+        self.listen_task = None
+
+        try:
+            self.df = pd.read_parquet(SP_DATA_CACHE)
+            if 'Symbol' in self.df.columns:
+                self.df.set_index('Symbol', inplace=True)
+        except Exception:
+            print("File not found")
+
+
+    async def start_socket(self, tickers):
+        print("WE'LL DO IT LIVE")
+        self.ws = yf.AsyncWebSocket()
+        await self.ws.subscribe(tickers)
+        self.listen_task = asyncio.create_task(self.ws.listen(self.message_handler))
+        return self.ws
+
+    async def message_handler(self, message):
+        ticker = message.get('id')
+        price = message.get('price')
+        self.df.at[ticker, 'Price'] = price
+        print(f"Updated {ticker}: {price}")
+
+    async def close_socket(self):
+        print("Stopping socket...")
+        if self.ws:
+            self.listen_task.close()
+            try:
+                await self.listen_task
+            except asyncio.CancelledError:
+                print("Listener stopped cleanly.")
+
+        return self.df.reset_index()

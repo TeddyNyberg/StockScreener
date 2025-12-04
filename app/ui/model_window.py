@@ -29,14 +29,18 @@ class ModelWindow(QMainWindow):
         #top_row_layout.addWidget(fine_tune_btn)
 
         next_day_picks = QPushButton("Next Day Picks")
-        next_day_picks.clicked.connect(self.show_kelly_bet)
+        next_day_picks.clicked.connect(self.show_kelly_bet("A", now=False))
         top_row_layout.addWidget(next_day_picks)
 
 
         #TODO: make this filename universal?
-        back_test_button = QPushButton("Back Test")
-        back_test_button.clicked.connect(lambda: continue_backtest("A"))
-        top_row_layout.addWidget(back_test_button)
+        #back_test_button = QPushButton("Back Test")
+        #back_test_button.clicked.connect(lambda: continue_backtest("A"))
+        #top_row_layout.addWidget(back_test_button)
+
+        current_picks_btn = QPushButton("Current Picks")
+        current_picks_btn.clicked.connect(lambda: continue_backtest("A"))
+        top_row_layout.addWidget(current_picks_btn)
 
 
         layout.addLayout(top_row_layout)
@@ -93,8 +97,10 @@ class ModelWindow(QMainWindow):
             self.update_status_message(f"Error predicting for {ticker}: {e}")
             print(f"Prediction error: {e}")
 
-    def show_kelly_bet(self):
-        final_allocations, _ = calculate_kelly_allocations("A", False)
+    def show_kelly_bet(self, version):
+        print("This uses 50 days ending yesterday, so today you would own these stocks, then sell at close.")
+
+        final_allocations, _ = calculate_kelly_allocations(version, False)
 
         self.third_layout.addWidget(QLabel("Ticker"), 0, 0)
         self.third_layout.addWidget(QLabel("Allocation"), 0, 1)

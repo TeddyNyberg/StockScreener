@@ -334,7 +334,6 @@ def setup_pred_model(model_state_dict, config, is_quantized):
         device = torch.device("cpu")
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        #device = torch.device("cpu")
     model.to(device)
 
     if hasattr(model.positional_encoding, 'pe'):

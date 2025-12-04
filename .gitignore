@@ -27,3 +27,5 @@ nyberg_static.pth
 tuned_model.pth
 
 sp500_tickers.csv
+sp500_history_cache.parquet
+vol_data.parquet

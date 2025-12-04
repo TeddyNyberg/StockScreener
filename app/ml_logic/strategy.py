@@ -35,9 +35,9 @@ def optimal_picks(model_version, is_quantized, today=None):
     windows_means = windows_means[valid_mask]
     windows_stds = windows_stds[valid_mask]
     latest_closes = latest_closes[valid_mask]
+    all_close_data_full = all_close_data_full.loc[:, valid_mask]
 
-    all_tickers = np.array(all_close_data_full.columns.tolist())
-    valid_tickers = all_tickers[valid_mask]
+    valid_tickers = np.array(all_close_data_full.columns.tolist())
 
     input_tensor_batch = (
         torch.tensor(normalized_windows, dtype=torch.float32)
@@ -67,16 +67,15 @@ def optimal_picks(model_version, is_quantized, today=None):
 
 def calculate_kelly_allocations(model_version, is_quantized, end=None, only_largest=False):
 
-    mus_arr, valid_tickers, all_vol_data = optimal_picks(model_version, is_quantized, end)
+    mus_arr, valid_tickers, all_vol_data = (
+        optimal_picks(model_version=model_version, is_quantized=is_quantized, today=end))
     all_most_recent_closes = all_vol_data.iloc[-1]
 
     if mus_arr is None or len(mus_arr) == 0:
         print("No predictions available to calculate Kelly bets.")
         return None
-    volatility_series = get_all_volatilities(all_vol_data)
 
-    sigma_squareds_aligned = volatility_series.reindex(valid_tickers, fill_value=-1)
-    sigma_squareds_array = sigma_squareds_aligned.to_numpy()
+    sigma_squareds_array = get_all_volatilities_np(all_vol_data.to_numpy())
 
     valid_mask = (sigma_squareds_array > 0) & (~np.isnan(sigma_squareds_array)) & (~np.isnan(mus_arr))
 
@@ -151,15 +150,15 @@ def predict_single_ticker(ticker):
     print(f"Predicted value: {prediction}")
     return prediction, close_data.iloc[-1].item()
 
-def get_all_volatilities(all_data):
-    returns_df = all_data.pct_change(fill_method=None)
-    returns_df = returns_df.dropna(how='all', axis=0)
-    returns_df = returns_df.dropna(how='all', axis=1)
 
-    daily_variance = returns_df.var()
-    annualized_variance_series = daily_variance * 252 #252 trading days
+def get_all_volatilities_np(data_array):
+    prev_prices = data_array[:-1]
+    curr_prices = data_array[1:]
+    returns = (curr_prices - prev_prices) / prev_prices
+    daily_variance = np.nanvar(returns, axis=0, ddof=1)
+    annualized_variance = daily_variance * 252 #252 trading days
 
-    return annualized_variance_series
+    return annualized_variance
 
 
 def tune(version, date):
