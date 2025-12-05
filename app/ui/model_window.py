@@ -10,6 +10,7 @@ from app.ml_logic.tester import continue_backtest
 import subprocess
 import sys
 from settings import *
+import pandas as pd
 
 import asyncio
 
@@ -161,14 +162,13 @@ class ModelWindow(QMainWindow):
         sp_tickers = get_sp500_tickers()
         self.volatility = get_volatility_cache()
         self.data = get_cached_49days()
-        print("before start socket")
         await self.market_data.start_socket(sp_tickers)
-        print("post start socket")
 
     async def handle_fastest_kelly(self):
         final_df = await self.market_data.close_socket()
-
-
+        new_row_df = final_df.to_frame().T
+        data = pd.concat([self.data, new_row_df], ignore_index=True)
+        fastest_kelly(data, self.volatility)
 
 def train_on_cloud():
     try:

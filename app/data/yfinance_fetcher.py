@@ -8,6 +8,8 @@ from datetime import timedelta
 import asyncio
 import pandas as pd
 from config import *
+import time
+from app.data.ticker_source import get_sp500_tickers
 
 
 # this may lead to errors, understand some may want ticker col some dont
@@ -50,11 +52,11 @@ class LiveMarketTable:
         self.last_day = None
         self.listen_task = None
         try:
-            df = pd.read_parquet(SP_DATA_CACHE)
-            last_day = df.iloc[-1]
-            self.last_day = last_day
-        except Exception:
-            print("File not found")
+            sp_tickers = get_sp500_tickers()
+            data = yf.download(sp_tickers, period="1d", auto_adjust=True)["Close"].iloc[-1]
+            self.last_day = data
+        except Exception as e:
+            print(f"Except: {e}")
 
 
     async def start_socket(self, tickers):

@@ -20,7 +20,7 @@ def update_cache():
     close_data = data["Close"]
     volatility_array = get_all_volatilities_np(close_data.to_numpy())
     np.save(VOL_PATH, volatility_array)
-    data["Close"].iloc[-SEQUENCE_SIZE:].to_parquet(PARQ_PATH)
+    data["Close"].iloc[-(SEQUENCE_SIZE - 1):].to_parquet(PARQ_PATH)
     print("Cache updated.")
 
 
