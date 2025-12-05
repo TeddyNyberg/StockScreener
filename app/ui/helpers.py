@@ -21,7 +21,7 @@ def start_application():
     print("Starting app...")
     #print_model_characteristics("NYBERG-A")
 
-    calculate_kelly_allocations("A",False)
+    #calculate_kelly_allocations("A",False)
 
 
     run_backtesting()

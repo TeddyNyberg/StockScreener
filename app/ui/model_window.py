@@ -2,13 +2,17 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
                                QLineEdit, QPushButton, QSpacerItem, QGridLayout)
 
 from app.utils import get_date_range
-from app.data.yfinance_fetcher import get_historical_data
-from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker
+from app.data.yfinance_fetcher import get_historical_data, LiveMarketTable
+from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker, fastest_kelly
+from app.data.ticker_source import get_sp500_tickers
+from app.data.data_cache import get_volatility_cache, get_cached_49days
 from app.ml_logic.tester import continue_backtest
 import subprocess
 import sys
 from settings import *
-from config import *
+
+import asyncio
+
 from app.ui.scatter_canvas import MplCanvas, create_return_figure
 
 
@@ -28,8 +32,11 @@ class ModelWindow(QMainWindow):
         #fine_tune_btn.clicked.connect(lambda: tune())  tune from ml_logic.strategy
         #top_row_layout.addWidget(fine_tune_btn)
 
+        self.third_layout = QGridLayout()
+
         next_day_picks = QPushButton("Next Day Picks")
-        next_day_picks.clicked.connect(self.show_kelly_bet("A", now=False))
+        next_day_picks.clicked.connect(lambda _: self.show_kelly_bet("A"))
+
         top_row_layout.addWidget(next_day_picks)
 
 
@@ -39,9 +46,10 @@ class ModelWindow(QMainWindow):
         #top_row_layout.addWidget(back_test_button)
 
         current_picks_btn = QPushButton("Current Picks")
-        current_picks_btn.clicked.connect(lambda: continue_backtest("A"))
+        current_picks_btn.clicked.connect(
+            lambda: asyncio.create_task(self.handle_fastest_kelly())
+        )
         top_row_layout.addWidget(current_picks_btn)
-
 
         layout.addLayout(top_row_layout)
 
@@ -50,7 +58,7 @@ class ModelWindow(QMainWindow):
         middle_layout = QHBoxLayout()
 
         train_button = QPushButton("Train on Cloud")
-        train_button.clicked.connect(lambda: train_on_cloud())
+        #train_button.clicked.connect(lambda: train_on_cloud())
         middle_layout.addWidget(train_button)
 
         self.search_bar_input = QLineEdit()
@@ -61,7 +69,6 @@ class ModelWindow(QMainWindow):
         middle_layout.addWidget(self.search_bar_input)
         layout.addLayout(middle_layout)
 
-        self.third_layout = QGridLayout()
 
         self.fourth_layout = QHBoxLayout()
         self.plot_button = QPushButton("Show Return Scatterplot")
@@ -76,6 +83,15 @@ class ModelWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
+        self.market = None
+        self.volatility = None
+        self.data = None
+        self.market_data = None
+
+        asyncio.create_task(self.prep_fastest_kelly())
+
+
+        print("after run")
 
 
     def update_status_message(self, message):
@@ -139,6 +155,19 @@ class ModelWindow(QMainWindow):
             print(f"Scatterplot updated for {ticker} vs SPY.")
         else:
             print(f"Could not generate plot for {ticker}.")
+
+    async def prep_fastest_kelly(self):
+        self.market_data = LiveMarketTable()
+        sp_tickers = get_sp500_tickers()
+        self.volatility = get_volatility_cache()
+        self.data = get_cached_49days()
+        print("before start socket")
+        await self.market_data.start_socket(sp_tickers)
+        print("post start socket")
+
+    async def handle_fastest_kelly(self):
+        final_df = await self.market_data.close_socket()
+
 
 
 def train_on_cloud():

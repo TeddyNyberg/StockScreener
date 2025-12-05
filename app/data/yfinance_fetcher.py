@@ -47,12 +47,12 @@ def get_balancesheet(ticker):
 class LiveMarketTable:
     def __init__(self):
         self.ws = None
+        self.last_day = None
         self.listen_task = None
-
         try:
-            self.df = pd.read_parquet(SP_DATA_CACHE)
-            if 'Symbol' in self.df.columns:
-                self.df.set_index('Symbol', inplace=True)
+            df = pd.read_parquet(SP_DATA_CACHE)
+            last_day = df.iloc[-1]
+            self.last_day = last_day
         except Exception:
             print("File not found")
 
@@ -62,21 +62,15 @@ class LiveMarketTable:
         self.ws = yf.AsyncWebSocket()
         await self.ws.subscribe(tickers)
         self.listen_task = asyncio.create_task(self.ws.listen(self.message_handler))
-        return self.ws
 
     async def message_handler(self, message):
         ticker = message.get('id')
         price = message.get('price')
-        self.df.at[ticker, 'Price'] = price
+        self.last_day.at[ticker] = price
         print(f"Updated {ticker}: {price}")
 
     async def close_socket(self):
         print("Stopping socket...")
-        if self.ws:
-            self.listen_task.close()
-            try:
-                await self.listen_task
-            except asyncio.CancelledError:
-                print("Listener stopped cleanly.")
-
-        return self.df.reset_index()
+        self.listen_task.cancel()
+        await self.ws.close()
+        return self.last_day

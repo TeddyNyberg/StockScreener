@@ -16,7 +16,7 @@ DEFAULT_STYLE = "charles"
 S_AND_P_URL = "https://stockanalysis.com/list/sp-500-stocks/"
 SP_TICKER_CACHE = "sp500_tickers.csv"
 SP_DATA_CACHE = "sp500_history_cache.parquet"
-VOL_DATA_CACHE = "vol_data.parquet"
+VOL_DATA_CACHE = "vol_data.npy"
 
 MODEL_MAP = {
     "A": {

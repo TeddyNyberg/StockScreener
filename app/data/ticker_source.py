@@ -16,9 +16,8 @@ def get_sp500_tickers():
             with open(SP_TICKER_CACHE, 'r') as f:
                 reader = csv.reader(f)
                 tickers = next(reader)
-                processed_tickers = [t.replace(".", "-") for t in tickers]
-                if processed_tickers:
-                    return processed_tickers
+                if tickers:
+                    return tickers
         except Exception as e:
             print(f"Error w cache, fetching from internet: {e}")
     r = requests.get(S_AND_P_URL)

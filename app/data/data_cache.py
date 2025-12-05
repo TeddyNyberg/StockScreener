@@ -2,7 +2,8 @@ import pandas as pd
 from app.utils import get_date_range
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.nyberg_fetcher import get_nyberg_data
-
+from config import *
+import numpy as np
 
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
@@ -55,3 +56,9 @@ def get_yfdata_cache(tickers, time):
 
     return rm_nm(results[0], results[1])
 
+
+def get_volatility_cache():
+    return np.load(VOL_DATA_CACHE)
+
+def get_cached_49days():
+    return pd.read_parquet(SP_DATA_CACHE)
