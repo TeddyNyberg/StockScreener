@@ -180,8 +180,9 @@ def tune(version, date):
 
 
 # not generalizible, only model A
-def fastest_kelly(data, vol_data):
-    mus_arr, valid_tickers, optimal_val_mask = fastest_optimal(data)
+def fastest_kelly(data, model, vol_data, tickers):
+
+    mus_arr, optimal_val_mask = fastest_optimal(data, model)
 
     if mus_arr is None or len(mus_arr) == 0:
         print("No predictions available to calculate Kelly bets.")
@@ -191,6 +192,7 @@ def fastest_kelly(data, vol_data):
 
     valid_mask = (vol_data > 0) & (~np.isnan(vol_data)) & (~np.isnan(mus_arr))
 
+    valid_tickers = tickers[optimal_val_mask]
     final_tickers = valid_tickers[valid_mask]
     final_mus = mus_arr[valid_mask]
     final_sigma_squareds = vol_data[valid_mask]
@@ -210,7 +212,6 @@ def fastest_kelly(data, vol_data):
     normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
     normalized_allocations = final_allocation_values * normalization_factor
 
-
     final_allocations = [
         (ticker, normalized_allocation, mu)
         for ticker, normalized_allocation, mu in
@@ -229,9 +230,7 @@ def fastest_kelly(data, vol_data):
 
     return sorted_allocations
 
-def fastest_optimal(all_close_data_full):
-
-    all_close_data = all_close_data_full.to_numpy()
+def fastest_optimal(all_close_data, model):
 
     latest_closes = all_close_data[-1, :]
     windows_means = np.mean(all_close_data, axis=0)
@@ -246,19 +245,14 @@ def fastest_optimal(all_close_data_full):
     windows_means = windows_means[valid_mask]
     windows_stds = windows_stds[valid_mask]
     latest_closes = latest_closes[valid_mask]
-    all_close_data_full = all_close_data_full.loc[:, valid_mask]
 
-    valid_tickers = np.array(all_close_data_full.columns.tolist())
 
     input_tensor_batch = (
         torch.tensor(normalized_windows, dtype=torch.float32)
-        .transpose(0, 1)
-        .unsqueeze(2)
+                    .transpose(0, 1)
+                    .unsqueeze(2)
     )
 
-    filepath = MODEL_MAP["A"]["model_filepath"]
-    model_state_dict, config = load_model_artifacts(filepath)
-    model = setup_pred_model(model_state_dict, config, False)
 
     device = next(model.parameters()).device
     input_tensor_batch = input_tensor_batch.to(device)
@@ -273,4 +267,4 @@ def fastest_optimal(all_close_data_full):
     predictions = predictions_tensor.cpu().numpy().flatten()
     deltas = (((predictions * windows_stds) + windows_means) - latest_closes) / latest_closes
 
-    return deltas, valid_tickers, valid_mask
+    return deltas, valid_mask

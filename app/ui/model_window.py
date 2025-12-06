@@ -1,6 +1,9 @@
+import numpy as np
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
                                QLineEdit, QPushButton, QSpacerItem, QGridLayout)
 
+from app.ml_logic.model_loader import load_model_artifacts
+from app.ml_logic.pred_models.only_close_model import setup_pred_model
 from app.utils import get_date_range
 from app.data.yfinance_fetcher import get_historical_data, LiveMarketTable
 from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker, fastest_kelly
@@ -11,6 +14,7 @@ import subprocess
 import sys
 from settings import *
 import pandas as pd
+from config import *
 
 import asyncio
 
@@ -41,7 +45,6 @@ class ModelWindow(QMainWindow):
         top_row_layout.addWidget(next_day_picks)
 
 
-        #TODO: make this filename universal?
         #back_test_button = QPushButton("Back Test")
         #back_test_button.clicked.connect(lambda: continue_backtest("A"))
         #top_row_layout.addWidget(back_test_button)
@@ -54,13 +57,12 @@ class ModelWindow(QMainWindow):
 
         layout.addLayout(top_row_layout)
 
-        # TODO: add button to get data maybe?
 
         middle_layout = QHBoxLayout()
 
-        train_button = QPushButton("Train on Cloud")
+        #train_button = QPushButton("Train on Cloud")
         #train_button.clicked.connect(lambda: train_on_cloud())
-        middle_layout.addWidget(train_button)
+        #middle_layout.addWidget(train_button)
 
         self.search_bar_input = QLineEdit()
         self.search_bar_input.setPlaceholderText("Enter ticker")
@@ -88,11 +90,13 @@ class ModelWindow(QMainWindow):
         self.volatility = None
         self.data = None
         self.market_data = None
-
+        self.model = None
+        self.dataT = None
+        self.tickers = None
+        self.device = None
         asyncio.create_task(self.prep_fastest_kelly())
 
 
-        print("after run")
 
 
     def update_status_message(self, message):
@@ -158,17 +162,24 @@ class ModelWindow(QMainWindow):
             print(f"Could not generate plot for {ticker}.")
 
     async def prep_fastest_kelly(self):
+
+        filepath = MODEL_MAP["A"]["model_filepath"]
+        model_state_dict, config = load_model_artifacts(filepath)
+        self.model = setup_pred_model(model_state_dict, config, False)
+
         self.market_data = LiveMarketTable()
-        sp_tickers = get_sp500_tickers()
         self.volatility = get_volatility_cache()
-        self.data = get_cached_49days()
-        await self.market_data.start_socket(sp_tickers)
+        data = get_cached_49days()
+        self.data = data.to_numpy(dtype=np.float32)
+        self.tickers = np.array(data.columns) # need to get tickers from data, so order is maintained
+
+        await self.market_data.start_socket(self.tickers)
 
     async def handle_fastest_kelly(self):
         final_df = await self.market_data.close_socket()
-        new_row_df = final_df.to_frame().T
-        data = pd.concat([self.data, new_row_df], ignore_index=True)
-        fastest_kelly(data, self.volatility)
+        new_row = final_df.values.reshape(1, -1).astype(np.float32)
+        data = np.vstack((self.data, new_row))
+        fastest_kelly(data, self.model, self.volatility, self.tickers)
 
 def train_on_cloud():
     try:

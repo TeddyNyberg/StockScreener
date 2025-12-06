@@ -23,7 +23,6 @@ def start_application():
 
     #calculate_kelly_allocations("A",False)
 
-
     run_backtesting()
     with DB() as conn:
         init_db(conn)

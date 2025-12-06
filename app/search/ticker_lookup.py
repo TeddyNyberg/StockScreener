@@ -27,9 +27,9 @@ def lookup_tickers(tickers):
             continue
 
 
-        info = get_info(ticker)
-
-        if info and "shortName" in info:
+        #TODO: if yfinance down, this all breaks. Fix case where on init, info not returned
+        try:
+            info = get_info(ticker)
             to_ret.append({
                 "ticker": ticker,
                 "name": info.get("shortName", "N/A"),
@@ -37,8 +37,8 @@ def lookup_tickers(tickers):
                 "currency": info.get("currency", "USD"),
             })
             valid_tickers_for_chart.append(ticker)
-        else:
-            print(f"Warning: Could not retrieve valid info for ticker {ticker}. Skipping this ticker.")
+        except:
+            print("no info for ticker")
 
     if valid_tickers_for_chart:
         chart, chart_data = get_chart(valid_tickers_for_chart, DEFAULT_CHART_TIME)

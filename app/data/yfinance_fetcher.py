@@ -6,9 +6,6 @@
 import yfinance as yf
 from datetime import timedelta
 import asyncio
-import pandas as pd
-from config import *
-import time
 from app.data.ticker_source import get_sp500_tickers
 
 
@@ -54,6 +51,7 @@ class LiveMarketTable:
         try:
             sp_tickers = get_sp500_tickers()
             data = yf.download(sp_tickers, period="1d", auto_adjust=True)["Close"].iloc[-1]
+            print(data)
             self.last_day = data
         except Exception as e:
             print(f"Except: {e}")
