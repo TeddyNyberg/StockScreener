@@ -4,6 +4,17 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # chart figure is a list of charts??????
 # TODO: make it accept possible a list of pricing data, so it works for comparison too fml
+
+        # this is a chart, which takes data and chart ------------|
+        # it calls custchart                                      |
+        # cust chart takes data and figure                        |
+        # cust chart shows it and adds hoverability               |
+        # we get data and chart and spy from lookup_tickers <-----|
+        # lookup returns a [], chart, and data
+        # lookup gets chart and data from get_chart
+        # get_chart figures and plot_data df
+
+
 class CustomChartCanvas(FigureCanvas):
     def __init__(self, chart_data, chart_figure, parent=None):
         self.figure = chart_figure

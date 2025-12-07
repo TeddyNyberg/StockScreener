@@ -249,8 +249,8 @@ def fastest_optimal(all_close_data, model):
 
     input_tensor_batch = (
         torch.tensor(normalized_windows, dtype=torch.float32)
-                    .transpose(0, 1)
-                    .unsqueeze(2)
+        .transpose(0, 1)
+        .unsqueeze(2)
     )
 
 

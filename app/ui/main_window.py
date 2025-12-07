@@ -1,9 +1,11 @@
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpacerItem, QSizePolicy
+from PySide6.QtWidgets import (QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpacerItem, QSizePolicy,
+                               QMenu)
 from app.search.ticker_lookup import lookup_tickers
 from app.ui.chart_canvas import CustomChartCanvas
 from app.ui.helpers import open_watchlist, open_portfolio, open_window_from_ticker
+from app.ui.login_window import LoginWindow
 from app.ui.model_window import ModelWindow
 from app.ui.widgets import SearchWidget
 
@@ -12,11 +14,25 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-
         self.setWindowTitle("Stock Screener")
         main_layout = QVBoxLayout()
 
         self.resize(800, 600)
+
+        self.logged_in = False
+        self.username = None
+
+        user_layout = QHBoxLayout()
+        self.user_btn = QPushButton("Login")
+        user_layout.addStretch(1)
+        user_layout.addWidget(self.user_btn)
+
+
+
+
+        self.update_user_ui()
+
+        main_layout.addLayout(user_layout)
 
         top_layout = QHBoxLayout()
         self.model_window = None
@@ -32,7 +48,6 @@ class MainWindow(QWidget):
 
         watchlist_port_layout = QVBoxLayout()
 
-
         w_btn = QPushButton("Watchlist")
         w_btn.clicked.connect(lambda _: open_watchlist(self))
         watchlist_port_layout.addWidget(w_btn)
@@ -40,7 +55,6 @@ class MainWindow(QWidget):
         i_btn = QPushButton("Investments")
         i_btn.clicked.connect(lambda _: open_portfolio(self))
         watchlist_port_layout.addWidget(i_btn)
-
 
         top_layout.addLayout(watchlist_port_layout)
 
@@ -52,18 +66,7 @@ class MainWindow(QWidget):
         main_layout.addLayout(top_layout)
 
         spy, spy_chart, data = lookup_tickers("^SPX")
-
         self.canvas = CustomChartCanvas(data, spy_chart)
-
-        # this is a chart, which takes data and chart ------------|
-        # it calls custchart                                      |
-        # cust chart takes data and figure                        |
-        # cust chart shows it and adds hoverability               |
-        # we get data and chart and spy from lookup_tickers <-----|
-        # lookup returns a [], chart, and data
-        # lookup gets chart and data from get_chart
-        # get_chart figures and plot_data df
-
         main_layout.addWidget(self.canvas)
 
         self.setLayout(main_layout)
@@ -75,3 +78,37 @@ class MainWindow(QWidget):
         if self.model_window is None:
             self.model_window = ModelWindow()
         self.model_window.show()
+
+    def update_user_ui(self):
+
+        if self.logged_in:
+            self.user_btn.setText(f"{self.username}")
+
+            menu = QMenu(self)
+            logout_action = menu.addAction("Logout")
+            logout_action.triggered.connect(self.logout)
+
+            self.user_btn.setMenu(menu)
+        else:
+            self.user_btn.setText("Login")
+            self.user_btn.setMenu(None)
+            self.user_btn.clicked.connect(self.open_login_window)
+
+    def open_login_window(self):
+        login_dialog = LoginWindow()
+        if login_dialog.exec():
+            print("execed")
+            username = login_dialog.get_username()
+
+            if username:
+                self.username = username
+                self.logged_in = True
+                self.update_user_ui()
+                print(f"Logged in as {self.username}")
+
+
+    def logout(self):
+        self.logged_in = False
+        self.username = None
+        self.update_user_ui()
+        print("log out")

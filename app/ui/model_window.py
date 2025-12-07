@@ -7,13 +7,11 @@ from app.ml_logic.pred_models.only_close_model import setup_pred_model
 from app.utils import get_date_range
 from app.data.yfinance_fetcher import get_historical_data, LiveMarketTable
 from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker, fastest_kelly
-from app.data.ticker_source import get_sp500_tickers
 from app.data.data_cache import get_volatility_cache, get_cached_49days
 from app.ml_logic.tester import continue_backtest
 import subprocess
 import sys
 from settings import *
-import pandas as pd
 from config import *
 
 import asyncio
@@ -86,17 +84,12 @@ class ModelWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
-        self.market = None
         self.volatility = None
         self.data = None
         self.market_data = None
         self.model = None
-        self.dataT = None
         self.tickers = None
-        self.device = None
         asyncio.create_task(self.prep_fastest_kelly())
-
-
 
 
     def update_status_message(self, message):
