@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QVBoxLayout, QDialog, QLineEdit, QDialogButtonBox
 
+from app.db.db_handler import authenticate_user
 
 
 class LoginWindow(QDialog):
@@ -20,7 +21,7 @@ class LoginWindow(QDialog):
         layout.addWidget(self.password_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
+        buttons.accepted.connect(self.handle_login)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
@@ -31,3 +32,15 @@ class LoginWindow(QDialog):
 
     def get_password(self):
         return self.password_input.text()
+
+    def handle_login(self):
+        username = self.get_username()
+        password = self.get_password()
+
+        user_id = authenticate_user(username, password)
+
+        if user_id:
+            print("Login approved!")
+            self.accept()
+        else:
+            print("Login denied.")

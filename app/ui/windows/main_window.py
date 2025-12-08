@@ -112,3 +112,4 @@ class MainWindow(QWidget):
         self.username = None
         self.update_user_ui()
         print("log out")
+

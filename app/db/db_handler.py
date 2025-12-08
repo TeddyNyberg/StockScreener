@@ -1,6 +1,7 @@
 from settings import *
 import psycopg2
 from decimal import Decimal
+import bcrypt
 
 def load_sql(filename):
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -191,3 +192,60 @@ def init_db(conn):
         cur.execute(create_transactions_sql)
 
     print("Database initialized.")
+
+
+def init_user_table(conn):
+    create_users_sql = load_sql("create_users_table.sql")
+
+    with conn.cursor() as cur:
+        cur.execute(create_users_sql)
+        print("Users table initialized.")
+
+
+def register_user(username, plain_password):
+
+    INSERT_USER_QUERY = load_sql("insert_user.sql")
+
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
+
+    try:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(INSERT_USER_QUERY, (username, hashed_password.decode('utf-8')))
+                user_id = cur.fetchone()[0]
+                print(f"User '{username}' registered successfully.")
+                return user_id
+    except psycopg2.IntegrityError:
+        print(f"Registration failed: Username '{username}' already exists.")
+        return False
+    except Exception as e:
+        print(f"Database error during registration: {e}")
+        return False
+
+
+def authenticate_user(username, plain_password):
+
+    GET_USER_QUERY = load_sql("select_user_by_username.sql")
+
+    try:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(GET_USER_QUERY, (username,))
+                result = cur.fetchone()
+
+                if result is None:
+                    print("Auth failed: User not found.")
+                    return False
+
+                user_id, db_username, db_password_hash = result
+
+                if bcrypt.checkpw(plain_password.encode('utf-8'), db_password_hash.encode('utf-8')):
+                    print(f"User '{username}' logged in successfully.")
+                    return user_id
+                else:
+                    print("Auth failed: Invalid password.")
+                    return False
+    except Exception as e:
+        print(f"Database error during authentication: {e}")
+        return False
