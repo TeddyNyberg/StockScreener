@@ -5,8 +5,8 @@ from PySide6.QtWidgets import (QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushB
 from app.search.ticker_lookup import lookup_tickers
 from app.ui.chart_canvas import CustomChartCanvas
 from app.ui.window_manager import open_detail_window, open_watchlist, open_portfolio
-from app.ui.login_window import LoginWindow
-from app.ui.model_window import ModelWindow
+from app.ui.windows.login_window import LoginWindow
+from app.ui.windows.model_window import ModelWindow
 from app.ui.widgets import SearchWidget
 
 

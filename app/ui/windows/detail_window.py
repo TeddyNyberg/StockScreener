@@ -7,7 +7,7 @@ from app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balan
 from app.ui.chart_canvas import CustomChartCanvas
 from app.ui.window_manager import open_detail_window, open_watchlist
 from app.ui.ui_utils import clear_layout, make_buttons, create_table_widget_from_data
-from app.ui.portfolio_window import TradingWindow
+from app.ui.windows.portfolio_window import TradingWindow
 from app.ui.widgets import SearchWidget
 
 

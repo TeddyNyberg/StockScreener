@@ -3,7 +3,7 @@ from app.ml_logic.tester import run_backtesting
 
 
 def start_application():
-    from app.ui.main_window import MainWindow
+    from app.ui.windows.main_window import MainWindow
     print("Starting app...")
     run_backtesting()
     with DB() as conn:
