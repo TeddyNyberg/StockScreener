@@ -28,3 +28,6 @@ class LoginWindow(QDialog):
 
     def get_username(self):
         return self.username_input.text()
+
+    def get_password(self):
+        return self.password_input.text()

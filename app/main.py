@@ -1,21 +1,17 @@
 from PySide6.QtWidgets import QApplication
-from app.ui import start_application
+from app.app_startup import start_application
 from qasync import QEventLoop
 import asyncio
 
 
 def main():
-
     app = QApplication([])
-
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
-
     start_application()
-    #app.exec()
-
     with loop:
         loop.run_forever()
+
 
 
 if __name__ == "__main__":

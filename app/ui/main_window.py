@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushB
                                QMenu)
 from app.search.ticker_lookup import lookup_tickers
 from app.ui.chart_canvas import CustomChartCanvas
-from app.ui.helpers import open_watchlist, open_portfolio, open_window_from_ticker
+from app.ui.window_manager import open_detail_window, open_watchlist, open_portfolio
 from app.ui.login_window import LoginWindow
 from app.ui.model_window import ModelWindow
 from app.ui.widgets import SearchWidget
@@ -59,7 +59,7 @@ class MainWindow(QWidget):
         top_layout.addLayout(watchlist_port_layout)
 
         self.search_widget = SearchWidget()
-        self.search_widget.search_requested.connect(open_window_from_ticker)
+        self.search_widget.search_requested.connect(open_detail_window)
         self.search_widget.message_displayed.connect(self.update_status_message)
         top_layout.addWidget(self.search_widget, alignment=Qt.AlignmentFlag.AlignTop)
 

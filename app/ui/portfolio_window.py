@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
                                QSpinBox)
 
 from app.data.yfinance_fetcher import get_price
-from app.ui.helpers import clear_layout
+from app.ui.ui_utils import clear_layout
 from app.ui.watchlist_window import TickerButton
 
 

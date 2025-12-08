@@ -1,6 +1,6 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QWidget,QLineEdit, QPushButton
-from app.ui.helpers import lookup_and_open_details
+from app.ui.search_handler import lookup_and_open_details
 
 
 class SearchWidget(QWidget):

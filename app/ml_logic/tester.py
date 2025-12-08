@@ -255,3 +255,10 @@ def _purchase_kelly_positions(total_capital_available, kelly_allocations, all_mo
                 })
 
     return new_holdings, daily_allocations_list, cash_for_trading
+
+
+def run_backtesting():
+    continue_backtest(version="A")
+    continue_backtest(version="B", tuning_period="weekly")
+    continue_backtest(version="C")
+    continue_backtest(version="D", only_largest=True)

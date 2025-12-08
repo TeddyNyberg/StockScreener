@@ -1,14 +1,12 @@
 from app.db.db_handler import add_watchlist
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton,  QTableWidget,
-                               QTableWidgetItem)
+from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton)
 from app.search.charting import get_chart
 from app.search.ticker_lookup import lookup_tickers
 from app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
-import pandas as pd
-
 from app.ui.chart_canvas import CustomChartCanvas
-from app.ui.helpers import open_watchlist, open_window_from_ticker, make_buttons, clear_layout
+from app.ui.window_manager import open_detail_window, open_watchlist
+from app.ui.ui_utils import clear_layout, make_buttons, create_table_widget_from_data
 from app.ui.portfolio_window import TradingWindow
 from app.ui.widgets import SearchWidget
 
@@ -51,7 +49,7 @@ class DetailsWindow(QMainWindow):
         btn.clicked.connect(lambda _: open_watchlist(self))
         wl_sw_layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignRight)
         self.search_widget = SearchWidget()
-        self.search_widget.search_requested.connect(open_window_from_ticker)
+        self.search_widget.search_requested.connect(open_detail_window)
         self.search_widget.message_displayed.connect(self.update_status_message)
         wl_sw_layout.addWidget(self.search_widget)
         wl_sw_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -118,14 +116,7 @@ class DetailsWindow(QMainWindow):
         elif metrics == "info":
             self.content_layout.addWidget(QLabel("--- Info ---"))
             info = get_info(self.ticker_data[0]["ticker"])
-            df = pd.DataFrame(info.items(), columns=["Metric", "Value"])
-            table_widget = QTableWidget()
-            table_widget.setRowCount(df.shape[0])
-            table_widget.setColumnCount(df.shape[1])
-            for row_index in range(df.shape[0]):
-                for col_index in range(df.shape[1]):
-                    value = df.iloc[row_index, col_index]
-                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            table_widget = create_table_widget_from_data(info=info)
             self.content_layout.addWidget(table_widget)
             return
         elif metrics == "my_chart":
@@ -138,35 +129,15 @@ class DetailsWindow(QMainWindow):
                             "revenueGrowth", "grossMargins", "trailingPegRatio"]
             for stat in lookup_stats:
                 info[stat] = stock_info_dict.get(stat)
-
-            df = pd.DataFrame(info.items(), columns=["Metric", "Value"])
-
-            table_widget = QTableWidget()
-            table_widget.setRowCount(df.shape[0])
-            table_widget.setColumnCount(df.shape[1])
-            for row_index in range(df.shape[0]):
-                for col_index in range(df.shape[1]):
-                    value = df.iloc[row_index, col_index]
-                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            table_widget = create_table_widget_from_data(info=info)
             self.content_layout.addWidget(table_widget)
             return
-
         else:
             pass
         if not df.empty:
-            table_widget = QTableWidget()
-
-            table_widget.setRowCount(df.shape[0])
-            table_widget.setColumnCount(df.shape[1])
-
-            table_widget.setHorizontalHeaderLabels([str(col.date()) for col in df.columns])
-            table_widget.setVerticalHeaderLabels(df.index)
-
-            for row_index in range(df.shape[0]):
-                for col_index in range(df.shape[1]):
-                    value = df.iloc[row_index, col_index]
-                    table_widget.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+            table_widget = create_table_widget_from_data(df=df)
             self.content_layout.addWidget(table_widget)
+
 
     def update_status_message(self, message):
         pass
