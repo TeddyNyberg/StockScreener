@@ -1,10 +1,18 @@
 
-version: '3.8'
 services:
   app:
     build: .
     environment:
       QT_QPA_PLATFORM: 'offscreen'
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
     depends_on:
       - db
   db:

@@ -7,7 +7,8 @@ def start_application():
     print("Starting app...")
     run_backtesting()
     with DB() as conn:
-        init_db(conn)
         init_user_table(conn)
+        init_db(conn)
     window = MainWindow()
     window.show()
+    return window

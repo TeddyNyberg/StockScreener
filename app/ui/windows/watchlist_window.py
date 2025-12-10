@@ -7,9 +7,9 @@ from app.ui.ui_utils import clear_layout
 
 
 class WatchlistWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, user_id):
         super().__init__()
-
+        self.user_id = user_id
         self.setWindowTitle("Watchlist")
 
         central_widget = QWidget()
@@ -26,7 +26,7 @@ class WatchlistWindow(QMainWindow):
             self.layout.removeItem(self.list_layout)
             self.list_layout.deleteLater()
 
-        watchlist = get_watchlist()
+        watchlist = get_watchlist(self.user_id)
 
         new_list_layout = QGridLayout()
 

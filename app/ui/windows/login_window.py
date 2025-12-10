@@ -11,6 +11,8 @@ class LoginWindow(QDialog):
 
         layout = QVBoxLayout()
 
+        self.user_id = None
+
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
         layout.addWidget(self.username_input)
@@ -75,6 +77,7 @@ class LoginWindow(QDialog):
         user_id = register_user(username, password)
 
         if user_id:
+            self.user_id = user_id
             QMessageBox.information(self, "Success", "Account created successfully! Logging you in.")
             print(f"Registration successful for user ID: {user_id}")
             self.accept()

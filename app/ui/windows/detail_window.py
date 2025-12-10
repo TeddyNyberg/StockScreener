@@ -1,6 +1,6 @@
 from app.db.db_handler import add_watchlist
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton)
+from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QMessageBox)
 from app.search.charting import get_chart
 from app.search.ticker_lookup import lookup_tickers
 from app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
@@ -12,9 +12,9 @@ from app.ui.widgets import SearchWidget
 
 
 class DetailsWindow(QMainWindow):
-    def __init__(self, name_and_price, pricing_data, chart):
+    def __init__(self, name_and_price, pricing_data, chart, user_id=None):
         super().__init__()
-
+        self.user_id = user_id
         self.comp_ticker = None
         self.watch_window = None
         self.trading_window = None
@@ -28,7 +28,7 @@ class DetailsWindow(QMainWindow):
         nm_wl_layout = QHBoxLayout()
         nm_wl_layout.addWidget(QLabel(f"Name: {name_and_price[0]['name']}"))
         btn = QPushButton("Add to Watchlist")
-        btn.clicked.connect(lambda _: add_watchlist(name_and_price[0]["ticker"]))
+        btn.clicked.connect(self.handle_add_watchlist)
         nm_wl_layout.addWidget(btn)
 
         pr_buy_layout = QHBoxLayout()
@@ -45,9 +45,10 @@ class DetailsWindow(QMainWindow):
         top_row_layout.addLayout(left_side)
 
         wl_sw_layout = QHBoxLayout()
-        btn = QPushButton("Watchlist")
-        btn.clicked.connect(lambda _: open_watchlist(self))
-        wl_sw_layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignRight)
+        btn_wl = QPushButton("Watchlist")
+        btn_wl.clicked.connect(self.open_watchlist_check)
+        wl_sw_layout.addWidget(btn_wl, alignment=Qt.AlignmentFlag.AlignRight)
+
         self.search_widget = SearchWidget()
         self.search_widget.search_requested.connect(open_detail_window)
         self.search_widget.message_displayed.connect(self.update_status_message)
@@ -59,7 +60,6 @@ class DetailsWindow(QMainWindow):
         self.compare_button.clicked.connect(self.compare)
         comp_layout.addWidget(self.compare_button)
         comp_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-
 
         right_side = QVBoxLayout()
         right_side.addLayout(wl_sw_layout)
@@ -92,6 +92,19 @@ class DetailsWindow(QMainWindow):
         self.layout.addLayout(self.content_layout)
 
         self.setCentralWidget(central_widget)
+
+    def handle_add_watchlist(self):
+        if self.user_id is None:
+            QMessageBox.warning(self, "Warning", "You need to login first.")
+            return
+        add_watchlist(self.ticker_data[0]["ticker"], self.user_id)
+
+    def open_watchlist_check(self):
+        if self.user_id is None:
+            QMessageBox.warning(self, "Warning", "You need to login first.")
+            return
+        open_watchlist(self)
+
 
     def update_chart(self, time, tickers=None):
         if tickers is None:
@@ -161,6 +174,9 @@ class DetailsWindow(QMainWindow):
         self.update_chart("1Y", tickers)
 
     def handle_investment_window(self, ticker, price):
+        if self.user_id is None:
+            QMessageBox.warning(self, "Warning", "You need to login first.")
+            return
         if self.trading_window is None:
             self.trading_window = TradingWindow(ticker, price)
         self.trading_window.show()

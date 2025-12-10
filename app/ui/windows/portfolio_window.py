@@ -9,9 +9,9 @@ from app.ui.windows.watchlist_window import TickerButton
 
 
 class PortfolioWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, user_id):
         super().__init__()
-
+        self.user_id = user_id
         self.setWindowTitle("Investments")
 
         central_widget = QWidget()
@@ -28,7 +28,7 @@ class PortfolioWindow(QMainWindow):
             self.layout.removeItem(self.list_layout)
             self.list_layout.deleteLater()
 
-        portfolio = get_portfolio()
+        portfolio = get_portfolio(self.user_id)
 
         new_list_layout = QGridLayout()
 
@@ -58,7 +58,6 @@ class PortfolioWindow(QMainWindow):
             new_list_layout.addWidget(QLabel(str(avg_cost_basis)), i, 4)
             new_list_layout.addWidget(QLabel(str(profit_loss)), i, 5)
 
-
             i += 1
 
         self.list_layout = new_list_layout
@@ -66,9 +65,10 @@ class PortfolioWindow(QMainWindow):
 
 
 class TradingWindow(QMainWindow):
-    def __init__(self, ticker, price):
+    def __init__(self, ticker, price, user_id):
         super().__init__()
 
+        self.user_id = user_id
         self.ticker = ticker
         self.price = price
         self.setWindowTitle(f"Trade: {self.ticker}")
@@ -98,12 +98,12 @@ class TradingWindow(QMainWindow):
 
         self.buy_button = QPushButton("BUY")
         self.buy_button.setStyleSheet("background-color: #4CAF50; color: white;")
-        self.buy_button.clicked.connect(lambda _: buy_stock(ticker, self.quantity_input.value(), price))
+        self.buy_button.clicked.connect(lambda _: buy_stock(ticker, self.quantity_input.value(), price, self.user_id))
         trade_buttons_layout.addWidget(self.buy_button)
 
         self.sell_button = QPushButton("SELL")
         self.sell_button.setStyleSheet("background-color: #F44336; color: white;")
-        self.sell_button.clicked.connect(lambda: sell_stock(ticker, self.quantity_input.value(), price))
+        self.sell_button.clicked.connect(lambda: sell_stock(ticker, self.quantity_input.value(), price, self.user_id))
         trade_buttons_layout.addWidget(self.sell_button)
 
         main_layout.addLayout(trade_buttons_layout)

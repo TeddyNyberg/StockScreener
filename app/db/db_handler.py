@@ -13,37 +13,37 @@ def load_sql(filename):
         print(f"File {filename} not found. Looked for: {query_path}")
         return ""
 
-def get_watchlist():
+def get_watchlist(user_id):
     GET_WATCHLIST_QUERY = load_sql("select_watchlist.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
-                cur.execute(GET_WATCHLIST_QUERY)
+                cur.execute(GET_WATCHLIST_QUERY, (user_id,))
                 return cur.fetchall()
     except Exception as e:
         print(f"Database error during get_watchlist: {e}")
         return []
 
 
-def add_watchlist(ticker):
+def add_watchlist(ticker, user_id):
     INSERT_TICKER_QUERY = load_sql("insert_watchlist.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
-                cur.execute(INSERT_TICKER_QUERY, (ticker,))
-                print(f"Successfully processed ticker: {ticker}.")
+                cur.execute(INSERT_TICKER_QUERY, (user_id, ticker))
+                print(f"Successfully processed ticker: {ticker} for user: {user_id}.")
                 return True
     except Exception as e:
         print(f"Database error during add_watchlist (Rollback): {e}")
         return False
 
 
-def rm_watchlist(ticker):
+def rm_watchlist(ticker, user_id):
     DELETE_TICKER_QUERY = load_sql("delete_watchlist.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
-                cur.execute(DELETE_TICKER_QUERY, (ticker,))
+                cur.execute(DELETE_TICKER_QUERY, (user_id, ticker))
                 rows_deleted = cur.rowcount
                 if rows_deleted > 0:
                     print(f"Successfully removed ticker: {ticker} from watchlist.")
@@ -54,58 +54,58 @@ def rm_watchlist(ticker):
         print(f"Database error during rm_watchlist (Rollback): {e}")
         return False
 
-def get_portfolio():
+def get_portfolio(user_id):
     GET_PORTFOLIO_QUERY = load_sql("select_portfolio.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
-                cur.execute(GET_PORTFOLIO_QUERY)
+                cur.execute(GET_PORTFOLIO_QUERY, (user_id,))
                 return cur.fetchall()
     except Exception as e:
         print(f"Database error during get_portfolio: {e}")
         return []
 
 
-def buy_stock(ticker, quantity, price):
+def buy_stock(ticker, quantity, price, user_id):
     try:
         with DB() as conn:
-            _add_to_portfolio(conn, ticker, quantity, price)
-            _log_transaction(conn, ticker, quantity, price, 'BUY')
+            _add_to_portfolio(conn, ticker, quantity, price, user_id)
+            _log_transaction(conn, ticker, quantity, price, 'BUY', user_id)
     except Exception as e:
         print(f"Error executing buy_stock (transaction failed): {e}")
 
-def _add_to_portfolio(conn, ticker, to_buy, price):
+def _add_to_portfolio(conn, ticker, to_buy, price, user_id):
     UPSERT_QUERY = load_sql("upsert_portfolio.sql")
     price = Decimal(str(price))
     to_buy = Decimal(to_buy)
     with conn.cursor() as cur:
-        cur.execute(UPSERT_QUERY, (ticker, to_buy, to_buy*price))
+        cur.execute(UPSERT_QUERY, (user_id, ticker, to_buy, to_buy*price))
         print(f"Successfully updated portfolio for {ticker}.")
 
 
-def _log_transaction(conn, ticker, quantity, price, type):
+def _log_transaction(conn, ticker, quantity, price, transaction_type, user_id):
     INSERT_TRANSACTION_QUERY = load_sql("insert_transactions.sql")
     with conn.cursor() as cur:
-        cur.execute(INSERT_TRANSACTION_QUERY, (ticker, quantity, price, type))
-        print(f"Successfully logged {type} transaction for {ticker}.")
+        cur.execute(INSERT_TRANSACTION_QUERY, (user_id, ticker, quantity, price, transaction_type))
+        print(f"Successfully logged {transaction_type} transaction for {ticker}.")
 
 
-def sell_stock(ticker, quantity, price):
+def sell_stock(ticker, quantity, price, user_id):
     try:
         with DB() as conn:
-            _rm_from_portfolio(conn, ticker, quantity, price)
-            _log_transaction(conn, ticker, quantity, price, 'SELL')
+            _rm_from_portfolio(conn, ticker, quantity, price, user_id)
+            _log_transaction(conn, ticker, quantity, price, 'SELL', user_id)
     except Exception as e:
         print(f"Error executing sell_stock (transaction failed): {e}")
 
 
-def _rm_from_portfolio(conn, ticker, to_sell, price):
+def _rm_from_portfolio(conn, ticker, to_sell, price, user_id):
     SELECT_FOR_UPDATE_SQL = load_sql("select_shares_for_update.sql")
     DELETE_PORTFOLIO_SQL = load_sql("delete_portfolio.sql")
     UPDATE_PORTFOLIO_SQL = load_sql("update_portfolio.sql")
 
     with conn.cursor() as cur:
-        cur.execute(SELECT_FOR_UPDATE_SQL, (ticker,))
+        cur.execute(SELECT_FOR_UPDATE_SQL, (user_id, ticker))
         result = cur.fetchone()
 
         if result is None:
@@ -125,35 +125,14 @@ def _rm_from_portfolio(conn, ticker, to_sell, price):
         new_cost_basis = current_cost_basis - cost_basis_reduction
 
         if new_shares <= 0:
-            cur.execute(DELETE_PORTFOLIO_SQL, (ticker,))
+            cur.execute(DELETE_PORTFOLIO_SQL, (user_id, ticker))
             print(f"Successfully sold all shares of {ticker}. Removed from portfolio.")
         else:
-            cur.execute(UPDATE_PORTFOLIO_SQL, (new_shares, new_cost_basis, ticker))
+            cur.execute(UPDATE_PORTFOLIO_SQL, (new_shares, new_cost_basis, user_id, ticker))
             print(f"Successfully sold {to_sell} shares of {ticker}. Portfolio updated.")
 
         return True
 
-
-def sell_transaction(conn, ticker, quantity, price):
-    with conn.cursor() as cur:
-        create_table_query = """
-                             CREATE TABLE IF NOT EXISTS transactions ( 
-                             id SERIAL PRIMARY KEY,
-                             ticker VARCHAR(10) NOT NULL,
-                             quantity INTEGER NOT NULL,
-                             price NUMERIC(10, 2) NOT NULL,
-                             type VARCHAR(4) NOT NULL
-                             ); 
-                             """
-        cur.execute(create_table_query)
-
-        insert_ticker_query = """
-                              INSERT INTO transactions (ticker, quantity, price, type) 
-                              VALUES (%s, %s, %s, 'SELL'); 
-                              """
-        cur.execute(insert_ticker_query, (ticker, quantity, price))
-        conn.commit()
-        print(f"Successfully logged SELL transaction for {ticker}.")
 
 class DB:
     def __init__(self):

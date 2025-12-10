@@ -1,10 +1,10 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpacerItem, QSizePolicy,
-                               QMenu)
+                               QMenu, QMessageBox)
 from app.search.ticker_lookup import lookup_tickers
 from app.ui.chart_canvas import CustomChartCanvas
-from app.ui.window_manager import open_detail_window, open_watchlist, open_portfolio
+from app.ui.window_manager import open_detail_window, open_watchlist, open_portfolio, set_user_session
 from app.ui.windows.login_window import LoginWindow
 from app.ui.windows.model_window import ModelWindow
 from app.ui.widgets import SearchWidget
@@ -21,14 +21,12 @@ class MainWindow(QWidget):
 
         self.logged_in = False
         self.username = None
+        self.user_id = None
 
         user_layout = QHBoxLayout()
         self.user_btn = QPushButton("Login")
         user_layout.addStretch(1)
         user_layout.addWidget(self.user_btn)
-
-
-
 
         self.update_user_ui()
 
@@ -49,11 +47,11 @@ class MainWindow(QWidget):
         watchlist_port_layout = QVBoxLayout()
 
         w_btn = QPushButton("Watchlist")
-        w_btn.clicked.connect(lambda _: open_watchlist(self))
+        w_btn.clicked.connect(self.handle_watchlist)
         watchlist_port_layout.addWidget(w_btn)
 
         i_btn = QPushButton("Investments")
-        i_btn.clicked.connect(lambda _: open_portfolio(self))
+        i_btn.clicked.connect(self.handle_portfolio)
         watchlist_port_layout.addWidget(i_btn)
 
         top_layout.addLayout(watchlist_port_layout)
@@ -75,9 +73,24 @@ class MainWindow(QWidget):
         self.result_label = QLabel(message)
 
     def handle_model(self):
+        if not self.logged_in:
+            QMessageBox.warning(self, "Access Denied", "Login required")
+            return
         if self.model_window is None:
             self.model_window = ModelWindow()
         self.model_window.show()
+
+    def handle_portfolio(self):
+        if not self.logged_in:
+            QMessageBox.warning(self, "Access Denied", "Login required")
+            return
+        open_portfolio(self)
+
+    def handle_watchlist(self):
+        if not self.logged_in:
+            QMessageBox.warning(self, "Access Denied", "Login required")
+            return
+        open_watchlist(self)
 
     def update_user_ui(self):
 
@@ -104,12 +117,16 @@ class MainWindow(QWidget):
                 self.username = username
                 self.logged_in = True
                 self.update_user_ui()
+                self.user_id = login_dialog.user_id
+                set_user_session(self.user_id)
                 print(f"Logged in as {self.username}")
 
 
     def logout(self):
         self.logged_in = False
+        self.user_id = None
         self.username = None
+        set_user_session(None)
         self.update_user_ui()
         print("log out")
 

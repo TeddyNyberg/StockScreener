@@ -8,7 +8,7 @@ def main():
     app = QApplication([])
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
-    start_application()
+    main_window = start_application()
     with loop:
         loop.run_forever()
 

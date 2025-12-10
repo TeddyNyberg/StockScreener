@@ -1,2 +1,2 @@
 DELETE FROM watchlist
-WHERE ticker = %s;
+WHERE user_id = %s AND ticker = %s;

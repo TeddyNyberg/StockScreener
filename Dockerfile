@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 WORKDIR /app
 
@@ -20,10 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-shape0 \
     && rm -rf /var/lib/apt/lists/*
 
+
 COPY requirements.txt .
-
-RUN pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
-
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
