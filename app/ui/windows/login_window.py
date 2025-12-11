@@ -50,18 +50,17 @@ class LoginWindow(QDialog):
         user_id = authenticate_user(username, password)
 
         if user_id:
+            self.user_id = user_id
             print(f"Login approved for user ID: {user_id}")
             self.accept()
         else:
-            reply = QMessageBox.question(
+            QMessageBox.question(
                 self,
                 "Login Failed",
-                "Invalid credentials.\n\nWould you like to create a new account with this username and password?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                "Invalid username or password",
+                QMessageBox.StandardButton.Ok
             )
 
-            if reply == QMessageBox.StandardButton.Yes:
-                self.attempt_registration(username, password)
 
     def handle_create_account(self):
         username = self.get_username()

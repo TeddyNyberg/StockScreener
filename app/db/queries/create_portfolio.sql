@@ -3,5 +3,5 @@ CREATE TABLE IF NOT EXISTS portfolio (
     ticker VARCHAR(10),
     total_shares INTEGER NOT NULL,
     cost_basis NUMERIC(12, 4) NOT NULL,
-    PRIMARY KEY (user_id)
+    PRIMARY KEY (user_id, ticker)
 );

@@ -178,5 +178,5 @@ class DetailsWindow(QMainWindow):
             QMessageBox.warning(self, "Warning", "You need to login first.")
             return
         if self.trading_window is None:
-            self.trading_window = TradingWindow(ticker, price)
+            self.trading_window = TradingWindow(ticker, price, self.user_id)
         self.trading_window.show()

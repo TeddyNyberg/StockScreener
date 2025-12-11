@@ -26,3 +26,4 @@ def open_portfolio(self):
 def set_user_session(user_id):
     global CURRENT_USER_ID
     CURRENT_USER_ID = user_id
+    print("UPDATES to: ", CURRENT_USER_ID)
