@@ -1,7 +1,7 @@
-from app.db.db_handler import get_portfolio, buy_stock, sell_stock
+from app.db.db_handler import get_portfolio, buy_stock, sell_stock, get_balance
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QGridLayout,
-                               QSpinBox, QTableView, QHeaderView)
+from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpinBox,
+                               QTableView, QHeaderView)
 from app.ui.models.portfolio_model import PortfolioModel
 from app.ui.search_handler import lookup_and_open_details
 
@@ -11,33 +11,39 @@ class PortfolioWindow(QMainWindow):
         super().__init__()
         self.user_id = user_id
         self.setWindowTitle("Investments")
-        self.resize(800, 600)
+        self.resize(900, 600)
 
         central_widget = QWidget()
         self.layout = QVBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
-        self.table_view = QTableView()
+        self.total_value_label = QLabel("Total Value: $0,00")
+        self.total_value_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        self.total_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.total_value_label)
 
+        self.table_view = QTableView()
         self.table_view.setSelectionBehavior(QTableView.SelectRows)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
         self.table_view.doubleClicked.connect(self.on_row_double_clicked)
-
         self.layout.addWidget(self.table_view)
 
         self.rebuild_display()
 
     def rebuild_display(self):
         portfolio_data = get_portfolio(self.user_id)
-        self.model = PortfolioModel(portfolio_data)
+        cash_balance = get_balance(self.user_id)
+        self.model = PortfolioModel(portfolio_data, cash_balance)
         self.table_view.setModel(self.model)
+
+        self.total_value_label.setText(f"Total Portfolio Value: ${self.model.total_value:,.2f}")
 
     def on_row_double_clicked(self, index):
         ticker_index = self.model.index(index.row(), 0)
         ticker = self.model.data(ticker_index, role=Qt.DisplayRole)
-        lookup_and_open_details(ticker)
+        if ticker != "CASH":
+            lookup_and_open_details(ticker)
 
 class TradingWindow(QMainWindow):
     def __init__(self, ticker, price, user_id):
@@ -56,13 +62,18 @@ class TradingWindow(QMainWindow):
         info_layout.addWidget(QLabel(f"<b>Current Price:</b> ${self.price:.2f}"))
         main_layout.addLayout(info_layout)
 
+        self.cash_balance = get_balance(self.user_id)
+        cash_label = QLabel(f"Available Cash: ${self.cash_balance:,.2f}")
+        cash_label.setStyleSheet("color: gray; font-style: italic;")
+        main_layout.addWidget(cash_label)
+
         main_layout.addWidget(QLabel("---"))
 
         quantity_layout = QHBoxLayout()
         quantity_layout.addWidget(QLabel("<b>Quantity:</b>"))
 
         self.quantity_input = QSpinBox()
-        self.quantity_input.setRange(1, 1000000)  # Set a reasonable range
+        self.quantity_input.setRange(1, 1000000)
         self.quantity_input.setValue(1)
         self.quantity_input.setToolTip("Number of shares to buy or sell")
         quantity_layout.addWidget(self.quantity_input)

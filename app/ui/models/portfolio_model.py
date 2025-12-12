@@ -4,14 +4,17 @@ from app.data.yfinance_fetcher import get_price
 
 
 class PortfolioModel(QAbstractTableModel):
-    def __init__(self, raw_portfolio_data):
+    def __init__(self, raw_portfolio_data, cash_balance):
         super().__init__()
         self._headers = ["Ticker", "Price", "Shares", "Cost Basis", "Avg Cost", "P/L", "% Return"]
         self._data = []
+        self._total_value = Decimal(0.0)
 
-        self._preprocess_data(raw_portfolio_data)
+        self._preprocess_data(raw_portfolio_data, cash_balance)
 
-    def _preprocess_data(self, raw_data):
+    def _preprocess_data(self, raw_data, cash_balance):
+        total_equity = Decimal(0.0)
+
         for row in raw_data:
             ticker = row[0]
             shares = int(row[1])
@@ -27,6 +30,8 @@ class PortfolioModel(QAbstractTableModel):
                 market_value = cur_price * shares
                 profit_loss = market_value - total_basis
                 percent_return = (profit_loss / total_basis) * 100 if total_basis != 0 else 0
+
+                total_equity += market_value
             else:
                 avg_cost = 0
                 profit_loss = 0
@@ -39,8 +44,25 @@ class PortfolioModel(QAbstractTableModel):
                 "basis": total_basis,
                 "avg": avg_cost,
                 "pl": profit_loss,
-                "pct": percent_return
+                "pct": percent_return,
+                "is_cash": False
             })
+
+        cash_balance = Decimal(str(cash_balance))
+        total_equity += cash_balance
+
+        self._data.append({
+            "ticker": "CASH",
+            "price": Decimal("1.00"),
+            "shares": cash_balance,
+            "basis": cash_balance,
+            "avg": Decimal("1.00"),
+            "pl": Decimal("0.00"),
+            "pct": Decimal("0.00"),
+            "is_cash": True
+        })
+
+        self.total_value = total_equity
 
     def rowCount(self, parent=None):
         return len(self._data)
