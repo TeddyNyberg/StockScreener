@@ -69,8 +69,12 @@ def get_portfolio(user_id):
 def buy_stock(ticker, quantity, price, user_id):
     try:
         with DB() as conn:
-            _add_to_portfolio(conn, ticker, quantity, price, user_id)
-            _log_transaction(conn, ticker, quantity, price, 'BUY', user_id)
+            if _fetch_balance(conn, user_id) > quantity*price:
+                _add_to_portfolio(conn, ticker, quantity, price, user_id)
+                _log_transaction(conn, ticker, quantity, price, 'BUY', user_id)
+                _update_user_balance(conn, user_id, -(price * quantity))
+            else:
+                print("ya broke")
     except Exception as e:
         print(f"Error executing buy_stock (transaction failed): {e}")
 
@@ -95,6 +99,7 @@ def sell_stock(ticker, quantity, price, user_id):
         with DB() as conn:
             _rm_from_portfolio(conn, ticker, quantity, price, user_id)
             _log_transaction(conn, ticker, quantity, price, 'SELL', user_id)
+            _update_user_balance(conn, user_id, (price * quantity))
     except Exception as e:
         print(f"Error executing sell_stock (transaction failed): {e}")
 
@@ -229,3 +234,23 @@ def authenticate_user(username, plain_password):
         print(f"Database error during authentication: {e}")
         return False
 
+def _fetch_balance(conn, user_id):
+    GET_BALANCE_QUERY = load_sql("get_balance.sql")
+
+    with conn.cursor() as cur:
+        cur.execute(GET_BALANCE_QUERY, (user_id,))
+        result = cur.fetchone()
+        return result[0] if result else -1
+
+def get_balance(user_id):
+    try:
+        with DB() as conn:
+            return _fetch_balance(conn, user_id)
+    except Exception:
+        return 0
+
+
+def _update_user_balance(conn, user_id, amount):
+    UPDATE_SQL = load_sql("update_balance.sql")
+    with conn.cursor() as cur:
+        cur.execute(UPDATE_SQL, (amount, user_id))

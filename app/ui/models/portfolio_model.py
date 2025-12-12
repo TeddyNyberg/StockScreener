@@ -1,0 +1,81 @@
+from PySide6.QtCore import QAbstractTableModel, Qt
+from decimal import Decimal
+from app.data.yfinance_fetcher import get_price
+
+
+class PortfolioModel(QAbstractTableModel):
+    def __init__(self, raw_portfolio_data):
+        super().__init__()
+        self._headers = ["Ticker", "Price", "Shares", "Cost Basis", "Avg Cost", "P/L", "% Return"]
+        self._data = []
+
+        self._preprocess_data(raw_portfolio_data)
+
+    def _preprocess_data(self, raw_data):
+        for row in raw_data:
+            ticker = row[0]
+            shares = int(row[1])
+            total_basis = Decimal(str(row[2]))
+
+            try:
+                cur_price = Decimal(str(get_price(ticker)))
+            except Exception:
+                cur_price = Decimal("0.00")
+
+            if shares > 0:
+                avg_cost = total_basis / shares
+                market_value = cur_price * shares
+                profit_loss = market_value - total_basis
+                percent_return = (profit_loss / total_basis) * 100 if total_basis != 0 else 0
+            else:
+                avg_cost = 0
+                profit_loss = 0
+                percent_return = 0
+
+            self._data.append({
+                "ticker": ticker,
+                "price": cur_price,
+                "shares": shares,
+                "basis": total_basis,
+                "avg": avg_cost,
+                "pl": profit_loss,
+                "pct": percent_return
+            })
+
+    def rowCount(self, parent=None):
+        return len(self._data)
+
+    def columnCount(self, parent=None):
+        return len(self._headers)
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+            return self._headers[section]
+        return None
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return None
+
+        if role == Qt.DisplayRole:
+            row_item = self._data[index.row()]
+            col = index.column()
+
+            if col == 0: return row_item["ticker"]
+            if col == 1: return f"${row_item['price']:,.2f}"
+            if col == 2: return str(row_item["shares"])
+            if col == 3: return f"${row_item['basis']:,.2f}"
+            if col == 4: return f"${row_item['avg']:,.2f}"
+            if col == 5: return f"${row_item['pl']:,.2f}"
+            if col == 6: return f"{row_item['pct']:.2f}%"
+
+        if role == Qt.ForegroundRole:
+            col = index.column()
+            row_item = self._data[index.row()]
+            if col in [5, 6]:
+                if row_item["pl"] > 0:
+                    return Qt.green
+                elif row_item["pl"] < 0:
+                    return Qt.red
+
+        return None
