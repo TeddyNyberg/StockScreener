@@ -31,11 +31,12 @@ Goals
 
 Achievements
   - 24.7% gain YTD as of 12/11/2025, outperforming the S&P Total Return by 10.0 points
-  - \> 95% speed increase (compared to intial model - commit 60f7cb4)
+  - \>95% speed increase (compared to intial model - commit 60f7cb4)
       - Optimized model pipeline by implementing batch prediction/vectorization for 500 tickers (S&P 500), drastically reducing computation time from minutes to seconds
       - More efficient data-loading
   - This speed increase does NOT include the model quantization which will also increase speed but is currently untested
  
+
 
 
 
