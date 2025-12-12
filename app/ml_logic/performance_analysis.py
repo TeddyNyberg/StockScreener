@@ -3,7 +3,7 @@ import pandas as pd
 
 def print_model_characteristics(nyberg_ticker):
 
-    df_n, df_spy = get_yfdata_cache([nyberg_ticker, "SPY"],"1Y")
+    df_n, df_spy = get_yfdata_cache([nyberg_ticker, "NYBERG-D"],"1Y")
     n_data = df_n["Close"]
     spy = df_spy["Close"]
 

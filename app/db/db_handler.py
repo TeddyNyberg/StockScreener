@@ -228,3 +228,4 @@ def authenticate_user(username, plain_password):
     except Exception as e:
         print(f"Database error during authentication: {e}")
         return False
+
