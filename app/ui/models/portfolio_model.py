@@ -1,4 +1,5 @@
 from PySide6.QtCore import QAbstractTableModel, Qt
+from PySide6.QtGui import QColor
 from decimal import Decimal
 from app.data.yfinance_fetcher import get_price
 
@@ -70,19 +71,18 @@ class PortfolioModel(QAbstractTableModel):
     def columnCount(self, parent=None):
         return len(self._headers)
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self._headers[section]
         return None
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
-        if role == Qt.DisplayRole:
-            row_item = self._data[index.row()]
-            col = index.column()
-
+        row_item = self._data[index.row()]
+        col = index.column()
+        if role == Qt.ItemDataRole.DisplayRole:
             if col == 0: return row_item["ticker"]
             if col == 1: return f"${row_item['price']:,.2f}"
             if col == 2: return str(row_item["shares"])
@@ -91,13 +91,11 @@ class PortfolioModel(QAbstractTableModel):
             if col == 5: return f"${row_item['pl']:,.2f}"
             if col == 6: return f"{row_item['pct']:.2f}%"
 
-        if role == Qt.ForegroundRole:
-            col = index.column()
-            row_item = self._data[index.row()]
+        if role == Qt.ItemDataRole.ForegroundRole:
             if col in [5, 6]:
                 if row_item["pl"] > 0:
-                    return Qt.green
+                    return QColor("green")
                 elif row_item["pl"] < 0:
-                    return Qt.red
+                    return QColor("red")
 
         return None
