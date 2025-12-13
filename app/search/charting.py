@@ -41,6 +41,7 @@ def get_chart(tickers, time):
 
     fig, ax = mpf.plot(plot_data, **plot_kwargs)
     ax = ax[0]
+    ax.tick_params(axis='both', length=0)
     if not is_single_ticker:
         ax.set_ylabel("Change (%)")
         ax.legend(tickers)

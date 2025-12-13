@@ -1,13 +1,9 @@
 from PyQt5.QtWidgets import QMessageBox
-
 from app.db.db_handler import get_watchlist, rm_watchlist
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import (QMainWindow, QWidget, QLabel, QVBoxLayout, QPushButton, QGridLayout, QMenu, QTableView,
-                               QHeaderView)
-from app.data.yfinance_fetcher import get_price
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QMenu, QTableView, QHeaderView
 from app.ui.models.watchlist_model import WatchlistModel
 from app.ui.search_handler import lookup_and_open_details
-from app.ui.ui_utils import clear_layout
 
 
 class WatchlistWindow(QMainWindow):
