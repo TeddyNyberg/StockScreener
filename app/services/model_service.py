@@ -2,7 +2,7 @@ import asyncio
 from app.data.preprocessor_utils import prepare_data_for_prediction
 from app.data.yfinance_fetcher import get_historical_data, LiveMarketTable
 from app.ml_logic.model_loader import load_model_artifacts
-from app.ml_logic.pred_models.only_close_model import setup_pred_model
+from app.ml_logic.prediction_models.only_close_model import setup_pred_model
 from app.data.data_cache import get_volatility_cache, get_cached_49days
 from app.ml_logic.strategy import fastest_kelly
 from app.utils import get_date_range

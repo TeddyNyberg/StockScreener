@@ -1,7 +1,7 @@
 from app.data.yfinance_fetcher import get_historical_data
 from app.data.ticker_source import get_sp500_tickers
 from app.data.preprocessor_utils import prepare_data_for_prediction
-from app.ml_logic.pred_models.only_close_model import pred_next_day_no_ticker, fine_tune_model, setup_pred_model
+from app.ml_logic.prediction_models.only_close_model import pred_next_day_no_ticker, fine_tune_model, setup_pred_model
 from app.utils import get_date_range
 from app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
 from config import *

@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
 
 """
-
+all data until 9-7;
 so s3 has 3years of data, the model is trained on 3 years
 
 

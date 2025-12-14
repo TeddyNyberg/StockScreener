@@ -1,7 +1,8 @@
+from PySide6.QtWidgets import QDialog, QMessageBox
+
 from app.ui.windows.login_window import LoginWindow
 from app.db.db_handler import authenticate_user, register_user, DB, init_user_table
 from tests.utils import force_delete_user
-
 
 def test_login_inputs_exist(qtbot):
     window = LoginWindow()
@@ -17,6 +18,51 @@ def test_create_account_link(qtbot):
     window = LoginWindow()
     qtbot.addWidget(window)
     assert "Create Account" in window.create_account_btn.text()
+
+def test_get_username_and_password(qtbot):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+    qtbot.keyClicks(window.username_input, "testuser")
+    qtbot.keyClicks(window.password_input, "password123")
+    assert window.get_username() == "testuser"
+    assert window.get_password() == "password123"
+
+
+def test_login_success(qtbot, monkeypatch):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+
+    window.username_input.setText("valid_user")
+    window.password_input.setText("correct_pass")
+
+    monkeypatch.setattr("app.ui.windows.login_window.authenticate_user", lambda u, p: 55)
+
+    window.handle_login()
+
+    assert window.user_id == 55
+    assert window.result() == QDialog.DialogCode.Accepted
+
+
+def test_login_failure(qtbot, monkeypatch):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: QMessageBox.StandardButton.Ok)
+    monkeypatch.setattr("app.ui.windows.login_window.authenticate_user", lambda u, p: None)
+
+    window.handle_login()
+
+    assert window.user_id is None
+    assert window.result() != QDialog.DialogCode.Accepted
+
+    window.username_input.setText("bad_user")
+    window.password_input.setText("wrong_pass")
+
+    window.handle_login()
+
+    assert window.user_id is None
+    assert window.result() != QDialog.DialogCode.Accepted
+
 
 def test_user_table_exists():
     with DB() as conn:
@@ -85,7 +131,6 @@ def test_user_lifecycle():
     user_id = register_user(test_username, test_password)
     assert user_id is not False, "Register user returned False (failed)."
 
-    # --- 4. Verify User is in Table ---
     with DB() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT username, password_hash FROM users WHERE id = %s", (user_id,))
@@ -95,21 +140,20 @@ def test_user_lifecycle():
             assert result[0] == test_username, "Username in DB does not match input."
             assert result[1] != test_password, "SECURITY RISK: Password stored in plain text!"
 
-    # --- 5. Check Login (Authenticate) ---
-    # Should succeed with correct password
     login_id = authenticate_user(test_username, test_password)
     assert login_id == user_id, "Login failed with correct password."
 
-    # Should fail with wrong password
     bad_login = authenticate_user(test_username, "WrongPass")
     assert bad_login is False, "Login succeeded with WRONG password."
 
-    # --- 6. Delete Mock User (Cleanup) ---
     force_delete_user(test_username)
 
-    # Verify deletion by trying to login again
     deleted_login = authenticate_user(test_username, test_password)
     assert deleted_login is False, "User should be deleted but login still works."
 
+def test_handle_create_account():
+    pass
 
+def test_attempt_registration():
+    pass
 

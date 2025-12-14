@@ -10,8 +10,8 @@ ticker_to_id.pt
 backtest_results.xlsx
 backtest_results.csv
 
-app/ml_logic/pred_models/model.py
-app/ml_logic/pred_models/modeltosm.py
+app/ml_logic/prediction_models/model.py
+app/ml_logic/prediction_models/modeltosm.py
 
 spy.xlsx
 backtest_results_jan_copy1.xlsx
@@ -29,3 +29,6 @@ tuned_model.pth
 sp500_tickers.csv
 sp500_history_cache.parquet
 vol_data.npy
+
+.coverage
+htmlcov/

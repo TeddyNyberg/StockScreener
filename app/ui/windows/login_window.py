@@ -21,10 +21,10 @@ class LoginWindow(QDialog):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.password_input)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.handle_login)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons.accepted.connect(self.handle_login)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
 
         layout.addStretch()
         line = QFrame()
@@ -72,11 +72,8 @@ class LoginWindow(QDialog):
             print(f"Login approved for user ID: {user_id}")
             self.accept()
         else:
-            QMessageBox.question(
-                self,
-                "Login Failed",
-                "Invalid username or password",
-                QMessageBox.StandardButton.Ok
+            QMessageBox.warning(
+                self,"Login Failed","Invalid username or password", QMessageBox.StandardButton.Ok
             )
 
 

@@ -3,7 +3,6 @@ import os
 
 load_dotenv()
 
-# environ.get?
 DB_NAME = os.getenv("POSTGRES_DB")
 DB_USERNAME = os.getenv("POSTGRES_USER")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
