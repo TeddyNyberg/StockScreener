@@ -1,10 +1,12 @@
 from app.db.db_handler import get_portfolio, buy_stock, sell_stock, get_balance
 from PySide6.QtCore import Qt
+from app.ui.signals import global_signals
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpinBox,
                                QTableView, QHeaderView)
 from app.ui.models.portfolio_model import PortfolioModel
 from app.ui.search_handler import lookup_and_open_details
-
+import asyncio
+from qasync import asyncSlot
 
 class PortfolioWindow(QMainWindow):
     def __init__(self, user_id):
@@ -29,14 +31,20 @@ class PortfolioWindow(QMainWindow):
         self.table_view.doubleClicked.connect(self.on_row_double_clicked)
         self.layout.addWidget(self.table_view)
 
-        self.rebuild_display()
+        asyncio.ensure_future(self.rebuild_display())
+        global_signals.trade_completed.connect(self.rebuild_display)
 
-    def rebuild_display(self):
-        portfolio_data = get_portfolio(self.user_id)
-        cash_balance = get_balance(self.user_id)
+    @asyncSlot()
+    async def rebuild_display(self):
+        loop = asyncio.get_event_loop()
+
+        self.total_value_label.setText("Loading portfolio...")
+
+        portfolio_data = await loop.run_in_executor(None, get_portfolio, self.user_id)
+        cash_balance = await loop.run_in_executor(None, get_balance, self.user_id)
+
         self.model = PortfolioModel(portfolio_data, cash_balance)
         self.table_view.setModel(self.model)
-
         self.total_value_label.setText(f"Total Portfolio Value: ${self.model.total_value:,.2f}")
 
     def on_row_double_clicked(self, index):
@@ -84,12 +92,12 @@ class TradingWindow(QMainWindow):
 
         self.buy_button = QPushButton("BUY")
         self.buy_button.setStyleSheet("background-color: #4CAF50; color: white;")
-        self.buy_button.clicked.connect(lambda _: buy_stock(ticker, self.quantity_input.value(), price, self.user_id))
+        self.buy_button.clicked.connect(self.handle_buy)
         trade_buttons_layout.addWidget(self.buy_button)
 
         self.sell_button = QPushButton("SELL")
         self.sell_button.setStyleSheet("background-color: #F44336; color: white;")
-        self.sell_button.clicked.connect(lambda: sell_stock(ticker, self.quantity_input.value(), price, self.user_id))
+        self.sell_button.clicked.connect(self.handle_sell)
         trade_buttons_layout.addWidget(self.sell_button)
 
         main_layout.addLayout(trade_buttons_layout)
@@ -101,3 +109,41 @@ class TradingWindow(QMainWindow):
         main_layout.addStretch()
         self.setCentralWidget(central_widget)
         self.resize(300, 150)
+
+    @asyncSlot()
+    async def handle_buy(self):
+        await self._execute_trade(buy_stock, self.buy_button, "Buying")
+
+    @asyncSlot()
+    async def handle_sell(self):
+        await self._execute_trade(sell_stock, self.sell_button, "Selling")
+
+    async def _execute_trade(self, trade_func, button_to_disable, action_verb):
+        loop = asyncio.get_event_loop()
+
+        button_to_disable.setEnabled(False)
+        self.status_label.setText(f"{action_verb} {self.ticker}...")
+        self.status_label.setStyleSheet("color: black")
+
+        try:
+            await loop.run_in_executor(
+                None,
+                trade_func,
+                self.ticker,
+                self.quantity_input.value(),
+                self.price,
+                self.user_id
+            )
+
+            self.status_label.setText(f"{action_verb} Successful!")
+            self.status_label.setStyleSheet("color: green")
+
+            global_signals.trade_completed.emit()
+
+        except Exception as e:
+            self.status_label.setText(f"Error: {str(e)}")
+            self.status_label.setStyleSheet("color: red")
+            print(f"Trade failed: {e}")
+
+        finally:
+            button_to_disable.setEnabled(True)

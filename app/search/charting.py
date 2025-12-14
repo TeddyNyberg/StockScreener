@@ -1,6 +1,4 @@
 import mplfinance as mpf
-import matplotlib.pyplot as plt
-import pandas as pd
 from app.data.data_cache import get_yfdata_cache
 from config import *
 
