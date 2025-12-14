@@ -17,13 +17,12 @@ Features
           - in the app, lookup "nyberg-a" or "nyberg-b"
   - Stock lookup and comparison
       - Comparison charts
-  - Persistent Watchlist and Paper Trading w SQL
+  - Persistent per-Account Watchlist and Paper Trading w SQL
 
 Goals
   - Create model for sentiment analysis on earnings calls, classifying them as trustworthy and likely to grow
   - Better transformer model. Hyperparam tuning, feat engineering, better train and test split
   - More models for stock prediciton, then combine them for final pick (average, most confident, ...)
-  - Add accounts for paper trading
   - Cleaner, better looking UI
       - Make stock info cleaner, 1,000M instead of 1000000000
       - Add hoverability to comparison chart for both stocks? see if it looks good
@@ -36,6 +35,7 @@ Achievements
       - More efficient data-loading
   - This speed increase does NOT include the model quantization which will also increase speed but is currently untested
  
+
 
 
 
