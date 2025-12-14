@@ -25,12 +25,7 @@ class ModelWindow(QMainWindow):
 
         next_day_picks = QPushButton("Next Day Picks")
         next_day_picks.clicked.connect(lambda _: self.show_kelly_bet("A"))
-
         top_row_layout.addWidget(next_day_picks)
-
-        #back_test_button = QPushButton("Back Test")
-        #back_test_button.clicked.connect(lambda: continue_backtest("A"))
-        #top_row_layout.addWidget(back_test_button)
 
         current_picks_btn = QPushButton("Current Picks")
         current_picks_btn.clicked.connect(
