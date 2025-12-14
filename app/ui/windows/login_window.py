@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (QVBoxLayout, QDialog, QLineEdit, QDialogButtonBox, QFrame, QMessageBox, QPushButton)
+from PySide6.QtWidgets import (QVBoxLayout, QDialog, QLineEdit, QDialogButtonBox, QFrame, QMessageBox, QPushButton)
 from app.db.db_handler import authenticate_user, register_user
 
 

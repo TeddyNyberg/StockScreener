@@ -1,7 +1,6 @@
-from PyQt5.QtWidgets import QMessageBox
 from app.db.db_handler import get_watchlist, rm_watchlist
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QMenu, QTableView, QHeaderView
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QMenu, QTableView, QHeaderView, QMessageBox
 from app.ui.models.watchlist_model import WatchlistModel
 from app.ui.search_handler import lookup_and_open_details
 
