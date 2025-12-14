@@ -1,28 +1,18 @@
-import numpy as np
-from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout,
-                               QLineEdit, QPushButton, QSpacerItem, QGridLayout)
-
-from app.ml_logic.model_loader import load_model_artifacts
-from app.ml_logic.pred_models.only_close_model import setup_pred_model
-from app.utils import get_date_range
-from app.data.yfinance_fetcher import get_historical_data, LiveMarketTable
-from app.ml_logic.strategy import calculate_kelly_allocations, predict_single_ticker, fastest_kelly
-from app.data.data_cache import get_volatility_cache, get_cached_49days
-from app.ml_logic.tester import continue_backtest
+from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QLineEdit, QPushButton,
+                               QGridLayout)
+from app.services.model_service import ModelService
+from app.ml_logic.strategy import calculate_kelly_allocations
 import subprocess
 import sys
 from settings import *
-from config import *
-
 import asyncio
-
 from app.ui.scatter_canvas import MplCanvas, create_return_figure
 
 
 class ModelWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
+        self.model_service = ModelService()
         self.setWindowTitle("Model")
 
         central_widget = QWidget()
@@ -31,10 +21,6 @@ class ModelWindow(QMainWindow):
 
         top_row_layout = QHBoxLayout()
 
-        #fine_tune_btn = QPushButton("Fine Tune")
-        #fine_tune_btn.clicked.connect(lambda: tune())  tune from ml_logic.strategy
-        #top_row_layout.addWidget(fine_tune_btn)
-
         self.third_layout = QGridLayout()
 
         next_day_picks = QPushButton("Next Day Picks")
@@ -42,19 +28,16 @@ class ModelWindow(QMainWindow):
 
         top_row_layout.addWidget(next_day_picks)
 
-
         #back_test_button = QPushButton("Back Test")
         #back_test_button.clicked.connect(lambda: continue_backtest("A"))
         #top_row_layout.addWidget(back_test_button)
 
         current_picks_btn = QPushButton("Current Picks")
         current_picks_btn.clicked.connect(
-            lambda: asyncio.create_task(self.handle_fastest_kelly())
+            lambda: asyncio.create_task(self.model_service.handle_fastest_kelly())
         )
         top_row_layout.addWidget(current_picks_btn)
-
         layout.addLayout(top_row_layout)
-
 
         middle_layout = QHBoxLayout()
 
@@ -70,7 +53,6 @@ class ModelWindow(QMainWindow):
         middle_layout.addWidget(self.search_bar_input)
         layout.addLayout(middle_layout)
 
-
         self.fourth_layout = QHBoxLayout()
         self.plot_button = QPushButton("Show Return Scatterplot")
         self.plot_button.clicked.connect(self.show_scatterplot)
@@ -84,32 +66,12 @@ class ModelWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
-        self.volatility = None
-        self.data = None
-        self.market_data = None
-        self.model = None
-        self.tickers = None
-        asyncio.create_task(self.prep_fastest_kelly())
+        asyncio.create_task(self.model_service.initialize())
 
 
     def update_status_message(self, message):
         self.result_label = QLabel(message)
 
-    # This will only be used w base model
-    def get_next_day(self):
-        ticker = self.search_bar_input.text().strip().upper()
-        if not ticker:
-            self.update_status_message("Please enter a ticker symbol.")
-            return
-        try:
-            prediction, latest_close_price = predict_single_ticker(ticker)
-
-            print(f"most recent day {latest_close_price}")
-            print(f"Predicted next day value: {prediction}")
-
-        except Exception as e:
-            self.update_status_message(f"Error predicting for {ticker}: {e}")
-            print(f"Prediction error: {e}")
 
     def show_kelly_bet(self, version):
         print("This uses 50 days ending yesterday, so today you would own these stocks, then sell at close.")
@@ -128,14 +90,9 @@ class ModelWindow(QMainWindow):
             self.third_layout.addWidget(QLabel(allocation_text), i, 1)
             self.third_layout.addWidget(QLabel(mu_text), i, 2)
             i += 1
-
         self.layout.addLayout(self.third_layout)
 
         print(f"\nFinal Total Portfolio Allocation: {sum(a for _, a, _ in final_allocations) * 100:.2f}%")
-
-        start, end = get_date_range("1M")
-        goog = get_historical_data("GOOG", start, end) # sanity check, shows latest data available for model
-        print(goog.tail(1))
 
     def show_scatterplot(self):
         ticker = "NYBERG-A"
@@ -154,25 +111,13 @@ class ModelWindow(QMainWindow):
         else:
             print(f"Could not generate plot for {ticker}.")
 
-    async def prep_fastest_kelly(self):
-
-        filepath = MODEL_MAP["A"]["model_filepath"]
-        model_state_dict, config = load_model_artifacts(filepath)
-        self.model = setup_pred_model(model_state_dict, config, False)
-
-        self.market_data = LiveMarketTable()
-        self.volatility = get_volatility_cache()
-        data = get_cached_49days()
-        self.data = data.to_numpy(dtype=np.float32)
-        self.tickers = np.array(data.columns) # need to get tickers from data, so order is maintained
-
-        await self.market_data.start_socket(self.tickers)
-
-    async def handle_fastest_kelly(self):
-        final_df = await self.market_data.close_socket()
-        new_row = final_df.values.reshape(1, -1).astype(np.float32)
-        data = np.vstack((self.data, new_row))
-        fastest_kelly(data, self.model, self.volatility, self.tickers)
+    # This will only be used w base model
+    def get_next_day(self):
+        ticker = self.search_bar_input.text().strip().upper()
+        if not ticker:
+            self.update_status_message("Please enter a ticker symbol.")
+            return
+        asyncio.create_task(self.model_service.predict_next_day(ticker))
 
 def train_on_cloud():
     try:
@@ -182,3 +127,4 @@ def train_on_cloud():
         print("Error: sage.py not found. Make sure the file exists.")
     except Exception as e:
         print(f"An error occurred: {e}")
+

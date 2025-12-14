@@ -45,6 +45,16 @@ class StockTransformerModel(nn.Module):
         prediction = self.final_layers(output[:, -1, :])
         return prediction
 
+    def predict_value(self, input_tensor, mean, std):
+        device = next(self.parameters()).device
+        input_tensor = input_tensor.to(device)
+
+        with torch.no_grad():
+            normalized_prediction = self.forward(input_tensor)
+
+        last_prediction = normalized_prediction[-1][0].item()
+        return (last_prediction * std) + mean
+
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=50, dropout=0.1):

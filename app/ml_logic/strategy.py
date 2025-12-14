@@ -137,18 +137,6 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None, only_larg
 
     return final_allocations, all_most_recent_closes
 
-def predict_single_ticker(ticker):
-    model_state_dict, config = load_model_artifacts(MODEL_MAP["A"]["model_filepath"])
-    model = setup_pred_model(model_state_dict, config, False)
-    start, end = get_date_range("3M")
-    data = get_historical_data(ticker, start, end)
-    close_data = data["Close"]
-    input_tensor, _, mean, std = prepare_data_for_prediction(close_data)
-    prediction = pred_next_day_no_ticker(input_tensor, model, mean, std)
-
-    print(f"Predicted value: {prediction}")
-    return prediction, close_data.iloc[-1].item()
-
 
 def get_all_volatilities_np(data_array):
     prev_prices = data_array[:-1]
