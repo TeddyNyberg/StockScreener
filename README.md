@@ -22,15 +22,17 @@ Features
 Goals
   - Create model for sentiment analysis on earnings calls, classifying them as trustworthy and likely to grow
   - Better transformer model. Hyperparam tuning, feat engineering, better train and test split
-  - More models for stock prediciton, then combine them for final pick (average, most confident, ...)
+  - More models for stock prediction, then combine them for final pick (average, most confident, ...)
   - Cleaner, better looking UI
       - Make stock info cleaner, 1,000M instead of 1000000000
       - Add hoverability to comparison chart for both stocks? see if it looks good
   - Faster predictions, model optimization, logic optimization 
+  - Fuller testing
+  - Notes and Alerts(custom alerts and earnings, ex-div, splits) for watchlist
 
 Achievements
   - 24.7% gain YTD as of 12/11/2025, outperforming the S&P Total Return by 10.0 points
-  - \>95% speed increase (compared to intial model - commit 60f7cb4)
+  - \>95% speed increase (compared to initial model - commit 60f7cb4)
       - Optimized model pipeline by implementing batch prediction/vectorization for 500 tickers (S&P 500), drastically reducing computation time from minutes to seconds
       - More efficient data-loading
   - This speed increase does NOT include the model quantization which will also increase speed but is currently untested

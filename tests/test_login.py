@@ -1,8 +1,11 @@
 from unittest.mock import MagicMock
+
+import psycopg2
 from PySide6.QtWidgets import QDialog, QMessageBox
 from app.ui.windows.login_window import LoginWindow
 from app.db.db_handler import authenticate_user, register_user, DB, init_user_table
 from tests.utils import force_delete_user
+import pytest
 
 def test_login_inputs_exist(qtbot):
     window = LoginWindow()
@@ -43,21 +46,20 @@ def test_login_success(qtbot, monkeypatch):
     assert window.result() == QDialog.DialogCode.Accepted
 
 
-def test_login_failure(qtbot, monkeypatch):
+@pytest.mark.parametrize("user_input, pass_input, auth_return", [
+    ("bad_user", "wrong_pass", None),
+    ("valid_user", "wrong_pass", None),
+    ("", "", None),
+])
+def test_login_failures_parametrized(qtbot, monkeypatch, user_input, pass_input, auth_return):
     window = LoginWindow()
     qtbot.addWidget(window)
 
+    monkeypatch.setattr("app.ui.windows.login_window.authenticate_user", lambda u, p: auth_return)
     monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: QMessageBox.StandardButton.Ok)
-    monkeypatch.setattr("app.ui.windows.login_window.authenticate_user", lambda u, p: None)
 
-    window.handle_login()
-
-    assert window.user_id is None
-    assert window.result() != QDialog.DialogCode.Accepted
-
-    window.username_input.setText("bad_user")
-    window.password_input.setText("wrong_pass")
-
+    window.username_input.setText(user_input)
+    window.password_input.setText(pass_input)
     window.handle_login()
 
     assert window.user_id is None
@@ -78,8 +80,8 @@ def test_user_table_exists():
             table_exists = cur.fetchone()[0]
             assert table_exists is True, "CRITICAL: 'users' table was not created in the DB."
 
-#TODO: break this up
-def test_register_user():
+
+def test_register_user_success():
     test_username = "mock_user"
     test_password = "SecurePassword123!"
 
@@ -87,9 +89,6 @@ def test_register_user():
 
     user_id = register_user(test_username, test_password)
     assert user_id is not False, "Register user returned False (failed)."
-
-    user_id_v2 = register_user(test_username, test_password)
-    assert user_id_v2 is False, "Created account when username was taken (failed)."
 
     with DB() as conn:
         with conn.cursor() as cur:
@@ -102,6 +101,20 @@ def test_register_user():
 
     force_delete_user(test_username)
 
+
+def test_register_duplicate_user_real_db():
+    test_username = "duplicate_tester"
+    test_password = "password123"
+
+    force_delete_user(test_username)
+
+    first_attempt = register_user(test_username, test_password)
+    assert first_attempt is not False, "Setup failed: Could not register user the first time."
+
+    second_attempt = register_user(test_username, test_password)
+    assert second_attempt is False, "Database allowed duplicate username!"
+
+    force_delete_user(test_username)
 
 def test_authenticate_user(temp_user):
     username, password, user_id = temp_user
