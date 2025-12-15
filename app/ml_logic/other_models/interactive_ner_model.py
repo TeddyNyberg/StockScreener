@@ -3,6 +3,10 @@ import pickle
 import os
 import re
 
+import kagglehub
+import pandas as pd
+import random
+
 def get_shape_compressed(word):
     shape = []
     for char in word:
@@ -141,8 +145,14 @@ class InteractiveNER:
 
 def interactive_train():
     model = InteractiveNER.load("ner_model.pkl")
+    # inspect_model(model) # Optional: verify weights
 
-    inspect_model(model)
+    print("--> Loading Motley Fool data...")
+    path = kagglehub.dataset_download("tpotterer/motley-fool-scraped-earnings-call-transcripts")
+    pkl_path = os.path.join(path, "motley-fool-data.pkl")
+    df = pd.read_pickle(pkl_path)
+
+    transcript_series = df["transcript"]
 
     if len(model.known_vocab) == 0:
         print("--> Model is new. Training on baseline data...")
@@ -152,45 +162,72 @@ def interactive_train():
             [("Steve", "B-PER"), ("Jobs", "I-PER"), ("founded", "O"), ("Apple", "B-ORG")],
         ]
         model.train(train_data)
-        model.save()  # Initial save to rm
+        model.save()
 
-    print("\n--- Interactive NER Training ---")
-    print("Type a sentence. The model will guess tags.")
-    print("If wrong, type the CORRECT tags comma-separated.")
-    print("Type 'exit' to quit.\n")
+    print("\n" + "=" * 40)
+    print("   INTERACTIVE NER TRAINING")
+    print("=" * 40)
+    print("Modes:")
+    print("1. Type a sentence manually.")
+    print("2. Press ENTER to fetch a random financial sentence.")
+    print("3. Type 'exit' to quit.")
+    print("-" * 40 + "\n")
 
     while True:
-        print("Tags: O,B-PER,I-PER,B-LOC,I-LOC,B-ORG,I-ORG")
-        print("type \"exit\" to quit.")
+        print("Tags Guide: O, B-PER, I-PER, B-LOC, I-LOC, B-ORG, I-ORG")
         try:
-            user_input = input("Enter Text: ")
-            if user_input.lower() == 'exit': break
-            if not user_input.strip(): continue
+            user_input = input("Enter Text (or ENTER for Random): ")
 
-            tokens, predicted_tags = model.predict(user_input)
+            if user_input.lower() == 'exit':
+                break
+
+            target_text = user_input
+
+            if not user_input.strip():
+                rand_idx = random.randint(0, len(transcript_series) - 1)
+                full_text = str(transcript_series.iloc[rand_idx])
+
+                sentences = re.split(r'(?<=[.!?])\s+', full_text)
+
+                valid_sentences = [s for s in sentences if len(s.split()) > 0 and len(s.split()) < 40]
+
+                if not valid_sentences:
+                    print("--> (Selected transcript was empty or weird, trying again...)")
+                    continue
+
+                target_text = random.choice(valid_sentences)
+                print(f"\n--> [RANDOM SENTENCE]: \"{target_text}\"")
+
+            tokens, predicted_tags = model.predict(target_text)
 
             print(f"\nModel Prediction:")
             formatted_output = " ".join([f"{w}[{t}]" for w, t in zip(tokens, predicted_tags)])
             print(formatted_output)
-            print(f"Raw Tags: {','.join(predicted_tags)}")
 
-            correction = input("\nCorrect? (Press Enter if yes, or type tags): ")
+            # Print raw tags for easier copy-pasting if needed
+            print(f"Current Tags: {','.join(predicted_tags)}")
+
+            correction = input("\nCorrect? (Enter=Yes, or type tags): ")
 
             if correction.strip():
                 new_tags = [t.strip() for t in correction.split(",")]
 
                 if len(new_tags) != len(tokens):
-                    print(f"Error: {len(new_tags)} tags for {len(tokens)} words. Skipped.")
+                    print(f"Error: You provided {len(new_tags)} tags, but there are {len(tokens)} words. Skipped.")
                     continue
 
                 corrected_sentence = list(zip(tokens, new_tags))
                 model.train([corrected_sentence], weight=5)
-                model.save("ner_model.pkl")  # <--- SAVES AUTOMATICALLY HERE
+                model.save("ner_model.pkl")
+                print("--> Learned!")
             else:
-                print("--> No changes made.")
+                valid_sentence = list(zip(tokens, predicted_tags))
+                model.train([valid_sentence], weight=1)
+                print("--> No correction needed.")
 
         except Exception as e:
-            print(f"Something went wrong: {e}")
+            print(f"Something went wrong (probably bad data): {e}")
+            continue
 
 
 def inspect_model(model, top_n=5):
