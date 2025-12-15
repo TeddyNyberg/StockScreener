@@ -234,6 +234,8 @@ def authenticate_user(username, plain_password):
         print(f"Database error during authentication: {e}")
         return False
 
+
+#TODO: encrypt balance?
 def _fetch_balance(conn, user_id):
     GET_BALANCE_QUERY = load_sql("get_balance.sql")
 

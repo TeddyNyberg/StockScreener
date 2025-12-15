@@ -1,5 +1,5 @@
+from unittest.mock import MagicMock
 from PySide6.QtWidgets import QDialog, QMessageBox
-
 from app.ui.windows.login_window import LoginWindow
 from app.db.db_handler import authenticate_user, register_user, DB, init_user_table
 from tests.utils import force_delete_user
@@ -78,7 +78,7 @@ def test_user_table_exists():
             table_exists = cur.fetchone()[0]
             assert table_exists is True, "CRITICAL: 'users' table was not created in the DB."
 
-
+#TODO: break this up
 def test_register_user():
     test_username = "mock_user"
     test_password = "SecurePassword123!"
@@ -107,6 +107,61 @@ def test_authenticate_user(temp_user):
     username, password, user_id = temp_user
     assert authenticate_user(username, password) == user_id
     assert authenticate_user(username, "wrong_pass") is False
+
+
+def test_handle_create_account_no_username(qtbot, monkeypatch):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: QMessageBox.StandardButton.Ok)
+    mock_attempt = MagicMock()
+    monkeypatch.setattr(window, "attempt_registration", mock_attempt)
+
+    window.handle_create_account()
+
+    mock_attempt.assert_not_called()
+
+def test_handle_create_account_success(qtbot, monkeypatch):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+
+    window.username_input.setText("valid_user")
+    window.password_input.setText("correct_pass")
+
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: QMessageBox.StandardButton.Ok)
+
+    mock_attempt = MagicMock()
+    monkeypatch.setattr(window, "attempt_registration", mock_attempt)
+
+    window.handle_create_account()
+
+    mock_attempt.assert_called()
+
+
+def test_attempt_registration_fail(qtbot, monkeypatch):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: QMessageBox.StandardButton.Ok)
+    monkeypatch.setattr("app.ui.windows.login_window.register_user", lambda u, p: None)
+
+    window.attempt_registration(None, None)
+
+    assert window.result() != QDialog.DialogCode.Accepted
+
+
+def test_attempt_registration_success(qtbot, monkeypatch):
+    window = LoginWindow()
+    qtbot.addWidget(window)
+    monkeypatch.setattr(QMessageBox, "information", lambda *args, **kwargs: QMessageBox.StandardButton.Ok)
+    monkeypatch.setattr("app.ui.windows.login_window.register_user", lambda u, p: 55)
+
+    window.attempt_registration(None, None)
+
+    assert window.user_id == 55
+    assert window.result() == QDialog.DialogCode.Accepted
+
+
 
 
 def test_user_lifecycle():
@@ -151,9 +206,4 @@ def test_user_lifecycle():
     deleted_login = authenticate_user(test_username, test_password)
     assert deleted_login is False, "User should be deleted but login still works."
 
-def test_handle_create_account():
-    pass
-
-def test_attempt_registration():
-    pass
 
