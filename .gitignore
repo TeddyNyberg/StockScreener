@@ -32,3 +32,5 @@ vol_data.npy
 
 .coverage
 htmlcov/
+
+ner_model.pkl
