@@ -22,9 +22,10 @@ def fetch_and_cache_tickers():
             writer.writerow(processed_tickers)
 
         print(f"Successfully updated {SP_TICKER_CACHE} with {len(processed_tickers)} tickers.")
-
+        return True
     except Exception as e:
         print(f"Error fetching or writing tickers: {e}")
+        return False
 
 def extract_tickers_from_response(r):
     try:

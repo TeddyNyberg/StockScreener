@@ -33,4 +33,4 @@ vol_data.npy
 .coverage
 htmlcov/
 
-ner_model.pkl
+motley_fool_masked.pkl
