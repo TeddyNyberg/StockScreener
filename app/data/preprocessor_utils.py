@@ -32,6 +32,48 @@ class StockDataset(Dataset): # make iterable instead?
         return self.data[idx]
 
 
+class TranscriptDataset(Dataset):
+    def __init__(self, dataframe, tokenizer, max_len=512):
+        self.data = dataframe
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        row = self.data.iloc[idx]
+
+        text = str(row['transcript_masked'])
+
+        label = float(row['return_percentile'])
+
+        ticker = row['ticker']
+        date = str(row['date']).split()[0]
+        doc_id = f"{ticker}_{date}"
+
+        encoding = self.tokenizer(
+            text,
+            max_length=self.max_len,
+            padding='max_length',
+            truncation=True,
+            return_tensors='pt',
+            return_overflowing_tokens=True,
+            stride=45
+        )
+
+        input_ids = encoding['input_ids']
+        attention_mask = encoding['attention_mask']
+
+        return {
+            'input_ids': input_ids,  # Shape: [num_chunks, 512]
+            'attention_mask': attention_mask,  # Shape: [num_chunks, 512]
+            'label': torch.tensor(label, dtype=torch.float),
+            'id': doc_id,
+            'raw_text': text[:100] + "..."
+        }
+
+
 def prepare_data_for_prediction(data):
 
     latest_close_price = data.iloc[-1]

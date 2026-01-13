@@ -38,7 +38,7 @@ def lookup_tickers(tickers):
             })
             valid_tickers_for_chart.append(ticker)
         except:
-            print("no info for ticker")
+            print(f"no info for {ticker}")
 
     if valid_tickers_for_chart:
         chart, chart_data = get_chart(valid_tickers_for_chart, DEFAULT_CHART_TIME)

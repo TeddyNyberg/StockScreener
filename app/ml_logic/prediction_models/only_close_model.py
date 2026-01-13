@@ -94,7 +94,6 @@ def model_fn(model_dir):
 def train_fn(args):
     print("CALLED NEW ATTEMPT TRAIN FN")
 
-
     data_handler = DataHandler()
     list_of_dfs = data_handler.get_dfs_from_s3(prefix="historical_data/")
 
