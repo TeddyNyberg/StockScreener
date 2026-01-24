@@ -3,6 +3,19 @@ import psycopg2
 from decimal import Decimal
 import bcrypt
 import os
+import jwt
+from jwt.exceptions import InvalidTokenError
+from fastapi import Depends, FastAPI, HTTPException, status
+from pydantic import BaseModel
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
 
 def _load_sql(filename):
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -210,12 +223,8 @@ def register_user(username, plain_password):
         return False
 
 
-def authenticate_user(username, plain_password):
-
-
-
-    GET_USER_QUERY = _load_sql("select_user_by_username.sql")
-
+def get_user_id(username):
+    GET_USER_QUERY = _load_sql("select_id_by_username.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
@@ -226,7 +235,27 @@ def authenticate_user(username, plain_password):
                     print("Auth failed: User not found.")
                     return -1
 
-                user_id, db_username, db_password_hash = result
+                user_id = result
+
+                return user_id
+    except Exception as e:
+        print(f"Database error during authentication: {e}")
+        return -1
+
+
+def authenticate_user(username, plain_password):
+    GET_USER_QUERY = _load_sql("select_hashed_password_by_username.sql")
+    try:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(GET_USER_QUERY, (username,))
+                result = cur.fetchone()
+
+                if result is None:
+                    print("Auth failed: User not found.")
+                    return -1
+
+                user_id, db_password_hash = result
 
                 if bcrypt.checkpw(plain_password.encode('utf-8'), db_password_hash.encode('utf-8')):
                     print(f"User '{username}' logged in successfully.")
@@ -260,3 +289,46 @@ def _update_user_balance(conn, user_id, amount):
     UPDATE_SQL = _load_sql("update_balance.sql")
     with conn.cursor() as cur:
         cur.execute(UPDATE_SQL, (amount, user_id))
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+# you can create specific tokens, which have unique permissions
+# watch out for user foo, car foo, blog foo
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, TOKEN_SCR_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, TOKEN_SCR_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user_id = get_user_id(token_data.username)
+    if user_id is None or user_id == -1:
+        raise credentials_exception
+    return user_id
+

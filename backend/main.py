@@ -1,10 +1,7 @@
-from fastapi import FastAPI, Request, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import Query
 from contextlib import asynccontextmanager
 from app.db.db_handler import *
 from app.data.data_cache import get_yfdata_cache
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -36,13 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-templates = Jinja2Templates(directory="frontend/templates")
-
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
 
 class WatchlistRequest(BaseModel):
     ticker: str
@@ -127,16 +117,12 @@ def api_get_tickers(tickers: str, time: str):
 
 @app.get("/chart")
 def api_get_tickers(tickers: str = Query(..., description="Comma separated tickers"), time: str = "1Y"):
-
-    print("called get ", tickers)
-
     ticker_list = tickers.split(",")
     data_list = get_yfdata_cache(ticker_list, time)
 
     response = {}
     for i, df in enumerate(data_list):
         ticker_name = ticker_list[i]
-
         if df is None or df.empty:
             response[ticker_name] = []
         else:
@@ -144,8 +130,23 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
             df_reset = df.reset_index()
             if "Date" in df_reset.columns:
                 df_reset["Date"] = df_reset["Date"].astype(str)
-
-            # Convert to list of dicts: [{"Date": "2025-01-01", "Close": 100}, ...]
             response[ticker_name] = df_reset.to_dict(orient="records")
 
     return response
+
+@app.post("/token")
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+) -> Token:
+    user_id = authenticate_user(form_data.username, form_data.password)
+    if not user_id or user_id == -1 :
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": form_data.username}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
