@@ -1,6 +1,6 @@
-from backend.app.data.yfinance_fetcher import get_info
-from backend.app.data.nyberg_fetcher import get_nyberg_price, get_nyberg_name
-from backend.app.search.charting import get_chart
+from app.data.yfinance_fetcher import get_info
+from app.data.nyberg_fetcher import get_nyberg_price, get_nyberg_name
+from app.search.charting import get_chart
 from config import *
 
 # returns 3 things, normally called result, chart, data

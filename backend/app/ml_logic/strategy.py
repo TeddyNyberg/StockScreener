@@ -3,7 +3,7 @@ from backend.app.data.ticker_source import get_sp500_tickers
 from backend.app.ml_logic.prediction_models.only_close_model import fine_tune_model, setup_pred_model
 from backend.app.utils import get_date_range
 from backend.app.ml_logic.model_loader import load_model_artifacts, save_model_artifacts
-from config import *
+from backend.config import *
 import numpy as np
 import torch
 

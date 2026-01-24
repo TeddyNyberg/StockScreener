@@ -4,7 +4,7 @@ import tarfile
 import torch
 import gzip
 from backend.settings import *
-from config import *
+from backend.config import *
 
 MODEL_CACHE = {}
 

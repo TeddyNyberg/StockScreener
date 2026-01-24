@@ -10,7 +10,7 @@ from torchao.quantization import quantize_, Int8DynamicActivationInt8WeightConfi
 from backend.app.data.feature_engineer import feat_engr
 from backend.app.data.preprocessor_utils import to_seq, normalize_window, normalize_multivariate_window, to_multi_seq
 from backend.app.data.s3_handler import DataHandler
-from config import *
+from backend.config import *
 import numpy as np
 
 

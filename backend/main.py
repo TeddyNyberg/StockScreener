@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Query
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from app.db.db_handler import *
+from app.data.data_cache import get_yfdata_cache
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -117,4 +118,34 @@ def api_get_balance(user_id: int):
     return get_balance(user_id)
 
 
+@app.get("/{tickers}/{time}")
+def api_get_tickers(tickers: str, time: str):
+    tickers = tickers.split("&")
+    data = get_yfdata_cache(tickers, time)
+    return data
 
+
+@app.get("/chart")
+def api_get_tickers(tickers: str = Query(..., description="Comma separated tickers"), time: str = "1Y"):
+
+    print("called get ", tickers)
+
+    ticker_list = tickers.split(",")
+    data_list = get_yfdata_cache(ticker_list, time)
+
+    response = {}
+    for i, df in enumerate(data_list):
+        ticker_name = ticker_list[i]
+
+        if df is None or df.empty:
+            response[ticker_name] = []
+        else:
+            # turn data from index of pandas to col of text
+            df_reset = df.reset_index()
+            if "Date" in df_reset.columns:
+                df_reset["Date"] = df_reset["Date"].astype(str)
+
+            # Convert to list of dicts: [{"Date": "2025-01-01", "Close": 100}, ...]
+            response[ticker_name] = df_reset.to_dict(orient="records")
+
+    return response

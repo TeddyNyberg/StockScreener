@@ -6,7 +6,7 @@
 import yfinance as yf
 from datetime import timedelta
 import asyncio
-from backend.app.data.ticker_source import get_sp500_tickers
+from app.data.ticker_source import get_sp500_tickers
 
 
 # this may lead to errors, understand some may want ticker col some dont

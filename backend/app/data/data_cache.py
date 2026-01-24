@@ -1,23 +1,30 @@
 import pandas as pd
-from backend.app.utils import get_date_range
-from backend.app.data.yfinance_fetcher import get_historical_data
-from backend.app.data.nyberg_fetcher import get_nyberg_data
+from app.utils import get_date_range
+from app.data.yfinance_fetcher import get_historical_data
+from app.data.nyberg_fetcher import get_nyberg_data
 from config import *
 import numpy as np
 
 
 _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
 
-def rm_nm(df1, df2=None):
-    if isinstance(df1.columns, pd.MultiIndex):
-        df1.columns = df1.columns.droplevel(1)
-    if df2 is not None and isinstance(df2.columns, pd.MultiIndex):
-        df2.columns = df2.columns.droplevel(1)
-    return df1, df2
+
+def rm_nm(data_list):
+    for df in data_list:
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df .columns.droplevel(1)
+    return data_list
 
 
+# takes (list)tickers and (string)time, returns df1, df2
+# issue yf returns dif structure if needing 1 vs many,
+# so need to remove names if many.
+# also handle nyberg
 
-def get_yfdata_cache(tickers, time):
+def get_yfdata_cache(tickers: list[str], time: str):
+
+    print("called get ", tickers)
+
     start_time, end_time = get_date_range(time)
     results = []
 
@@ -51,10 +58,7 @@ def get_yfdata_cache(tickers, time):
                 df = new_df.loc[start_time:end_time]
         results.append(df)
 
-    if len(results) == 1:
-        results.append(None)
-
-    return rm_nm(results[0], results[1])
+    return rm_nm(results)
 
 
 def get_volatility_cache():

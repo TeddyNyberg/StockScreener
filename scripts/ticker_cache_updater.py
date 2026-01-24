@@ -1,4 +1,4 @@
-from config import *
+from backend.config import *
 import requests
 import csv
 import pandas as pd

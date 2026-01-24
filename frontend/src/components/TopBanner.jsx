@@ -5,7 +5,7 @@ import LoginModal from "./LoginModal.jsx";
 
 
 
-function TopBanner() {
+function TopBanner({onSearch}) {
     const [showLogin, setShowLogin] = useState(false);
     const [user, setUser] = useState(null);
 
@@ -24,7 +24,7 @@ function TopBanner() {
 
             <div className="col d-flex align-items-center gap-3">
                 <div style={{ width: '250px' }}>
-                    <SearchBar />
+                    <SearchBar onSearch={onSearch}/>
                 </div>
                 {user ? (
                         <span className="text-white fw-bold">Hello, {user.username}</span>

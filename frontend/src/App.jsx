@@ -1,10 +1,51 @@
 import TopBanner from "./components/TopBanner.jsx";
 import "./App.css"
 import StockChart from "./components/StockChart.jsx";
+import {useEffect, useState} from "react";
 
 function App(){
-    return <><TopBanner />
-        <StockChart />
+
+    const [chartData, setChartData] = useState(null);
+    const [tickers, setTickers] = useState(["SPY"]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    async function fetchStockData(tickerString){
+        setError(null);
+        setLoading(true);
+        try {
+            const response = await fetch(`http://localhost:8000/chart?tickers=${tickerString}&time=1Y`);
+
+            if (!response.ok) {
+                throw new Error("no bueno");
+            }
+            const data = await response.json();
+            setChartData(data);
+            setTickers(tickerString.split(",").map(t => t.trim().toUpperCase()))
+        } catch (err){
+            setError("Failed to fetch data: " + err.message);
+        } finally {
+            setLoading(false)
+        }
+
+    }
+
+    useEffect(() => {
+        fetchStockData("SPY").catch(console.error);
+    }, []);
+
+    return <>
+        <TopBanner onSearch={fetchStockData}/>
+
+        <div className="mt-4">
+        {loading && <div className="text-center">Loading...</div>}
+
+        {error && <div className="alert alert-danger">{error}</div>}
+
+        {!loading && !error && chartData && (
+          <StockChart apiData={chartData} tickers={tickers} />
+        )}
+      </div>
     </>
 }
 

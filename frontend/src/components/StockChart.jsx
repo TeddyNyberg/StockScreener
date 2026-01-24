@@ -1,42 +1,95 @@
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import "./StockChart.css"
+import React, { useMemo } from 'react';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
+import { processChartData } from "../utils/chartUtils";
+import "./StockChart.css";
 
-const data = [
-  { date: '2025-01-01', price: 400.50 },
-  { date: '2025-01-02', price: 405.10 },
-  { date: '2025-01-03', price: 402.00 },
-  { date: '2025-01-04', price: 408.90 },
-  { date: '2025-01-05', price: 410.50 },
-  { date: '2025-01-06', price: 415.20 },
-];
+const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff7300", "#d0ed57", "#a4de6c"];
 
-const name = "SPY"
+function StockChart({ apiData, tickers }) {
 
-function StockChart() {
-  return (
-    <div className="mx-auto full-figure">
-      <h1 className="text-center">{name}</h1>
-      <ResponsiveContainer className="chart">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis domain={['auto', 'auto']} />
-          <Tooltip
-            contentStyle={{ backgroundColor: '#333', color: '#fff', borderRadius: '5px' }}
-            itemStyle={{ color: '#fff' }}
-          />
-          <Area type="monotone" dataKey="price" stroke="#8884d8" fillOpacity={1} fill="url(#colorPrice)" />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
+
+    const isMulti = tickers.length > 1;
+
+    const chartData = useMemo(() => {
+        return processChartData(apiData, tickers);
+    }, [apiData, tickers]);
+
+    const CustomTooltip = ({active, payload, label}) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="custom-tooltip"
+                     style={{backgroundColor: '#333', padding: '10px', borderRadius: '5px', border: '1px solid #555'}}>
+                    <p style={{color: '#fff', marginBottom: '5px'}}>{label}</p>
+                    {payload.map((entry, index) => (
+                        <div key={index} style={{color: entry.color}}>
+                            {entry.name}: {entry.value?.toFixed(2)}{isMulti ? '%' : ''}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    return (
+        <div className="mx-auto full-figure" style={{width: '100%', height: 400}}>
+            <h2 className="text-center">
+                {tickers.join(" vs ")} {isMulti ? "(% Return)" : "(Price)"}
+            </h2>
+
+            <ResponsiveContainer>
+                <AreaChart data={chartData} margin={{top: 10, right: 30, left: 0, bottom: 0}}>
+                    <defs>
+                        {tickers.map((ticker, index) => {
+                            const color = COLORS[index % COLORS.length];
+                            return (
+                                <linearGradient key={ticker} id={`color${ticker}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                                </linearGradient>
+                            );
+                        })}
+                    </defs>
+
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1}/>
+
+                    <XAxis
+                        dataKey="date"
+                        tickFormatter={(str) => {
+                            const d = new Date(str);
+                            return `${d.getMonth() + 1}/${d.getDate()}`;
+                        }}
+                    />
+
+                    <YAxis
+                        domain={['auto', 'auto']}
+                        tickFormatter={(number) => isMulti ? `${number}%` : `$${number}`}
+                    />
+
+                    <Tooltip content={<CustomTooltip/>}/>
+                    <Legend/>
+
+                    {tickers.map((ticker, index) => {
+                        const color = COLORS[index % COLORS.length];
+                        return (
+                            <Area
+                                key={ticker}
+                                type="monotone"
+                                dataKey={ticker}
+                                stroke={color}
+                                fillOpacity={1}
+                                fill={`url(#color${ticker})`}
+                                name={ticker}
+                            />
+                        );
+                    })}
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
 };
 
 export default StockChart;

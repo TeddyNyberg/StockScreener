@@ -30,6 +30,9 @@ sp500_tickers.csv
 sp500_history_cache.parquet
 vol_data.npy
 
+*.parquet
+.ipynb_checkpoints
+
 .coverage
 htmlcov/
 
@@ -45,3 +48,4 @@ frontend/node_modules/
 .DS_Store
 dist/
 build/
+

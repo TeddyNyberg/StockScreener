@@ -2,7 +2,7 @@ import pandas as pd
 from pandas.tseries.offsets import DateOffset, Day
 
 
-def get_date_range(time, today = None):  # must be all caps
+def get_date_range(time: str, today = None):  # must be all caps
     if today is None:
         today = pd.Timestamp.today().normalize()
 

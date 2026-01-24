@@ -4,7 +4,7 @@ from backend.app import get_sp500_tickers
 from backend.app.ml_logic import get_all_volatilities_np
 from backend.app import get_date_range
 import numpy as np
-from config import *
+from backend.config import *
 import requests
 import csv
 import pandas as pd

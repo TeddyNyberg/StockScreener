@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchao.quantization import quantize_, Int8DynamicActivationInt8WeightConfig
 from backend.app.data.preprocessor_utils import to_seq, normalize_window
 from backend.app.data.s3_handler import DataHandler
-from config import *
+from backend.config import *
 import numpy as np
 
 

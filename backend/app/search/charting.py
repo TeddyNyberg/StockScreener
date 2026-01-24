@@ -1,17 +1,22 @@
 import mplfinance as mpf
 from backend.app.data.data_cache import get_yfdata_cache
-from config import *
+from backend.config import *
 
 
 
 # limitation of get_chart: it only works with 1 or 2 tickers.
 # also all supporting functions only work with 1 or 2 tickers.
 # its all hardcoded
-# TODO: allow adding more tickers for comparison
+# TODO: allow adding more tickers for comparison and fix this is so ugly omg
 def get_chart(tickers, time):
     is_single_ticker = len(tickers) == 1 or tickers[1] is None
 
-    plot_data, second_data = get_yfdata_cache(tickers, time)
+    list_data = get_yfdata_cache(tickers, time)
+    plot_data = list_data[0]
+    if not is_single_ticker:
+        second_data = list_data[1]
+    else:
+        second_data = None
 
     title = _get_title(tickers)
 
