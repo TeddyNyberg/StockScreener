@@ -7,7 +7,7 @@
 .btn-outline-secondary,
 .btn-outline-secondary:focus,
 .btn-outline-secondary:focus-visible,
-.btn-outline-secondary:active {
+.btn-outline-secondary:active{
     color: #ffffff;
     background-color: #4b2373;
     border: none;
@@ -42,6 +42,14 @@
     color: #f8b306;
     background-color: #1e0e2e;
 }
+
+.the-buttons:hover {
+    color: #f8b306;
+}
+.the-buttons {
+    color: #ffffff;
+}
+
 
 .sign-in-btn,
 .sign-in-btn:hover {

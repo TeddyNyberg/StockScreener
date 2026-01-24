@@ -2,34 +2,27 @@ import SearchBar from "./SearchBar.jsx";
 import "./TopBanner.css"
 
 function TopBanner() {
-    return(<>
-        <div className="top-banner">
-            <div className="row align-items-start">
-                <div className="col">
-                    Nyberg.grq
+    return (
+        <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4 py-3">
+
+            <a className="navbar-brand fw-bold fs-3" href="#">Nyberg.grq</a>
+
+            <div className="collapse navbar-collapse justify-content-center">
+                <div className="navbar-nav gap-3">
+                    <button className="nav-link btn btn-link the-buttons">Model</button>
+                    <button className="nav-link btn btn-link the-buttons">Watchlist</button>
+                    <button className="nav-link btn btn-link the-buttons">Investments</button>
                 </div>
-                <div className="col" />
-                <div className="col-auto ms-auto search-bar-container">
+            </div>
+
+            <div className="d-flex align-items-center gap-3">
+                <div style={{ width: '250px' }}>
                     <SearchBar />
                 </div>
-                <div className="col">
-                    <button type="button" className="btn btn-outline-light sign-in-btn">Sign in</button>
-                </div>
+                <button type="button" className="nav-link btn btn-link the-buttons">Sign in</button>
             </div>
-            <div className="row align-items-start">
-                <div className="col" />
-                <div className="col">
-                    <button type="button" className="btn btn-outline-secondary">Model</button>
-                </div>
-                <div className="col">
-                    <button type="button" className="btn btn-outline-secondary">Watchlist</button>
-                </div>
-                <div className="col">
-                    <button type="button" className="btn btn-outline-secondary">Investments</button>
-                </div>
-            </div>
-        </div>
-    </>);
+        </nav>
+    );
 }
 
 export default TopBanner;
