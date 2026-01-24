@@ -1,13 +1,20 @@
 import SearchBar from "./SearchBar.jsx";
 import "./TopBanner.css"
+import { useState } from "react";
+import LoginModal from "./LoginModal.jsx";
+
+
 
 function TopBanner() {
+    const [showLogin, setShowLogin] = useState(false);
+    const [user, setUser] = useState(null);
+
     return (
+        <>
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4 py-3">
+            <a className="col navbar-brand fw-bold fs-3" href="#">Nyberg.grq</a>
 
-            <a className="navbar-brand fw-bold fs-3" href="#">Nyberg.grq</a>
-
-            <div className="collapse navbar-collapse justify-content-center">
+            <div className="col collapse navbar-collapse justify-content-center">
                 <div className="navbar-nav gap-3">
                     <button className="nav-link btn btn-link the-buttons">Model</button>
                     <button className="nav-link btn btn-link the-buttons">Watchlist</button>
@@ -15,13 +22,30 @@ function TopBanner() {
                 </div>
             </div>
 
-            <div className="d-flex align-items-center gap-3">
+            <div className="col d-flex align-items-center gap-3">
                 <div style={{ width: '250px' }}>
                     <SearchBar />
                 </div>
-                <button type="button" className="nav-link btn btn-link the-buttons">Sign in</button>
+                {user ? (
+                        <span className="text-white fw-bold">Hello, {user.username}</span>
+                    ) : (
+                        <button
+                            className="nav-link btn btn-link the-buttons"
+                            onClick={() => setShowLogin(true)}
+                        >
+                            Sign in
+                        </button>
+                    )}
+
             </div>
         </nav>
+            <LoginModal
+                show={showLogin}
+                onClose={() => setShowLogin(false)}
+                onLoginSuccess={(u) => setUser(u)}
+            />
+
+    </>
     );
 }
 

@@ -12,10 +12,11 @@ const data = [
 ];
 
 const name = "SPY"
+
 function StockChart() {
   return (
-    <div className="full-figure">
-      <h1>{name}</h1>
+    <div className="mx-auto full-figure">
+      <h1 className="text-center">{name}</h1>
       <ResponsiveContainer className="chart">
         <AreaChart data={data}>
           <defs>
