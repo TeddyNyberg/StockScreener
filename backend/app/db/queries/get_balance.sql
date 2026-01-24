@@ -1,0 +1,1 @@
+SELECT cash_balance FROM users WHERE id = %s;

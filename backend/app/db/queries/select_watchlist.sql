@@ -1,0 +1,1 @@
+SELECT ticker FROM watchlist WHERE user_id = %s;

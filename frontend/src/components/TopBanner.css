@@ -1,0 +1,49 @@
+.top-banner {
+    background-color: #1e0e2e;
+    color: #ffffff;
+    height: 80px;
+}
+
+.btn-outline-secondary,
+.btn-outline-secondary:focus,
+.btn-outline-secondary:focus-visible,
+.btn-outline-secondary:active {
+    color: #ffffff;
+    background-color: #4b2373;
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+.btn-outline-secondary:active:hover,
+.btn-outline-secondary:hover {
+    background-color: #411f63;
+}
+
+.form-control,
+.form-control:focus,
+.form-control:focus-visible,
+.form-control:focus::placeholder,
+.form-control::placeholder {
+    background-color: #614a78;
+    color: #ffffff;
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+
+.search-bar {
+    max-width: 240px;
+    width: 100%;
+}
+
+.sign-in-btn:hover {
+    color: #f8b306;
+    background-color: #1e0e2e;
+}
+
+.sign-in-btn,
+.sign-in-btn:hover {
+    border: #1e0e2e;
+}
