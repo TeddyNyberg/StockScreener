@@ -1,1 +1,0 @@
-SELECT ticker, total_shares, cost_basis FROM portfolio WHERE user_id = %s;

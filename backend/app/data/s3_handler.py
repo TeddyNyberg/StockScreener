@@ -1,7 +1,7 @@
 # S3 i/o
 import pandas as pd
 import boto3
-from settings import *
+from backend.settings import *
 import io
 
 class DataHandler:

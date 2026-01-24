@@ -1,9 +1,8 @@
 from unittest.mock import MagicMock
 
-import psycopg2
 from PySide6.QtWidgets import QDialog, QMessageBox
-from app.ui.windows.login_window import LoginWindow
-from app.db.db_handler import authenticate_user, register_user, DB, init_user_table
+from backend.app import LoginWindow
+from backend.app.db.db_handler import authenticate_user, register_user, DB, init_user_table
 from tests.utils import force_delete_user
 import pytest
 

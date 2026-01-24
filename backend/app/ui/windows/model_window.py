@@ -4,7 +4,7 @@ from backend.app.services.model_service import ModelService
 from backend.app.ml_logic.strategy import calculate_kelly_allocations
 import subprocess
 import sys
-from settings import *
+from backend.settings import *
 import asyncio
 from backend.app.ui.scatter_canvas import MplCanvas, create_return_figure
 

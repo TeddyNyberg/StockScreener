@@ -1,4 +1,4 @@
-from app.db.db_handler import DB
+from backend.app.db.db_handler import DB
 
 def force_delete_user(username):
     with DB() as conn:

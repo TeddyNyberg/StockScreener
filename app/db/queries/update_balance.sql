@@ -1,1 +1,0 @@
-UPDATE users SET cash_balance = cash_balance + %s WHERE id = %s;

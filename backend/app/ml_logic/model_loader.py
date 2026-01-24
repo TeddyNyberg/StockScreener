@@ -3,7 +3,7 @@ import io
 import tarfile
 import torch
 import gzip
-from settings import *
+from backend.settings import *
 from config import *
 
 MODEL_CACHE = {}

@@ -1,8 +1,8 @@
 import yfinance as yf
 import os
-from app.data.ticker_source import get_sp500_tickers
-from app.ml_logic.strategy import get_all_volatilities_np
-from app.utils import get_date_range
+from backend.app import get_sp500_tickers
+from backend.app.ml_logic import get_all_volatilities_np
+from backend.app import get_date_range
 from config import *
 import numpy as np
 

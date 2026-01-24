@@ -10,8 +10,8 @@ ticker_to_id.pt
 backtest_results.xlsx
 backtest_results.csv
 
-app/ml_logic/prediction_models/model.py
-app/ml_logic/prediction_models/modeltosm.py
+backend/app/ml_logic/prediction_models/model.py
+backend/app/ml_logic/prediction_models/modeltosm.py
 
 spy.xlsx
 backtest_results_jan_copy1.xlsx
@@ -35,3 +35,13 @@ htmlcov/
 
 motley_fool_masked.pkl
 imma_need_a_sentimental_model.py
+
+.venv/
+venv/
+__pycache__/
+
+node_modules/
+frontend/node_modules/
+.DS_Store
+dist/
+build/

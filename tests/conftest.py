@@ -1,6 +1,6 @@
 import pytest
 from PySide6.QtWidgets import QApplication
-from app.db.db_handler import register_user
+from backend.app.db.db_handler import register_user
 from tests.utils import force_delete_user
 
 

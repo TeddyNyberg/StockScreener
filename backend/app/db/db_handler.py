@@ -2,8 +2,9 @@ from settings import *
 import psycopg2
 from decimal import Decimal
 import bcrypt
+import os
 
-def load_sql(filename):
+def _load_sql(filename):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     query_path = os.path.join(current_dir, "queries", filename)
     try:
@@ -14,7 +15,8 @@ def load_sql(filename):
         return ""
 
 def get_watchlist(user_id):
-    GET_WATCHLIST_QUERY = load_sql("select_watchlist.sql")
+    GET_WATCHLIST_QUERY = _load_sql("select_watchlist.sql")
+
     try:
         with DB() as conn:
             with conn.cursor() as cur:
@@ -26,7 +28,7 @@ def get_watchlist(user_id):
 
 
 def add_watchlist(ticker, user_id):
-    INSERT_TICKER_QUERY = load_sql("insert_watchlist.sql")
+    INSERT_TICKER_QUERY = _load_sql("insert_watchlist.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
@@ -39,7 +41,7 @@ def add_watchlist(ticker, user_id):
 
 
 def rm_watchlist(ticker, user_id):
-    DELETE_TICKER_QUERY = load_sql("delete_watchlist.sql")
+    DELETE_TICKER_QUERY = _load_sql("delete_watchlist.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
@@ -55,7 +57,7 @@ def rm_watchlist(ticker, user_id):
         return False
 
 def get_portfolio(user_id):
-    GET_PORTFOLIO_QUERY = load_sql("select_portfolio.sql")
+    GET_PORTFOLIO_QUERY = _load_sql("select_portfolio.sql")
     try:
         with DB() as conn:
             with conn.cursor() as cur:
@@ -79,7 +81,7 @@ def buy_stock(ticker, quantity, price, user_id):
         print(f"Error executing buy_stock (transaction failed): {e}")
 
 def _add_to_portfolio(conn, ticker, to_buy, price, user_id):
-    UPSERT_QUERY = load_sql("upsert_portfolio.sql")
+    UPSERT_QUERY = _load_sql("upsert_portfolio.sql")
     price = Decimal(str(price))
     to_buy = Decimal(to_buy)
     with conn.cursor() as cur:
@@ -88,7 +90,7 @@ def _add_to_portfolio(conn, ticker, to_buy, price, user_id):
 
 
 def _log_transaction(conn, ticker, quantity, price, transaction_type, user_id):
-    INSERT_TRANSACTION_QUERY = load_sql("insert_transactions.sql")
+    INSERT_TRANSACTION_QUERY = _load_sql("insert_transactions.sql")
     with conn.cursor() as cur:
         cur.execute(INSERT_TRANSACTION_QUERY, (user_id, ticker, quantity, price, transaction_type))
         print(f"Successfully logged {transaction_type} transaction for {ticker}.")
@@ -105,9 +107,9 @@ def sell_stock(ticker, quantity, price, user_id):
 
 
 def _rm_from_portfolio(conn, ticker, to_sell, price, user_id):
-    SELECT_FOR_UPDATE_SQL = load_sql("select_shares_for_update.sql")
-    DELETE_PORTFOLIO_SQL = load_sql("delete_portfolio.sql")
-    UPDATE_PORTFOLIO_SQL = load_sql("update_portfolio.sql")
+    SELECT_FOR_UPDATE_SQL = _load_sql("select_shares_for_update.sql")
+    DELETE_PORTFOLIO_SQL = _load_sql("delete_portfolio.sql")
+    UPDATE_PORTFOLIO_SQL = _load_sql("update_portfolio.sql")
 
     with conn.cursor() as cur:
         cur.execute(SELECT_FOR_UPDATE_SQL, (user_id, ticker))
@@ -166,9 +168,9 @@ class DB:
         return False
 
 def init_db(conn):
-    create_watchlist_sql = load_sql("create_watchlist.sql")
-    create_portfolio_sql = load_sql("create_portfolio.sql")
-    create_transactions_sql = load_sql("create_transactions.sql")
+    create_watchlist_sql = _load_sql("create_watchlist.sql")
+    create_portfolio_sql = _load_sql("create_portfolio.sql")
+    create_transactions_sql = _load_sql("create_transactions.sql")
 
     with conn.cursor() as cur:
         cur.execute(create_watchlist_sql)
@@ -179,7 +181,7 @@ def init_db(conn):
 
 
 def init_user_table(conn):
-    create_users_sql = load_sql("create_users_table.sql")
+    create_users_sql = _load_sql("create_users_table.sql")
 
     with conn.cursor() as cur:
         cur.execute(create_users_sql)
@@ -188,7 +190,7 @@ def init_user_table(conn):
 
 def register_user(username, plain_password):
 
-    INSERT_USER_QUERY = load_sql("insert_user.sql")
+    INSERT_USER_QUERY = _load_sql("insert_user.sql")
 
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
@@ -210,7 +212,9 @@ def register_user(username, plain_password):
 
 def authenticate_user(username, plain_password):
 
-    GET_USER_QUERY = load_sql("select_user_by_username.sql")
+
+
+    GET_USER_QUERY = _load_sql("select_user_by_username.sql")
 
     try:
         with DB() as conn:
@@ -220,7 +224,7 @@ def authenticate_user(username, plain_password):
 
                 if result is None:
                     print("Auth failed: User not found.")
-                    return False
+                    return -1
 
                 user_id, db_username, db_password_hash = result
 
@@ -229,15 +233,15 @@ def authenticate_user(username, plain_password):
                     return user_id
                 else:
                     print("Auth failed: Invalid password.")
-                    return False
+                    return -1
     except Exception as e:
         print(f"Database error during authentication: {e}")
-        return False
+        return -1
 
 
 #TODO: encrypt balance?
 def _fetch_balance(conn, user_id):
-    GET_BALANCE_QUERY = load_sql("get_balance.sql")
+    GET_BALANCE_QUERY = _load_sql("get_balance.sql")
 
     with conn.cursor() as cur:
         cur.execute(GET_BALANCE_QUERY, (user_id,))
@@ -253,6 +257,6 @@ def get_balance(user_id):
 
 
 def _update_user_balance(conn, user_id, amount):
-    UPDATE_SQL = load_sql("update_balance.sql")
+    UPDATE_SQL = _load_sql("update_balance.sql")
     with conn.cursor() as cur:
         cur.execute(UPDATE_SQL, (amount, user_id))

@@ -57,7 +57,7 @@ def initialize_database():
     return all_stock_data
 """
 
-## pyinstaller app/main.py --onedir --name stock_screener
+## pyinstaller app/desktop_start.py --onedir --name stock_screener
 
 ## alt do --onefile for cleaner exp but slowwwwwwwwwwww
 
