@@ -11,14 +11,27 @@ function LoginModal({ show, onClose, onLoginSuccess }) {
     async function handleLogin(e) {
         e.preventDefault();
         setError('');
+
+        const formData = new URLSearchParams();
+        formData.append("username", username);
+        formData.append("password", password);
+
         try {
-            const response = await axios.post('http://localhost:8000/authenticate', {
-                username: username,
-                password: password
-            });
-            onLoginSuccess(response.data);
+            const response = await axios.post('http://localhost:8000/token',
+                formData,
+                { headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    }
+                });
+
+            // yellow line, but it does work
+            // could do const {access_token} = response.data;
+            localStorage.setItem('token', response.data.access_token);
+
+            onLoginSuccess(username);
             onClose();
         } catch (err) {
+            console.error(err);
             setError("Invalid credentials");
         }
     }

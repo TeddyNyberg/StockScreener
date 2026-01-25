@@ -1,8 +1,8 @@
 import pandas as pd
-from app.utils import get_date_range
-from app.data.yfinance_fetcher import get_historical_data
-from app.data.nyberg_fetcher import get_nyberg_data
-from config import *
+from backend.app.utils import get_date_range
+from backend.app.data.yfinance_fetcher import get_historical_data
+from backend.app.data.nyberg_fetcher import get_nyberg_data
+from backend.config import *
 import numpy as np
 
 
@@ -22,8 +22,6 @@ def rm_nm(data_list):
 # also handle nyberg
 
 def get_yfdata_cache(tickers: list[str], time: str):
-
-    print("called get ", tickers)
 
     start_time, end_time = get_date_range(time)
     results = []

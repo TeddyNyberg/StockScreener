@@ -27,7 +27,7 @@ function TopBanner({onSearch}) {
                     <SearchBar onSearch={onSearch}/>
                 </div>
                 {user ? (
-                        <span className="text-white fw-bold">Hello, {user.username}</span>
+                        <span className="text-white fw-bold">{user}</span>
                     ) : (
                         <button
                             className="nav-link btn btn-link the-buttons"

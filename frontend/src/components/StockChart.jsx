@@ -34,6 +34,17 @@ function StockChart({ apiData, tickers }) {
         return null;
     };
 
+    const allValues = chartData.flatMap(d =>
+        tickers.map(ticker => d[ticker]).filter(val => val !== undefined)
+    );
+
+    const maxValue = Math.max(...allValues);
+    const minValue = Math.min(...allValues);
+
+    const zeroOffset = maxValue > 0 && minValue < 0
+        ? (maxValue / (maxValue - minValue)) * 100
+        : (maxValue <= 0 ? 0 : 100);
+
     return (
         <div className="mx-auto full-figure" style={{width: '100%', height: 400}}>
             <h2 className="text-center">
@@ -46,10 +57,17 @@ function StockChart({ apiData, tickers }) {
                         {tickers.map((ticker, index) => {
                             const color = COLORS[index % COLORS.length];
                             return (
-                                <linearGradient key={ticker} id={`color${ticker}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
-                                </linearGradient>
+                                <>
+                                    <linearGradient key={ticker} id={`color${ticker}`} x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="0%" stopColor={color} stopOpacity={0.8}/>
+                                        <stop offset={`${zeroOffset}%`} stopColor={color} stopOpacity={0.1}/>
+
+                                        <stop offset={`${zeroOffset}%`} stopColor="white" stopOpacity={0}/>
+
+                                        <stop offset={`${zeroOffset}%`} stopColor={color} stopOpacity={0.1}/>
+                                        <stop offset="100%" stopColor={color} stopOpacity={0.8}/>
+                                    </linearGradient>
+                                </>
                             );
                         })}
                     </defs>

@@ -43,7 +43,7 @@ function App(){
         {error && <div className="alert alert-danger">{error}</div>}
 
         {!loading && !error && chartData && (
-          <StockChart apiData={chartData} tickers={tickers} />
+            <StockChart apiData={chartData} tickers={tickers} />
         )}
       </div>
     </>

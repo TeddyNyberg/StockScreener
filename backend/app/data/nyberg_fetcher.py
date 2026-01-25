@@ -1,6 +1,6 @@
 import pandas as pd
-from config import MODEL_MAP
-from app.utils import get_date_range
+from backend.config import MODEL_MAP
+from backend.app.utils import get_date_range
 
 
 def get_nyberg_price(ticker):

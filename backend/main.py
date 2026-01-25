@@ -1,11 +1,11 @@
 from fastapi import Query
 from contextlib import asynccontextmanager
-from app.db.db_handler import *
-from app.data.data_cache import get_yfdata_cache
+from backend.app.db.db_handler import *
+from backend.app.data.data_cache import get_yfdata_cache
 from fastapi.middleware.cors import CORSMiddleware
 
 
-# to run, cd to backend and run uvicorn main:app --reload
+# to run, uvicorn backend.main:app --reload
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -138,6 +138,7 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
+
     user_id = authenticate_user(form_data.username, form_data.password)
     if not user_id or user_id == -1 :
         raise HTTPException(

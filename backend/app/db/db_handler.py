@@ -1,4 +1,4 @@
-from settings import *
+from backend.settings import *
 import psycopg2
 from decimal import Decimal
 import bcrypt
