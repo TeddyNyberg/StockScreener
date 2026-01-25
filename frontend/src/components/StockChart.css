@@ -14,11 +14,7 @@
     color: #333;
 }
 
-.chart {
-    width: 100%;
-    height: 100%;
-    flex-grow: 1;
-    min-height: 0;
-    cursor: crosshair;
-}
 
+.recharts-surface {
+    cursor: crosshair !important;
+}
