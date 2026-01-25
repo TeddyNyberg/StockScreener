@@ -2,12 +2,24 @@ import SearchBar from "./SearchBar.jsx";
 import "./TopBanner.css"
 import { useState } from "react";
 import LoginModal from "./LoginModal.jsx";
+import {useNavigate} from "react-router-dom";
 
 
 
 function TopBanner({onSearch}) {
     const [showLogin, setShowLogin] = useState(false);
     const [user, setUser] = useState(null);
+
+    const navigate = useNavigate();
+
+    function handleWatchlistClick(){
+        const token = localStorage.getItem('token');
+        if(!token){
+            setShowLogin(true);
+            return;
+        }
+        navigate("/watchlist");
+    }
 
     return (
         <>
@@ -17,7 +29,7 @@ function TopBanner({onSearch}) {
             <div className="col collapse navbar-collapse justify-content-center">
                 <div className="navbar-nav gap-3">
                     <button className="nav-link btn btn-link the-buttons">Model</button>
-                    <button className="nav-link btn btn-link the-buttons">Watchlist</button>
+                    <button className="nav-link btn btn-link the-buttons" onClick={handleWatchlistClick}>Watchlist</button>
                     <button className="nav-link btn btn-link the-buttons">Investments</button>
                 </div>
             </div>

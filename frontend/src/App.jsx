@@ -2,6 +2,8 @@ import TopBanner from "./components/TopBanner.jsx";
 import "./App.css"
 import StockChart from "./components/StockChart.jsx";
 import {useEffect, useState} from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Watchlist from "./components/Watchlist.jsx";
 
 function App(){
 
@@ -34,19 +36,13 @@ function App(){
         fetchStockData("SPY").catch(console.error);
     }, []);
 
-    return <>
+    return <Router>
         <TopBanner onSearch={fetchStockData}/>
-
-        <div className="mt-4">
-        {loading && <div className="text-center">Loading...</div>}
-
-        {error && <div className="alert alert-danger">{error}</div>}
-
-        {!loading && !error && chartData && (
-            <StockChart apiData={chartData} tickers={tickers} />
-        )}
-      </div>
-    </>
+        <Routes>
+            <Route path="/" element={<StockChart apiData={chartData} tickers={tickers}/>}/>
+            <Route path="/watchlist" element={<Watchlist />}/>
+        </Routes>
+    </Router>
 }
 
 export default App;

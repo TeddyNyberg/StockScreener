@@ -52,15 +52,11 @@ class LoginCredentials(BaseModel):
 
 
 
-
-
-
-@app.get("/watchlist/{user_id}")
-def api_get_watchlist(user_id: int):
-    data = get_watchlist(user_id)
-    if not data:
-        return []
-    return data
+@app.get("/watchlist")
+def api_get_watchlist(current_user: int = Depends(get_current_user)):
+    data = get_watchlist(current_user)
+    ticker_list = [row[0] for row in data]
+    return ticker_list
 
 @app.post("/watchlist/add")
 def api_add_watchlist(request: WatchlistRequest):
@@ -151,3 +147,4 @@ async def login_for_access_token(
         data={"sub": form_data.username}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
+
