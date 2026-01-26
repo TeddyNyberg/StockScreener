@@ -51,12 +51,22 @@ class LoginCredentials(BaseModel):
     password: str
 
 
-
+# TODO: maybe a little ocupled? just assumes that data comes back in same order is all
 @app.get("/watchlist")
-def api_get_watchlist(current_user: int = Depends(get_current_user)):
-    data = get_watchlist(current_user)
-    ticker_list = [row[0] for row in data]
-    return ticker_list
+def api_get_watchlist(user_id: int = Depends(get_current_user)):
+    watchlist = get_watchlist(user_id)
+    ticker_list = [row[0] for row in watchlist]
+    data = get_yfdata_cache(ticker_list, "5D", normalize=False)
+    response = []
+
+    for df, ticker in zip(data, ticker_list):
+        response.append({
+            "ticker": ticker,
+            "price": df["Close"].iloc[-1],
+            "change": df["Close"].iloc[-1] - df["Close"].iloc[-2],
+            "change_percent": 100 * ((df["Close"].iloc[-1] - df["Close"].iloc[-2]) / df["Close"].iloc[-2]),
+        })
+    return response
 
 @app.post("/watchlist/add")
 def api_add_watchlist(request: WatchlistRequest):
@@ -75,7 +85,7 @@ def api_rm_watchlist(request: WatchlistRequest):
         raise HTTPException(status_code=400, detail="Could not add ticker")
 
 @app.get("/portfolio")
-def api_get_portfolio(user_id: int):
+def api_get_portfolio(user_id: int = Depends(get_current_user)):
     data = get_portfolio(user_id)
     return data
 

@@ -2,9 +2,12 @@ import pandas as pd
 from pandas.tseries.offsets import DateOffset, Day
 
 
-def get_date_range(time: str, today = None):  # must be all caps
+def get_date_range(time: str, today = None, normalize = True):  # must be all caps
     if today is None:
-        today = pd.Timestamp.today().normalize()
+        if normalize:
+            today = pd.Timestamp.today().normalize()
+        else:
+            today = pd.Timestamp.today()
 
     offsets = {
         "1D": Day(1),

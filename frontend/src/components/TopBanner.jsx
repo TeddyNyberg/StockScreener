@@ -2,18 +2,18 @@ import SearchBar from "./SearchBar.jsx";
 import "./TopBanner.css"
 import { useState } from "react";
 import LoginModal from "./LoginModal.jsx";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 
 
 
 function TopBanner({onSearch}) {
     const [showLogin, setShowLogin] = useState(false);
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => sessionStorage.getItem('username'));
 
     const navigate = useNavigate();
 
     function handleWatchlistClick(){
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         if(!token){
             setShowLogin(true);
             return;
@@ -21,16 +21,25 @@ function TopBanner({onSearch}) {
         navigate("/watchlist");
     }
 
+    function handlePortfolioClick(){
+        const token = sessionStorage.getItem('token');
+        if(!token){
+            setShowLogin(true);
+            return;
+        }
+        navigate("/portfolio");
+    }
+
+
     return (
         <>
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4 py-3">
-            <a className="col navbar-brand fw-bold fs-3" href="#">Nyberg.grq</a>
-
+            <Link className="col navbar-brand fw-bold fs-3" to="/">Nyberg.grq</Link>
             <div className="col collapse navbar-collapse justify-content-center">
                 <div className="navbar-nav gap-3">
                     <button className="nav-link btn btn-link the-buttons">Model</button>
                     <button className="nav-link btn btn-link the-buttons" onClick={handleWatchlistClick}>Watchlist</button>
-                    <button className="nav-link btn btn-link the-buttons">Investments</button>
+                    <button className="nav-link btn btn-link the-buttons" onClick={handlePortfolioClick}>Investments</button>
                 </div>
             </div>
 

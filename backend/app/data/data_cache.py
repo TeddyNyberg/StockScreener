@@ -21,9 +21,12 @@ def rm_nm(data_list):
 # so need to remove names if many.
 # also handle nyberg
 
-def get_yfdata_cache(tickers: list[str], time: str):
-
-    start_time, end_time = get_date_range(time)
+def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
+    print("CALLED GET DATA")
+    print(tickers)
+    print(time)
+    print("---------")
+    start_time, end_time = get_date_range(time, normalize=normalize)
     results = []
 
     for ticker in tickers:
@@ -38,8 +41,9 @@ def get_yfdata_cache(tickers: list[str], time: str):
         if ticker not in _cache:
             df = get_historical_data(ticker, start_time, end_time)
 
-            _cache[ticker] = {"range": (start_time, end_time),
-                              "data": df}
+            if normalize:
+                _cache[ticker] = {"range": (start_time, end_time),
+                                "data": df}
         else:
             cache_start, cache_end = _cache[ticker]["range"]
             cached_df = _cache[ticker]["data"]
@@ -51,8 +55,9 @@ def get_yfdata_cache(tickers: list[str], time: str):
                 new_start = min(start_time, cache_start)
                 new_end = max(end_time, cache_end)
                 new_df = get_historical_data(ticker, new_start, new_end)
-                _cache[ticker]["range"] = (new_start, new_end)
-                _cache[ticker]["data"] = new_df
+                if normalize:
+                    _cache[ticker]["range"] = (new_start, new_end)
+                    _cache[ticker]["data"] = new_df
                 df = new_df.loc[start_time:end_time]
         results.append(df)
 

@@ -2,14 +2,19 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Watchlist() {
-    const [stocks, setStocks] = useState([]);
+    const [data, setData] = useState([]);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
+    function getColor(val) {
+        if (val > 0) return "text-success";
+        if (val < 0) return "text-danger";
+        return "text-muted";
+    }
 
-        // If no token even exists locally, don't even bother fetching
+    useEffect(() => {
+        const token = sessionStorage.getItem('token');
+
         if (!token) {
             navigate("/"); // or to login
             return;
@@ -28,8 +33,8 @@ function Watchlist() {
             }
             return res.json();
         })
-        .then(data => {
-            setStocks(data); // This is your ticker_list from Python
+        .then(apiData => {
+            setData(apiData); // This is your ticker_list from Python
         })
         .catch(err => {
             console.error(err);
@@ -47,14 +52,32 @@ function Watchlist() {
             <hr />
             {error && <div className="alert alert-danger">{error}</div>}
 
-            {stocks.length === 0 ? (
+            {data.length === 0 ? (
                 <p>Your watchlist is empty. Add some stocks from the home page!</p>
             ) : (
                 <ul className="list-group">
-                    {stocks.map(ticker => (
-                        <li key={ticker} className="list-group-item d-flex justify-content-between">
-                            <strong>{ticker}</strong>
-                            <button className="btn btn-sm btn-outline-danger">Remove</button>
+                    {data.map(item => (
+                        <li key={item.ticker} className="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 className="mb-0">{item.ticker}</h5>
+                            </div>
+
+                            <div className="text-end">
+                                <div className="fw-bold">
+                                    ${item.price ? item.price.toFixed(2) : "---"}
+                                </div>
+
+                                <div className={`small ${getColor(item.change)}`}>
+                                    {item.change > 0 ? "+" : ""}
+                                    {item.change ? item.change.toFixed(2) : "-"}
+
+                                    <span className="ms-1">
+                                        ({item.change_percent ? item.change_percent.toFixed(2) : "-"}%)
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button className="btn btn-sm btn-outline-danger ms-3">X</button>
                         </li>
                     ))}
                 </ul>

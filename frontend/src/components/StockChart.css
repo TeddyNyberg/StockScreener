@@ -5,6 +5,7 @@
     border-radius: 10px;
     display: flex;
     flex-direction: column;
+
 }
 
 .full-figure h1 {
@@ -14,7 +15,3 @@
     color: #333;
 }
 
-
-.recharts-surface {
-    cursor: crosshair !important;
-}

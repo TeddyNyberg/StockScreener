@@ -26,7 +26,9 @@ function LoginModal({ show, onClose, onLoginSuccess }) {
 
             // yellow line, but it does work
             // could do const {access_token} = response.data;
-            localStorage.setItem('token', response.data.access_token);
+
+            sessionStorage.setItem('token', response.data.access_token);
+            sessionStorage.setItem('username', username);
 
             onLoginSuccess(username);
             onClose();
