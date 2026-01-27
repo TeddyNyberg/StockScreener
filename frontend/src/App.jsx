@@ -4,6 +4,7 @@ import StockChart from "./components/StockChart.jsx";
 import {useEffect, useState} from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Watchlist from "./components/Watchlist.jsx";
+import Portfolio from "./components/Portfolio.jsx";
 
 function App(){
 
@@ -41,6 +42,7 @@ function App(){
         <Routes>
             <Route path="/" element={<StockChart apiData={chartData} tickers={tickers}/>}/>
             <Route path="/watchlist" element={<Watchlist />}/>
+            <Route path="/portfolio" element={<Portfolio />}/>
         </Routes>
     </Router>
 }

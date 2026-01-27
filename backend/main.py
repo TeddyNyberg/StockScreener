@@ -86,8 +86,55 @@ def api_rm_watchlist(request: WatchlistRequest):
 
 @app.get("/portfolio")
 def api_get_portfolio(user_id: int = Depends(get_current_user)):
-    data = get_portfolio(user_id)
-    return data
+    portfolio_data = get_portfolio(user_id)
+    cash_balance = get_balance(user_id)
+
+    response = []
+
+    response.append({
+        "ticker": "Cash",
+        "price": 1.0,
+        "shares": float(cash_balance),
+        "basis": float(cash_balance),
+        "avg": 1.0,
+        "pl": 0.0,
+        "pct": 0.0,
+        "market_value": float(cash_balance),
+    })
+
+
+    tickers = [row[0] for row in portfolio_data]
+    cur_prices = get_yfdata_cache(tickers, "5D", normalize=False)
+
+    for i, row in enumerate(portfolio_data):
+        ticker = row[0]
+        shares = int(row[1])
+        total_basis = Decimal(str(row[2]))
+
+        cur_price = Decimal(str(cur_prices[i].iloc[-1]["Close"]))
+
+        if shares > 0:
+            avg_cost = total_basis / shares
+            market_value = cur_price * shares
+            profit_loss = market_value - total_basis
+            percent_return = (profit_loss / total_basis) * 100 if total_basis != 0 else 0
+        else:
+            avg_cost = 0
+            profit_loss = 0
+            percent_return = 0
+            market_value = 0
+
+        response.append({
+            "ticker": ticker,
+            "price": float(cur_price),
+            "shares": shares,
+            "basis": float(total_basis),
+            "avg": float(avg_cost),
+            "pl": float(profit_loss),
+            "pct": float(percent_return),
+            "market_value": float(market_value),
+        })
+    return response
 
 @app.post("/buy-stock")
 def api_buy_stock(request: StockTransaction):
