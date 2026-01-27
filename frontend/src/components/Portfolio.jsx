@@ -6,7 +6,7 @@ function Portfolio() {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    // Helper to color positive/negative numbers
+    // color positive/negative numbers
     function getColor(val) {
         if (val > 0) return "text-success";
         if (val < 0) return "text-danger";
@@ -14,7 +14,6 @@ function Portfolio() {
     }
 
     useEffect(() => {
-        // 1. Get token from session storage
         const token = sessionStorage.getItem('token');
 
         if (!token) {
@@ -22,7 +21,6 @@ function Portfolio() {
             return;
         }
 
-        // 2. Fetch Portfolio Data
         fetch("http://localhost:8000/portfolio", {
             method: "GET",
             headers: {
@@ -39,13 +37,13 @@ function Portfolio() {
             }
             return res.json();
         })
-        .then(data => {
-            setPortfolio(data);
+        .then(apiData => {
+            setPortfolio(apiData);
         })
         .catch(err => {
             console.error(err);
             if (err.message === "Unauthorized") {
-                sessionStorage.removeItem('token'); // Clear bad token
+                sessionStorage.removeItem('token');
                 navigate("/");
             } else {
                 setError("Unable to load portfolio data.");
@@ -53,7 +51,6 @@ function Portfolio() {
         });
     }, [navigate]);
 
-    // Calculate Total Account Value (Sum of all market_values)
     const totalAccountValue = portfolio.reduce((acc, item) => acc + (item.market_value || 0), 0);
 
     return (
@@ -104,7 +101,6 @@ function Portfolio() {
                                         ${item.market_value ? item.market_value.toFixed(2) : "0.00"}
                                     </td>
 
-                                    {/* Profit/Loss Columns */}
                                     <td className={`text-end ${getColor(item.pl)}`}>
                                         {item.pl > 0 ? "+" : ""}
                                         {item.pl ? item.pl.toFixed(2) : "0.00"}
