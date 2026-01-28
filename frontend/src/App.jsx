@@ -5,23 +5,20 @@ import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom"; // Import everything here
 import Watchlist from "./components/Watchlist.jsx";
 import Portfolio from "./components/Portfolio.jsx";
+import Details from "./components/Details.jsx";
+import Home from "./components/Home.jsx";
 
 function MainContent() {
-    const [chartData, setChartData] = useState(null);
-    const [tickers, setTickers] = useState(["SPY"]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
 
     const navigate = useNavigate();
 
-    async function fetchStockData(tickerString) {
-        setError(null);
-        setLoading(true);
-        navigate("/");
+    async function navDetailsPage(tickerString) {
+        navigate(`/details/${tickerString}`);
+    }
 
+    async function fetchTickerData(tickerString, time){
         try {
-            const response = await fetch(`http://localhost:8000/chart?tickers=${tickerString}&time=1Y`);
-
+            const response = await fetch(`http://localhost:8000/chart?tickers=${tickerString}&time=${time}`);
             if (!response.ok) {
                 throw new Error("no bueno");
             }
@@ -35,23 +32,14 @@ function MainContent() {
         }
     }
 
-    // Initial load
-    useEffect(() => {
-        fetchStockData("SPY").catch(console.error);
-    }, []);
-
     return (
         <>
-            <TopBanner onSearch={fetchStockData} />
-            <div className="container mt-3">
-                {error && <div className="alert alert-danger">{error}</div>}
-                {loading && <div className="spinner-border text-primary" role="status"></div>}
-            </div>
-
+            <TopBanner onSearch={navDetailsPage} />
             <Routes>
-                <Route path="/" element={<StockChart apiData={chartData} tickers={tickers} />} />
+                <Route path="/" element={<Home />} />
                 <Route path="/watchlist" element={<Watchlist />} />
                 <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/details/:ticker" element={<Details />}/>
             </Routes>
         </>
     );
