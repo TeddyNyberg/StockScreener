@@ -2,7 +2,7 @@ import { getColor, formatCurrency, formatPercent } from '../utils/formatting';
 
 function WatchlistItem ({item}){
     return (
-        <li key={item.ticker} className="list-group-item d-flex justify-content-between align-items-center">
+        <li className="list-group-item d-flex justify-content-between align-items-center">
             <div>
                 <h5 className="mb-0">{item.ticker}</h5>
             </div>

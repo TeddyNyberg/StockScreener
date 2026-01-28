@@ -1,9 +1,9 @@
 
 import WatchlistItem from "./WatchlistItem.jsx";
-import {fetchWatchlist} from "../hooks/fetchWatchlist.js"
+import {useWatchlist} from "../hooks/useWatchlist.js"
 
 function Watchlist() {
-    const { data, error } = fetchWatchlist();
+    const { data, error } = useWatchlist();
     return (
         <div className="container mt-4">
             <h1>Your Watchlist</h1>

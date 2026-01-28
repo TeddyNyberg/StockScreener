@@ -1,49 +1,8 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getColor, formatCurrency, formatPercent } from '../utils/formatting';
+import {usePortfolio} from "../hooks/usePortfolio.js";
+import PortfolioItem from "./PortfolioItem.jsx";
 
 function Portfolio() {
-    const [portfolio, setPortfolio] = useState([]);
-    const [error, setError] = useState(null);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const token = sessionStorage.getItem('token');
-
-        if (!token) {
-            navigate("/"); // Redirect to login/home if no token
-            return;
-        }
-
-        fetch("http://localhost:8000/portfolio", {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        })
-        .then(res => {
-            if (res.status === 401) {
-                throw new Error("Unauthorized");
-            }
-            if (!res.ok) {
-                throw new Error("Failed to fetch data");
-            }
-            return res.json();
-        })
-        .then(apiData => {
-            setPortfolio(apiData);
-        })
-        .catch(err => {
-            console.error(err);
-            if (err.message === "Unauthorized") {
-                sessionStorage.removeItem('token');
-                navigate("/");
-            } else {
-                setError("Unable to load portfolio data.");
-            }
-        });
-    }, [navigate]);
+    const { portfolio, error } = usePortfolio();
 
     const totalAccountValue = portfolio.reduce((acc, item) => acc + (item.market_value || 0), 0);
 
@@ -78,33 +37,7 @@ function Portfolio() {
                         </thead>
                         <tbody>
                             {portfolio.map((item, index) => (
-                                <tr key={index}>
-                                    <td className="fw-bold">{item.ticker}</td>
-
-                                    <td className="text-end">{item.shares}</td>
-
-                                    <td className="text-end">
-                                        ${item.avg ? item.avg.toFixed(2) : "0.00"}
-                                    </td>
-
-                                    <td className="text-end">
-                                        ${item.price ? item.price.toFixed(2) : "0.00"}
-                                    </td>
-
-                                    <td className="text-end fw-bold">
-                                        ${item.market_value ? item.market_value.toFixed(2) : "0.00"}
-                                    </td>
-
-                                    <td className={`text-end ${getColor(item.pl)}`}>
-                                        {item.pl > 0 ? "+" : ""}
-                                        {item.pl ? item.pl.toFixed(2) : "0.00"}
-                                    </td>
-
-                                    <td className={`text-end ${getColor(item.pct)}`}>
-                                        {item.pct > 0 ? "+" : ""}
-                                        {item.pct ? item.pct.toFixed(2) : "0.00"}%
-                                    </td>
-                                </tr>
+                                <PortfolioItem key={index} item={item}></PortfolioItem>
                             ))}
                         </tbody>
                     </table>

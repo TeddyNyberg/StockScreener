@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export function fetchWatchlist() {
+export function useWatchlist() {
     const [data, setData] = useState([]);
     const [error, setError] = useState(null);
     const navigate = useNavigate();

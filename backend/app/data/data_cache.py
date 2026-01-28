@@ -42,8 +42,14 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
             df = get_historical_data(ticker, start_time, end_time)
 
             if normalize:
-                _cache[ticker] = {"range": (start_time, end_time),
-                                "data": df}
+                actual_start = df.index.min()
+                actual_end = df.index.max()
+
+                _cache[ticker] = {
+                    "range": (actual_start, actual_end),
+                    "data": df
+                }
+
         else:
             cache_start, cache_end = _cache[ticker]["range"]
             cached_df = _cache[ticker]["data"]
@@ -56,8 +62,14 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
                 new_end = max(end_time, cache_end)
                 new_df = get_historical_data(ticker, new_start, new_end)
                 if normalize:
-                    _cache[ticker]["range"] = (new_start, new_end)
-                    _cache[ticker]["data"] = new_df
+                    actual_start = new_df.index.min()
+                    actual_end = new_df.index.max()
+
+                    _cache[ticker] = {
+                        "range": (actual_start, actual_end),
+                        "data": new_df
+                    }
+
                 df = new_df.loc[start_time:end_time]
         results.append(df)
 
