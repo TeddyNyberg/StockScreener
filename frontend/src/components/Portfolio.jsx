@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getColor, formatCurrency, formatPercent } from '../utils/formatting';
 
 function Portfolio() {
     const [portfolio, setPortfolio] = useState([]);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-
-    // color positive/negative numbers
-    function getColor(val) {
-        if (val > 0) return "text-success";
-        if (val < 0) return "text-danger";
-        return "text-muted";
-    }
 
     useEffect(() => {
         const token = sessionStorage.getItem('token');
