@@ -134,7 +134,7 @@ function StockChart({ apiData, tickers }) {
                     }
                 },
                 axisLabel: {
-                    formatter: (value) => isMulti ? `${value}%` : `$${value}`,
+                    formatter: (value) => isMulti ? `${value}%` : `${value}`,
                     color: '#666'
                 },
                 axisLine: { show: true },

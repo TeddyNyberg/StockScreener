@@ -6,6 +6,7 @@ function SearchBar({onSearch}) {
     function handleSearchClick(){
         if(input.trim()){
             onSearch(input.toUpperCase().replace(".","-"));
+            setInput("");
         }
     }
 

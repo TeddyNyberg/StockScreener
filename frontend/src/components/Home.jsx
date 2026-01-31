@@ -7,7 +7,7 @@ function Home(){
 
     useEffect(() => {
 
-        fetch("http://localhost:8000/chart?tickers=SPY&time=1Y")
+        fetch("http://localhost:8000/chart?tickers=^SPX&time=1Y")
             .then(res => res.json())
             .then(data => setChartData(data))
             .catch(err => setError("Failed to load SPY"));
@@ -18,7 +18,7 @@ function Home(){
 
     return (<div>
         <h2 className="text-center mt-3">Market Overview</h2>
-        <StockChart apiData={chartData} tickers={["SPY"]} />
+        <StockChart apiData={chartData} tickers={["^SPX"]} />
     </div>);
 }
 export default Home;
