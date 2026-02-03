@@ -2,6 +2,7 @@ from fastapi import Query
 from contextlib import asynccontextmanager
 from backend.app.db.db_handler import *
 from backend.app.data.data_cache import get_yfdata_cache
+from backend.app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -161,13 +162,6 @@ def api_get_balance(user_id: int):
     return get_balance(user_id)
 
 
-@app.get("/{tickers}/{time}")
-def api_get_tickers(tickers: str, time: str):
-    tickers = tickers.split("&")
-    data = get_yfdata_cache(tickers, time)
-    return data
-
-
 @app.get("/chart")
 def api_get_tickers(tickers: str = Query(..., description="Comma separated tickers"), time: str = "1Y"):
     ticker_list = tickers.split(",")
@@ -184,8 +178,34 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
             if "Date" in df_reset.columns:
                 df_reset["Date"] = df_reset["Date"].astype(str)
             response[ticker_name] = df_reset.to_dict(orient="records")
-
     return response
+@app.get("/info")
+def api_get_info(tickers: str = Query(..., description="Comma separated tickers"), info: str = ""):
+    ticker_list = tickers.split(",")
+    print("in api get info")
+    print(tickers)
+    print(ticker_list)
+    if info == "":
+        return get_info(ticker_list)
+    if info == "financials":
+        return get_financial_metrics(ticker_list)
+    if info == "balance_sheet":
+        return get_balancesheet(ticker_list)
+    if info == "my_chart":
+        response = {}
+        stock_info_dict = get_info(ticker_list)
+        lookup_stats = ["dividendYield", "beta", "trailingPE", "forwardPE", "volume", "averageVolume", "bid", "ask",
+                        "marketCap", "fiftyTwoWeekHigh", "fiftyTwoWeekLow", "priceToSalesTrailing12Months",
+                        "twoHundredDayAverage", "profitMargins", "heldPercentInsiders", "priceToBook",
+                        "earningsQuarterlyGrowth", "debtToEquity", "returnOnEquity", "earningsGrowth",
+                        "revenueGrowth", "grossMargins", "trailingPegRatio"]
+        for ticker in ticker_list:
+            response[ticker] = {}
+            for stat in lookup_stats:
+                response[ticker][stat] = stock_info_dict.get(ticker).get(stat)
+        return response
+    return {}
+
 
 @app.post("/token")
 async def login_for_access_token(

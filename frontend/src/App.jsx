@@ -22,7 +22,7 @@ function MainContent() {
                 <Route path="/" element={<Home />} />
                 <Route path="/watchlist" element={<Watchlist />} />
                 <Route path="/portfolio" element={<Portfolio />} />
-                <Route path="/details/:ticker" element={<Details />}/>
+                <Route path="/details/:tickers" element={<Details />}/>
             </Routes>
         </>
     );

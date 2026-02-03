@@ -16,9 +16,22 @@ def get_historical_data(ticker, start, end, ticker_col = False):
         stock_data['Ticker'] = ticker
     return stock_data
 
-def get_info(ticker):
-    stock = yf.Ticker(ticker)
-    return stock.info
+
+
+# TODO: this break all old pyside ui
+def get_info(ticker_list: list[str]):
+    print("GET INFO")
+    response = {}
+    for ticker in ticker_list:
+        info = yf.Ticker(ticker).info
+        response[ticker] = info
+        print("info for ticker ", ticker)
+        print(info)
+
+    print("response: ")
+    print(response)
+
+    return response
 
 # Ensure `date` is a string like '2024-10-15'
 def get_close_on(ticker, date):
@@ -31,14 +44,26 @@ def get_close_on(ticker, date):
 def get_price(ticker):
     return yf.Ticker(ticker).info.get("regularMarketPrice")
 
-def get_financial_metrics(ticker):
-    # TODO: scale financials and return the scale with it too
-    # TODO: remove things I dont care abt??
-    return yf.Ticker(ticker).financials
+
+# TODO: this break all old pyside ui
+def get_financial_metrics(ticker_list: list[str]):
+    response = {}
+    for ticker in ticker_list:
+        df = yf.Ticker(ticker).financials
+        info = df.reset_index().to_dict(orient="records")
+        response[ticker] = info
+    return response
 
 
-def get_balancesheet(ticker):
-    return yf.Ticker(ticker).balancesheet
+# TODO: this break all old pyside ui
+def get_balancesheet(ticker_list: list[str]):
+    response = {}
+    for ticker in ticker_list:
+        df = yf.Ticker(ticker).balancesheet
+        info = df.reset_index().to_dict(orient="records")
+        response[ticker] = info
+    return response
+
 
 
 
