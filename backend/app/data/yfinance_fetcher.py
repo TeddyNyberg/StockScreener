@@ -7,6 +7,7 @@ import yfinance as yf
 from datetime import timedelta
 import asyncio
 from backend.app.data.ticker_source import get_sp500_tickers
+import numpy as np
 
 
 # this may lead to errors, understand some may want ticker col some dont
@@ -47,21 +48,36 @@ def get_price(ticker):
 
 # TODO: this break all old pyside ui
 def get_financial_metrics(ticker_list: list[str]):
+    print("GET FIN METRICS")
     response = {}
     for ticker in ticker_list:
         df = yf.Ticker(ticker).financials
+        df = df.replace([np.nan, np.inf, -np.inf], None)
         info = df.reset_index().to_dict(orient="records")
         response[ticker] = info
+        print("info for ticker ", ticker)
+        print(info)
+
+    print("response: ")
+    print(response)
+
     return response
 
 
 # TODO: this break all old pyside ui
 def get_balancesheet(ticker_list: list[str]):
+    print("GET BALANCE METRICS")
     response = {}
     for ticker in ticker_list:
         df = yf.Ticker(ticker).balancesheet
+        df = df.replace([np.nan, np.inf, -np.inf], None)
         info = df.reset_index().to_dict(orient="records")
         response[ticker] = info
+        print("info for ticker ", ticker)
+        print(info)
+
+    print("response: ")
+    print(response)
     return response
 
 

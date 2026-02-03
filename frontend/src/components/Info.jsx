@@ -3,77 +3,79 @@ import { useEffect, useState } from "react";
 function Info({ tickers, info = "" }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
-
+    const [error, setError] = useState(null);
 
     useEffect(() => {
+        if (!tickers) return;
+
         setLoading(true);
+        setError(null);
+        setData(null);
 
         fetch(`http://localhost:8000/info?tickers=${tickers}&info=${info}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("Network response was not ok");
+                return res.json();
+            })
             .then(fetchedData => {
                 setData(fetchedData);
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
+                setError(err.message);
                 setLoading(false);
             });
 
     }, [tickers, info]);
 
-    if (loading) return <div className="text-secondary">Loading details...</div>;
-    if (!data || Object.keys(data).length === 0) return <div>No data available</div>;
+    if (loading) return <div className="text-secondary p-3">Loading details...</div>;
+    if (error) return <div className="text-danger p-3">Error: {error}</div>;
+    if (!data || Object.keys(data).length === 0) return <div className="p-3">No data available</div>;
 
-    let content = null;
-
-    if (info === "info" || info === "my_chart" || info === "") {
-
-        content = (
-            <div>
-                {Object.entries(data).map(([ticker, values]) => (
-                    <div key={ticker} className="mb-4">
-                        <h6 className="text-primary fw-bold">{ticker}</h6>
-                        <table className="table table-striped table-sm">
-                            <tbody>
-                                {values && typeof values === 'object' ? (
-                                    Object.entries(values).map(([key, val]) => (
-                                        <tr key={key}>
-                                            <td className="fw-bold">{key}</td>
-                                            <td>
-                                                {typeof val === 'object' && val !== null
-                                                    ? JSON.stringify(val)
-                                                    : val?.toString()}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="2">No data for this ticker</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+    // Helper to render the Key-Value list (for "info" or "my_chart")
+    const renderKeyValueTable = (obj) => (
+        <table className="table table-striped table-sm">
+            <tbody>
+                {Object.entries(obj).map(([key, val]) => (
+                    <tr key={key}>
+                        <td className="fw-bold text-secondary" style={{width: '40%'}}>{key}</td>
+                        <td>
+                            {typeof val === 'object' && val !== null
+                                ? JSON.stringify(val)
+                                : val?.toString()}
+                        </td>
+                    </tr>
                 ))}
-            </div>
-        );
-    } else {
+            </tbody>
+        </table>
+    );
 
-        if (!Array.isArray(data)) return <div>Invalid Data Format</div>;
+    // Helper to render the Data Grid (for "financials" or "balance_sheet")
+    const renderDataTable = (arr) => {
+        if (arr.length === 0) return <div>No records found.</div>;
 
-        const columns = Object.keys(data[0]);
+        // Dynamic headers based on the keys of the first item
+        const columns = Object.keys(arr[0]);
 
-        content = (
+        return (
             <div className="table-responsive">
-                <table className="table table-bordered table-sm">
-                    <thead>
+                <table className="table table-bordered table-sm table-hover">
+                    <thead className="table-light">
                         <tr>
                             {columns.map(col => <th key={col}>{col}</th>)}
                         </tr>
                     </thead>
                     <tbody>
-                        {data.map((row, idx) => (
+                        {arr.map((row, idx) => (
                             <tr key={idx}>
                                 {columns.map(col => (
-                                    <td key={col}>{row[col]}</td>
+                                    <td key={col}>
+                                        {/* Handle potential nested objects or nulls cleanly */}
+                                        {typeof row[col] === 'object' && row[col] !== null
+                                            ? JSON.stringify(row[col])
+                                            : row[col]}
+                                    </td>
                                 ))}
                             </tr>
                         ))}
@@ -81,12 +83,30 @@ function Info({ tickers, info = "" }) {
                 </table>
             </div>
         );
-    }
+    };
 
     return (
-        <div className="card p-3 shadow-sm mt-3">
-            <h5 className="card-title text-capitalize">{info.replace("_", " ")}</h5>
-            {content}
+        <div className="card shadow-sm mt-3">
+            <div className="card-header bg-white">
+                 <h5 className="card-title text-capitalize mb-0 text-primary">
+                    {info === "" ? "General Info" : info.replace("_", " ")}
+                </h5>
+            </div>
+            <div className="card-body">
+
+                {Object.entries(data).map(([ticker, content]) => (
+                    <div key={ticker} className="mb-5">
+                        <h4 className="border-bottom pb-2 mb-3">{ticker}</h4>
+
+                        {Array.isArray(content)
+                            ? renderDataTable(content)
+                            : typeof content === 'object' && content !== null
+                                ? renderKeyValueTable(content)
+                                : <div>No valid data structure found</div>
+                        }
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
