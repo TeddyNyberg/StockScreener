@@ -34,26 +34,32 @@ function Details() {
         <div className="container mt-4">
             <h1>Analysis: {tickers.toUpperCase()}</h1>
 
-            {loading && <div className="spinner-border text-primary"></div>}
-
             {error && <div className="alert alert-danger">{error}</div>}
 
-            {!loading && !error && chartData && (
+            {loading && !chartData && <div className="spinner-border text-primary"></div>}
+
+            {chartData && (
                 <>
-                    <StockChart apiData={chartData} tickers={tickers.split(",")}/>
-                    <div>
-                        {timeButtons.map(time => (
-                                <button
-                                    key={time}
-                                    style={{margin:"2px"}}
-                                    className={`btn btn-sm ${timeRange === time ? 'btn-primary' : 'btn-outline-secondary'}`}
-                                    onClick={() => setTimeRange(time)}>
-                                    {time}
-                                </button>
-                            )
-                        )}
+                    {/* Dim the chart slightly while updating to give visual feedback */}
+                    <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                        <StockChart apiData={chartData} tickers={tickers.split(",")} />
                     </div>
-                    <Info tickers={tickers} info={""}/>
+
+                    <div className="my-3">
+                        {timeButtons.map(time => (
+                            <button
+                                key={time}
+                                disabled={loading}
+                                style={{ margin: "2px" }}
+                                className={`btn btn-sm ${timeRange === time ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setTimeRange(time)}>
+                                {time}
+                            </button>
+                        ))}
+                        {/* Mini spinner next to buttons to show "updating" status */}
+                        {loading && <span className="spinner-border spinner-border-sm ms-2 text-secondary"></span>}
+                    </div>
+                    <Info tickers={tickers} info={""} />
                 </>
             )}
 

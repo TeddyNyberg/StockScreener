@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 
-
-
 function Info({ tickers, info = "" }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
