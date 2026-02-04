@@ -1,44 +1,21 @@
 import SearchBar from "./SearchBar.jsx";
 import "./TopBanner.css"
-import { useState } from "react";
-import LoginModal from "./LoginModal.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import {Link, useNavigate} from "react-router-dom";
 
 
-
 function TopBanner({onSearch}) {
-    const [showLogin, setShowLogin] = useState(false);
-    const [user, setUser] = useState(() => sessionStorage.getItem('username'));
+    const { user, setShowLogin } = useAuth();
 
     const navigate = useNavigate();
 
-    function handleWatchlistClick(){
-        const token = sessionStorage.getItem('token');
-        if(!token){
+    function handleProtectedClick(path){
+        if(!user){
             setShowLogin(true);
             return;
         }
-        navigate("/watchlist");
+        navigate(path);
     }
-
-    function handlePortfolioClick(){
-        const token = sessionStorage.getItem('token');
-        if(!token){
-            setShowLogin(true);
-            return;
-        }
-        navigate("/portfolio");
-    }
-
-    function handleModelClick(){
-        const token = sessionStorage.getItem('token');
-        if(!token){
-            setShowLogin(true);
-            return;
-        }
-        navigate("/model");
-    }
-
 
     return (
         <>
@@ -46,9 +23,9 @@ function TopBanner({onSearch}) {
             <Link className="col navbar-brand fw-bold fs-3" to="/">Nyberg.grq</Link>
             <div className="col collapse navbar-collapse justify-content-center">
                 <div className="navbar-nav gap-3">
-                    <button className="nav-link btn btn-link the-buttons" onClick={handleModelClick}>Model</button>
-                    <button className="nav-link btn btn-link the-buttons" onClick={handleWatchlistClick}>Watchlist</button>
-                    <button className="nav-link btn btn-link the-buttons" onClick={handlePortfolioClick}>Investments</button>
+                    <button className="nav-link btn btn-link the-buttons" onClick={() =>handleProtectedClick("/model")}>Model</button>
+                    <button className="nav-link btn btn-link the-buttons" onClick={() => handleProtectedClick("/watchlist")}>Watchlist</button>
+                    <button className="nav-link btn btn-link the-buttons" onClick={() => handleProtectedClick("/portfolio")}>Investments</button>
                 </div>
             </div>
 
@@ -57,7 +34,12 @@ function TopBanner({onSearch}) {
                     <SearchBar onSearch={onSearch}/>
                 </div>
                 {user ? (
-                        <span className="text-white fw-bold">{user}</span>
+                        <button
+                            className="nav-link btn btn-link the-buttons"
+                            onClick={() => setShowLogin(true)} // onclick popup logout
+                        >
+                            {user}
+                        </button>
                     ) : (
                         <button
                             className="nav-link btn btn-link the-buttons"
@@ -69,14 +51,9 @@ function TopBanner({onSearch}) {
 
             </div>
         </nav>
-            <LoginModal
-                show={showLogin}
-                onClose={() => setShowLogin(false)}
-                onLoginSuccess={(u) => setUser(u)}
-            />
+
 
     </>
     );
 }
-
 export default TopBanner;

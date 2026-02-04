@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import {useAuth} from "../context/AuthContext.jsx";
 
-function LoginModal({ show, onClose, onLoginSuccess }) {
+
+function LoginModal() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
-    if (!show) return null;
+
+    const { showLogin, setShowLogin, login } = useAuth();
+
+    if (!showLogin) return null;
 
     async function handleLogin(e) {
         e.preventDefault();
@@ -23,15 +28,7 @@ function LoginModal({ show, onClose, onLoginSuccess }) {
                         "Content-Type": "application/x-www-form-urlencoded",
                     }
                 });
-
-            // yellow line, but it does work
-            // could do const {access_token} = response.data;
-
-            sessionStorage.setItem('token', response.data.access_token);
-            sessionStorage.setItem('username', username);
-
-            onLoginSuccess(username);
-            onClose();
+            login(username, response.data.access_token);
         } catch (err) {
             console.error(err);
             setError("Invalid credentials");
@@ -47,7 +44,7 @@ function LoginModal({ show, onClose, onLoginSuccess }) {
 
                     <div className="modal-header border-secondary">
                         <h5 className="modal-title">Sign In</h5>
-                        <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+                        <button type="button" className="btn-close btn-close-white" onClick={() => setShowLogin(false)}></button>
                     </div>
 
                     <div className="modal-body">

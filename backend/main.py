@@ -22,13 +22,13 @@ async def lifespan(_: FastAPI):
     except Exception as e:
         print(f"Database Init Failed: {e}")
     try:
-        await model_service.initialize()
+        #await model_service.initialize()
         print("Model Service Initialized.")
     except Exception as e:
         print(f"Model Service Init Failed: {e}")
     yield
     print("Server Shutting Down...")
-    await model_service.shutdown()
+    #await model_service.shutdown()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -47,8 +47,6 @@ app.add_middleware(
 
 class WatchlistRequest(BaseModel):
     ticker: str
-    user_id: int
-
 
 class StockTransaction(BaseModel):
     ticker: str
@@ -79,21 +77,29 @@ def api_get_watchlist(user_id: int = Depends(get_current_user)):
         })
     return response
 
+
 @app.post("/watchlist/add")
-def api_add_watchlist(request: WatchlistRequest):
-    success = add_watchlist(request.ticker, request.user_id)
+def api_add_watchlist(request: WatchlistRequest, user_id: int = Depends(get_current_user)):
+    success = add_watchlist(request.ticker, user_id)
     if success:
         return {"status": "success", "message": f"Added {request.ticker}"}
     else:
         raise HTTPException(status_code=400, detail="Could not add ticker")
 
 @app.post("/watchlist/remove")
-def api_rm_watchlist(request: WatchlistRequest):
-    success = rm_watchlist(request.ticker, request.user_id)
+def api_rm_watchlist(request: WatchlistRequest, user_id: int = Depends(get_current_user)):
+    success = rm_watchlist(request.ticker, user_id)
     if success:
         return {"status": "success", "message": f"Added {request.ticker}"}
     else:
         raise HTTPException(status_code=400, detail="Could not add ticker")
+
+@app.get("/watchlist/check/{ticker}")
+def check_watchlist_status(ticker: str, user_id: int = Depends(get_current_user)):
+    exists = check_if_in_watchlist(user_id, ticker)
+    print(ticker, exists)
+    return {"in_watchlist": exists}
+
 
 @app.get("/portfolio")
 def api_get_portfolio(user_id: int = Depends(get_current_user)):
@@ -187,6 +193,7 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
             if "Date" in df_reset.columns:
                 df_reset["Date"] = df_reset["Date"].astype(str)
             response[ticker_name] = df_reset.to_dict(orient="records")
+
     return response
 @app.get("/info")
 def api_get_info(tickers: str = Query(..., description="Comma separated tickers"), info: str = ""):

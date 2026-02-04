@@ -21,11 +21,12 @@ def rm_nm(data_list):
 # so need to remove names if many.
 # also handle nyberg
 
+# TODO: store 10 tickers LRU
+# prio q?
+#
+
 def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
-    print("CALLED GET DATA")
-    print(tickers)
-    print(time)
-    print("---------")
+
     start_time, end_time = get_date_range(time, normalize=normalize)
     results = []
 

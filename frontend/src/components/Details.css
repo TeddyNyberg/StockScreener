@@ -1,0 +1,13 @@
+.rect-btn {
+    color: #000000 !important;
+    background-color: transparent;
+    border: 1px solid #000000;
+    border-radius: 0 !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.rect-btn:hover {
+    color: #f8b306 !important;
+    border-color: #f8b306;
+    background-color: transparent;
+}

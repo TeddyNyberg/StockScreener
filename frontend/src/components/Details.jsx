@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 import StockChart from "./StockChart";
 import Info from "./Info.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import "./Details.css"
 
 function Details() {
     const { tickers } = useParams();
@@ -12,9 +14,12 @@ function Details() {
     const [timeRange, setTimeRange] = useState("1Y");
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const currentView = searchParams.get("info") || "";
+    const { user, setShowLogin } = useAuth();
+    const [inWatchlist, setInWatchlist] = useState(false);
 
+    const currentView = searchParams.get("info") || "";
     const timeButtons = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"];
+    const currentTicker = tickers.split(",")[0];
 
     const VIEWS = [
         {label: "General Info", value: ""},
@@ -26,6 +31,64 @@ function Details() {
     const handleViewChange = (newView) => {
         setSearchParams({ info: newView });
     };
+
+    function handleTradeClick(){
+        if(!user){
+            setShowLogin(true);
+            return;
+        }
+        // open trade window
+    }
+
+
+    function toggleWatchlist() {
+        const token = sessionStorage.getItem('token');
+
+        if (!user || !token) {
+            setShowLogin(true);
+            return;
+        }
+
+        const endpoint = inWatchlist ? "/watchlist/remove" : "/watchlist/add";
+
+        setInWatchlist(!inWatchlist);
+
+        fetch(`http://localhost:8000${endpoint}`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ticker: currentTicker })
+        })
+        .then(res => {
+            if (!res.ok) {
+                setInWatchlist(!inWatchlist);
+                console.error("Failed to update watchlist");
+            }
+        })
+        .catch(err => {
+            setInWatchlist(!inWatchlist);
+            console.error(err);
+        });
+    }
+
+    useEffect(() => {
+        const token = sessionStorage.getItem('token');
+
+        if (user && token) {
+            fetch(`http://localhost:8000/watchlist/check/${currentTicker}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                setInWatchlist(data.in_watchlist);
+            })
+            .catch(err => console.error("Error checking watchlist:", err));
+        } else {
+            setInWatchlist(false);
+        }
+    }, [user, currentTicker]);
 
     useEffect(() => {
         setLoading(true);
@@ -47,7 +110,27 @@ function Details() {
 
     return (
         <div className="container mt-4">
-            <h1>Analysis: {tickers.toUpperCase()}</h1>
+            <div className="row align-items-center">
+                <div className="col">
+                    <h1 className="mb-0">{tickers.toUpperCase()}</h1>
+                </div>
+
+                <div className="col-auto d-flex gap-2">
+                    <button
+                        className={`btn rect-btn ${inWatchlist ? "btn-success" : ""}`}
+                        onClick={toggleWatchlist}
+                        style={inWatchlist ? { color: "#4ade80", borderColor: "#4ade80" } : {}}
+                    >
+                        {inWatchlist ? "Watching ✓" : "Watchlist +"}
+                    </button>
+
+                    <button className="btn rect-btn" onClick={handleTradeClick}>
+                        Trade
+                    </button>
+                </div>
+            </div>
+
+
 
             {error && <div className="alert alert-danger">{error}</div>}
 

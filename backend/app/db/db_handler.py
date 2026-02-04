@@ -332,3 +332,29 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         raise credentials_exception
     return user_id
 
+def check_if_in_watchlist(user_id, ticker):
+    CHECK_WL_SQL = _load_sql("check_in_watchlist.sql")
+    with DB() as conn:
+        with conn.cursor() as cur:
+            cur.execute(CHECK_WL_SQL, (user_id, ticker))
+            result = cur.fetchone()
+            if result is not None:
+                return True
+    return False
+
+
+def rm_watchlist(ticker, user_id):
+    DELETE_TICKER_QUERY = _load_sql("delete_watchlist.sql")
+    try:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute(DELETE_TICKER_QUERY, (user_id, ticker))
+                rows_deleted = cur.rowcount
+                if rows_deleted > 0:
+                    print(f"Successfully removed ticker: {ticker} from watchlist.")
+                else:
+                    print(f"Ticker: {ticker} was not found in the watchlist (0 rows affected).")
+            return True
+    except Exception as e:
+        print(f"Database error during rm_watchlist (Rollback): {e}")
+        return False

@@ -6,6 +6,9 @@ import Portfolio from "./components/Portfolio.jsx";
 import Details from "./components/Details.jsx";
 import Home from "./components/Home.jsx";
 import Model from "./components/Model.jsx";
+import LoginModal from "./components/LoginModal.jsx";
+import {AuthProvider} from "./context/AuthContext.jsx";
+import TestLogin from "./components/TestLogin.jsx";
 
 function MainContent() {
 
@@ -15,10 +18,10 @@ function MainContent() {
         navigate(`/details/${tickerString}`);
     }
 
-
     return (
         <>
             <TopBanner onSearch={searchTicker} />
+            <LoginModal />
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/watchlist" element={<Watchlist />} />
@@ -26,15 +29,18 @@ function MainContent() {
                 <Route path="/details/:tickers" element={<Details />}/>
                 <Route path="/model" element={<Model />} />
             </Routes>
+
         </>
     );
 }
 
 function App() {
     return (
-        <Router>
-            <MainContent />
-        </Router>
+        <AuthProvider>
+            <Router>
+                <MainContent />
+            </Router>
+        </AuthProvider>
     );
 }
 
