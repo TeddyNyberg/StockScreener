@@ -2,7 +2,7 @@
 import torch
 from torch.utils.data import Dataset
 import numpy as np
-from config import *
+from backend.config import *
 
 
 def to_seq(seq_size, obs):
@@ -80,6 +80,12 @@ def prepare_data_for_prediction(data):
     input_sequence = data[-SEQUENCE_SIZE:]
 
     normalized_window, mean, std = normalize_window(input_sequence)
+
+    if hasattr(mean, 'item'):
+        mean = mean.item()
+    if hasattr(std, 'item'):
+        std = std.item()
+
     input_tensor = torch.tensor(normalized_window.to_numpy(), dtype=torch.float32).unsqueeze(0)
 
     return input_tensor, latest_close_price, mean, std

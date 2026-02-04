@@ -5,8 +5,12 @@ from backend.app.data.data_cache import get_yfdata_cache
 from backend.app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.ml_logic.strategy import calculate_kelly_allocations
+from backend.app.services.model_service import ModelService
 
 # to run, uvicorn backend.main:app --reload
+
+model_service = ModelService()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -17,8 +21,14 @@ async def lifespan(_: FastAPI):
             init_db(conn)
     except Exception as e:
         print(f"Database Init Failed: {e}")
+    try:
+        await model_service.initialize()
+        print("Model Service Initialized.")
+    except Exception as e:
+        print(f"Model Service Init Failed: {e}")
     yield
     print("Server Shutting Down...")
+    await model_service.shutdown()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -161,7 +171,6 @@ def api_authenticate_user(request: LoginCredentials):
 def api_get_balance(user_id: int):
     return get_balance(user_id)
 
-
 @app.get("/chart")
 def api_get_tickers(tickers: str = Query(..., description="Comma separated tickers"), time: str = "1Y"):
     ticker_list = tickers.split(",")
@@ -182,9 +191,6 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
 @app.get("/info")
 def api_get_info(tickers: str = Query(..., description="Comma separated tickers"), info: str = ""):
     ticker_list = tickers.split(",")
-    print("in api get info")
-    print(tickers)
-    print(ticker_list)
     if info == "":
         return get_info(ticker_list)
     if info == "financials":
@@ -205,6 +211,50 @@ def api_get_info(tickers: str = Query(..., description="Comma separated tickers"
                 response[ticker][stat] = stock_info_dict.get(ticker).get(stat)
         return response
     return {}
+
+@app.get("/model/predict/{ticker}")
+async def api_model_predict_next_day(ticker: str):
+    try:
+        prediction, last_close = await model_service.predict_next_day(ticker)
+        return {
+            "ticker": ticker,
+            "prediction": float(prediction),
+            "last_close": float(last_close)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+
+@app.get("/model/kelly-picks")
+def api_get_kelly_picks(version: str = "A"):
+    try:
+        final_allocations, _ = calculate_kelly_allocations(version, False)
+        if final_allocations is None:
+            return []
+
+        response = [
+            {"ticker": ticker, "allocation": float(alloc), "projected_return": float(mu)}
+            for ticker, alloc, mu in final_allocations
+        ]
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/model/current-picks")
+async def api_get_current_picks():
+    try:
+        result = await model_service.handle_fastest_kelly()
+        if result is None:
+            return []
+        response = [
+            {"ticker": ticker, "allocation": float(alloc), "projected_return": float(mu)}
+            for ticker, alloc, mu in result
+        ]
+        return response
+    except Exception as e:
+        print(f"Error fetching current picks: {e}")
+        return []
 
 
 @app.post("/token")

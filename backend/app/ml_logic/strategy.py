@@ -215,6 +215,9 @@ def fastest_kelly(data, model, vol_data, tickers):
     for ticker, normalized_allocation, mu in sorted_allocations:
         print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
+    print(tickers)
+    print(data)
+
     return sorted_allocations
 
 def fastest_optimal(all_close_data, model):

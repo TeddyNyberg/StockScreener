@@ -5,6 +5,7 @@ import Watchlist from "./components/Watchlist.jsx";
 import Portfolio from "./components/Portfolio.jsx";
 import Details from "./components/Details.jsx";
 import Home from "./components/Home.jsx";
+import Model from "./components/Model.jsx";
 
 function MainContent() {
 
@@ -23,6 +24,7 @@ function MainContent() {
                 <Route path="/watchlist" element={<Watchlist />} />
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/details/:tickers" element={<Details />}/>
+                <Route path="/model" element={<Model />} />
             </Routes>
         </>
     );

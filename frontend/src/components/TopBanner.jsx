@@ -30,6 +30,15 @@ function TopBanner({onSearch}) {
         navigate("/portfolio");
     }
 
+    function handleModelClick(){
+        const token = sessionStorage.getItem('token');
+        if(!token){
+            setShowLogin(true);
+            return;
+        }
+        navigate("/model");
+    }
+
 
     return (
         <>
@@ -37,7 +46,7 @@ function TopBanner({onSearch}) {
             <Link className="col navbar-brand fw-bold fs-3" to="/">Nyberg.grq</Link>
             <div className="col collapse navbar-collapse justify-content-center">
                 <div className="navbar-nav gap-3">
-                    <button className="nav-link btn btn-link the-buttons">Model</button>
+                    <button className="nav-link btn btn-link the-buttons" onClick={handleModelClick}>Model</button>
                     <button className="nav-link btn btn-link the-buttons" onClick={handleWatchlistClick}>Watchlist</button>
                     <button className="nav-link btn btn-link the-buttons" onClick={handlePortfolioClick}>Investments</button>
                 </div>

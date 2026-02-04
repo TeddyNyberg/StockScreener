@@ -18,19 +18,12 @@ def get_historical_data(ticker, start, end, ticker_col = False):
     return stock_data
 
 
-
 # TODO: this break all old pyside ui
 def get_info(ticker_list: list[str]):
-    print("GET INFO")
     response = {}
     for ticker in ticker_list:
         info = yf.Ticker(ticker).info
         response[ticker] = info
-        print("info for ticker ", ticker)
-        print(info)
-
-    print("response: ")
-    print(response)
 
     return response
 
@@ -48,40 +41,25 @@ def get_price(ticker):
 
 # TODO: this break all old pyside ui
 def get_financial_metrics(ticker_list: list[str]):
-    print("GET FIN METRICS")
     response = {}
     for ticker in ticker_list:
         df = yf.Ticker(ticker).financials
         df = df.replace([np.nan, np.inf, -np.inf], None)
         info = df.reset_index().to_dict(orient="records")
         response[ticker] = info
-        print("info for ticker ", ticker)
-        print(info)
-
-    print("response: ")
-    print(response)
 
     return response
 
 
 # TODO: this break all old pyside ui
 def get_balancesheet(ticker_list: list[str]):
-    print("GET BALANCE METRICS")
     response = {}
     for ticker in ticker_list:
         df = yf.Ticker(ticker).balancesheet
         df = df.replace([np.nan, np.inf, -np.inf], None)
         info = df.reset_index().to_dict(orient="records")
         response[ticker] = info
-        print("info for ticker ", ticker)
-        print(info)
-
-    print("response: ")
-    print(response)
     return response
-
-
-
 
 
 class LiveMarketTable:
@@ -91,7 +69,7 @@ class LiveMarketTable:
         self.listen_task = None
         try:
             sp_tickers = get_sp500_tickers()
-            data = yf.download(sp_tickers, period="1d", auto_adjust=True)["Close"].iloc[-1]
+            data = yf.download(sp_tickers, period="5d", auto_adjust=True)["Close"].iloc[-1]
             self.last_day = data
         except Exception as e:
             print(f"Except: {e}")
@@ -111,6 +89,12 @@ class LiveMarketTable:
 
     async def close_socket(self):
         print("Stopping socket...")
-        self.listen_task.cancel()
-        await self.ws.close()
-        return self.last_day
+        if self.listen_task:
+            self.listen_task.cancel()
+            try:
+                await self.listen_task
+            except asyncio.CancelledError:
+                pass
+
+    def get_snapshot(self):
+        return self.last_day.copy()

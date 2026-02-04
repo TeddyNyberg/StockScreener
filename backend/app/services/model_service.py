@@ -9,6 +9,7 @@ from backend.config import MODEL_MAP
 import numpy as np
 
 
+
 class ModelService:
     def __init__(self):
         self.model=None
@@ -35,15 +36,22 @@ class ModelService:
         input_tensor, _, mean, std = prepare_data_for_prediction(close_data)
         prediction = self.model.predict_value(input_tensor, mean, std)
 
+        if hasattr(prediction, 'item'):
+            prediction = prediction.item()
+
         print(f"Predicted value: {prediction}")
         print(f"Lastest data: {close_data.iloc[-1].item()}")
         return prediction, close_data.iloc[-1].item()
 
     async def handle_fastest_kelly(self):
-        final_df = await self.market_data.close_socket()
+        final_df = self.market_data.get_snapshot()
         new_row = final_df.values.reshape(1, -1).astype(np.float32)
         data = np.vstack((self.data, new_row))
-        fastest_kelly(data, self.model, self.volatility, self.tickers)
+        return fastest_kelly(data, self.model, self.volatility, self.tickers)
+
+    async def shutdown(self):
+        if self.market_data is not None:
+            self.market_data.close_socket()
 
 
 
