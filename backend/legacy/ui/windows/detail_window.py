@@ -4,11 +4,11 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxL
 from backend.app.search.charting import get_chart
 from backend.app.search.ticker_lookup import lookup_tickers
 from backend.app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
-from backend.app.ui.chart_canvas import CustomChartCanvas
-from backend.app.ui.window_manager import open_detail_window, open_watchlist
-from backend.app.ui.ui_utils import clear_layout, make_buttons, create_table_widget_from_data
-from backend.app.ui.windows.portfolio_window import TradingWindow
-from backend.app.ui.widgets import SearchWidget
+from backend.legacy.ui.chart_canvas import CustomChartCanvas
+from backend.legacy.ui.window_manager import open_detail_window, open_watchlist
+from backend.legacy.ui.ui_utils import clear_layout, make_buttons, create_table_widget_from_data
+from backend.legacy.ui.windows.portfolio_window import TradingWindow
+from backend.legacy.ui.widgets import SearchWidget
 
 
 class DetailsWindow(QMainWindow):

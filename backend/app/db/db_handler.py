@@ -1,20 +1,20 @@
-from backend.settings import *
+from backend.app.db.database import DB
+from backend.app.schemas import TokenData
+from backend.app.settings import *
 import psycopg2
 from decimal import Decimal
 import bcrypt
 import os
 import jwt
 from jwt.exceptions import InvalidTokenError
-from fastapi import Depends, FastAPI, HTTPException, status
-from pydantic import BaseModel
+from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
 
 
 def _load_sql(filename):
@@ -154,32 +154,6 @@ def _rm_from_portfolio(conn, ticker, to_sell, price, user_id):
         return True
 
 
-class DB:
-    def __init__(self):
-        self.conn = None
-    def __enter__(self):
-        try:
-            self.conn = psycopg2.connect(
-                dbname=DB_NAME,
-                user=DB_USERNAME,
-                password=DB_PASSWORD,
-                host=DB_HOST,
-                port=DB_PORT
-            )
-            return self.conn
-        except psycopg2.Error as e:
-            print(f"Could not establish a database connection.")
-            raise
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn:
-            if exc_type is None:
-                self.conn.commit()
-            else:
-                self.conn.rollback()
-                print("rollback")
-            self.conn.close()
-        return False
-
 def init_db(conn):
     create_watchlist_sql = _load_sql("create_watchlist.sql")
     create_portfolio_sql = _load_sql("create_portfolio.sql")
@@ -291,14 +265,6 @@ def _update_user_balance(conn, user_id, amount):
         cur.execute(UPDATE_SQL, (amount, user_id))
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    username: str | None = None
-
-
 # you can create specific tokens, which have unique permissions
 # watch out for user foo, car foo, blog foo
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -365,8 +331,6 @@ def get_ticker_stats_owned(user_id, ticker):
                     "cash_balance": float(result[2] or 0)
                 }
     return {"shares_owned": 0, "cost_basis": 0.0, "cash_balance": 0.0}
-
-
 
 
 def rm_watchlist(ticker, user_id):

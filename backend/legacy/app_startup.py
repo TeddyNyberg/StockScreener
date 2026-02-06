@@ -1,9 +1,9 @@
-from backend.app.db.db_handler import DB, init_db, init_user_table
-from backend.app.ml_logic.tester import run_backtesting
+from backend.app.db.db_handler import init_db, init_user_table
+from backend.app.db.database import DB
 
 
 def start_application():
-    from backend.app.ui.windows.main_window import MainWindow
+    from backend.legacy.ui.windows.main_window import MainWindow
     print("Starting app...")
     #run_backtesting()
     with DB() as conn:

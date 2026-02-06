@@ -5,7 +5,7 @@ from backend.app.ml_logic.prediction_models.only_close_model import setup_pred_m
 from backend.app.data.data_cache import get_volatility_cache, get_cached_49days
 from backend.app.ml_logic.strategy import fastest_kelly
 from backend.app.utils import get_date_range
-from backend.config import MODEL_MAP
+from backend.app.config import MODEL_MAP
 import numpy as np
 
 

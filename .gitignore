@@ -3,7 +3,7 @@
 *.pyc
 .venv/
 
-.env
+backend/.env
 stock_model.pt
 ticker_to_id.pt
 .idea/

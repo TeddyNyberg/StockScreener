@@ -1,8 +1,8 @@
 from backend.app.db.db_handler import get_watchlist, rm_watchlist
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QMenu, QTableView, QHeaderView, QMessageBox
-from backend.app.ui.models.watchlist_model import WatchlistModel
-from backend.app.ui.search_handler import lookup_and_open_details
+from backend.legacy.ui.models.watchlist_model import WatchlistModel
+from backend.legacy.ui.search_handler import lookup_and_open_details
 
 
 class WatchlistWindow(QMainWindow):

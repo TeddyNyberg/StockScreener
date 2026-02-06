@@ -1,7 +1,7 @@
 from backend.app.data.yfinance_fetcher import get_info
 from backend.app.data.nyberg_fetcher import get_nyberg_price, get_nyberg_name
 from backend.app.search.charting import get_chart
-from backend.config import *
+from backend.app.config import *
 
 # returns 3 things, normally called result, chart, data
 # result = list of quaduple{ticker, price, currency, name}for each stock

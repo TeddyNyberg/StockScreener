@@ -3,8 +3,8 @@ import io
 import tarfile
 import torch
 import gzip
-from backend.settings import *
-from backend.config import *
+from backend.app.settings import *
+from backend.app.config import *
 
 MODEL_CACHE = {}
 

@@ -3,11 +3,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpacerItem, QSizePolicy,
                                QMenu, QMessageBox)
 from backend.app.search.ticker_lookup import lookup_tickers
-from backend.app.ui.chart_canvas import CustomChartCanvas
-from backend.app.ui.window_manager import open_detail_window, open_watchlist, open_portfolio, set_user_session
-from backend.app.ui.windows.login_window import LoginWindow
-from backend.app.ui.windows.model_window import ModelWindow
-from backend.app.ui.widgets import SearchWidget
+from backend.legacy.ui.chart_canvas import CustomChartCanvas
+from backend.legacy.ui.window_manager import open_detail_window, open_watchlist, open_portfolio, set_user_session
+from backend.legacy.ui.windows.login_window import LoginWindow
+from backend.legacy.ui.windows.model_window import ModelWindow
+from backend.legacy.ui.widgets import SearchWidget
 
 
 class MainWindow(QWidget):

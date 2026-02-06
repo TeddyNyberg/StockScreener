@@ -3,7 +3,7 @@ import os
 from backend.app import get_sp500_tickers
 from backend.app.ml_logic import get_all_volatilities_np
 from backend.app import get_date_range
-from backend.config import *
+from backend.app.config import *
 import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

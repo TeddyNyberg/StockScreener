@@ -3,7 +3,7 @@
 import requests
 import pandas as pd
 import io
-from backend.config import S_AND_P_URL, SP_TICKER_CACHE
+from backend.app.config import S_AND_P_URL, SP_TICKER_CACHE
 import csv
 import os
 

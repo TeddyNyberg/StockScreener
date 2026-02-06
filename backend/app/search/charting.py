@@ -1,6 +1,6 @@
 import mplfinance as mpf
 from backend.app.data.data_cache import get_yfdata_cache
-from backend.config import *
+from backend.app.config import *
 
 
 

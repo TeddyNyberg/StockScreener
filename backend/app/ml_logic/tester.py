@@ -1,4 +1,4 @@
-from backend.config import *
+from backend.app.config import *
 from datetime import datetime
 import os
 import traceback

@@ -1,14 +1,17 @@
-from fastapi import Query
+from fastapi import Query, FastAPI
 from contextlib import asynccontextmanager
 from backend.app.db.db_handler import *
 from backend.app.data.data_cache import get_yfdata_cache
 from backend.app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
 from fastapi.middleware.cors import CORSMiddleware
-
 from backend.app.ml_logic.strategy import calculate_kelly_allocations
+from backend.app.schemas import WatchlistRequest, StockTransaction, LoginCredentials, Token
 from backend.app.services.model_service import ModelService
+from typing import Annotated
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 
-# to run, uvicorn backend.main:app --reload
+# to run, uvicorn backend.app.main:app --reload
 
 model_service = ModelService()
 
@@ -44,20 +47,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class WatchlistRequest(BaseModel):
-    ticker: str
-
-class StockTransaction(BaseModel):
-    ticker: str
-    price: float
-    quantity: int
-    type: str
-
-
-class LoginCredentials(BaseModel):
-    username: str
-    password: str
 
 
 # TODO: maybe a little ocupled? just assumes that data comes back in same order is all

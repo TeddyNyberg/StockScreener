@@ -1,5 +1,5 @@
 import pandas as pd
-from backend.config import MODEL_MAP
+from backend.app.config import MODEL_MAP
 from backend.app.utils import get_date_range
 
 

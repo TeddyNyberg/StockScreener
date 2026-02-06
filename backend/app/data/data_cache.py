@@ -2,7 +2,7 @@ import pandas as pd
 from backend.app.utils import get_date_range
 from backend.app.data.yfinance_fetcher import get_historical_data
 from backend.app.data.nyberg_fetcher import get_nyberg_data
-from backend.config import *
+from backend.app.config import *
 import numpy as np
 
 

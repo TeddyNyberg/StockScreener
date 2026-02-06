@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication
-from backend.app.app_startup import start_application
+from backend.legacy.app_startup import start_application
 from qasync import QEventLoop
 import asyncio
 

@@ -2,7 +2,7 @@
 import torch
 from torch.utils.data import Dataset
 import numpy as np
-from backend.config import *
+from backend.app.config import *
 
 
 def to_seq(seq_size, obs):

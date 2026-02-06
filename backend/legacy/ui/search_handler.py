@@ -1,5 +1,5 @@
 from backend.app.search.ticker_lookup import lookup_tickers
-from backend.app.ui.window_manager import open_detail_window
+from backend.legacy.ui.window_manager import open_detail_window
 
 # result is structured as name_and_price, chart, data
 def lookup_and_open_details(ticker, display_error_func=None):

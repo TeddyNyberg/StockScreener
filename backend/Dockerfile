@@ -21,12 +21,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/app/ app/
+COPY app app/
 
-COPY backend/settings.py .
+COPY app/settings.py .
 
 CMD ["python", "-m", "app.main"]
 

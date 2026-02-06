@@ -4,9 +4,9 @@ from backend.app.services.model_service import ModelService
 from backend.app.ml_logic.strategy import calculate_kelly_allocations
 import subprocess
 import sys
-from backend.settings import *
+from backend.app.settings import *
 import asyncio
-from backend.app.ui.scatter_canvas import MplCanvas, create_return_figure
+from backend.legacy.ui.scatter_canvas import MplCanvas, create_return_figure
 
 
 class ModelWindow(QMainWindow):

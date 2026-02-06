@@ -1,10 +1,10 @@
 from backend.app.db.db_handler import get_portfolio, buy_stock, sell_stock, get_balance
 from PySide6.QtCore import Qt
-from backend.app.ui.signals import global_signals
+from backend.legacy.ui.signals import global_signals
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QPushButton, QSpinBox,
                                QTableView, QHeaderView)
-from backend.app.ui.models.portfolio_model import PortfolioModel
-from backend.app.ui.search_handler import lookup_and_open_details
+from backend.legacy.ui.models.portfolio_model import PortfolioModel
+from backend.legacy.ui.search_handler import lookup_and_open_details
 import asyncio
 from qasync import asyncSlot
 
