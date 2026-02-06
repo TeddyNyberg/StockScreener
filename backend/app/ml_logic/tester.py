@@ -137,8 +137,7 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
             print(current_day, " total at close: ", total_value)
 
         if model_version == "A":
-            file_path = 'backtest_portfolio_PL.xlsx'
-            writer = pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace')
+            writer = pd.ExcelWriter(BACKTEST_REPORT_PATH, engine='openpyxl', mode='a', if_sheet_exists='replace')
 
             for date_str, df in daily_position_reports.items():
                 sheet_name = f"{date_str}_Allocations"
@@ -197,7 +196,7 @@ def continue_backtest(version, tuning_period=None, only_largest=False):
     )
 
     if new_results_df is None:
-        print("handle_backtest did not return any results")
+        print("handle_backtest did not return any data")
         return
 
     new_trading_days_df = new_results_df.iloc[1:]
@@ -213,7 +212,7 @@ def continue_backtest(version, tuning_period=None, only_largest=False):
 
 
     print("\n" + "=" * 50)
-    print(f"Successfully appended {len(new_trading_days_df)} new days of results.")
+    print(f"Successfully appended {len(new_trading_days_df)} new days of data.")
     print(f"Backtest now current until: {new_trading_days_df.index[-1].strftime('%m/%d/%Y')}")
     print(f"Results saved to {filepath}")
     print("=" * 50)

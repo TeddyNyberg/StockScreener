@@ -26,9 +26,9 @@ dist/
 nyberg_static.pth
 tuned_model.pth
 
-sp500_tickers.csv
-sp500_history_cache.parquet
-vol_data.npy
+backend/data/sp500_tickers.csv
+backend/data/sp500_history_cache.parquet
+backend/data/vol_data.npy
 
 *.parquet
 .ipynb_checkpoints
