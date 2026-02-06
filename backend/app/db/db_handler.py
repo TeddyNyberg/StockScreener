@@ -342,6 +342,32 @@ def check_if_in_watchlist(user_id, ticker):
                 return True
     return False
 
+def get_ticker_stats_owned(user_id, ticker):
+    TICKER_STATS = _load_sql("select_owned_ticker_stats.sql")
+    with DB() as conn:
+        with conn.cursor() as cur:
+            cur.execute(TICKER_STATS, (user_id, ticker))
+            result = cur.fetchone()
+            return result
+    return []
+
+
+def get_ticker_stats_owned(user_id, ticker):
+    TICKER_STATS = _load_sql("select_owned_ticker_stats.sql")
+    with DB() as conn:
+        with conn.cursor() as cur:
+            cur.execute(TICKER_STATS, (ticker, user_id))
+            result = cur.fetchone()
+            if result:
+                return {
+                    "shares_owned": result[0] or 0,
+                    "cost_basis": float(result[1] or 0),
+                    "cash_balance": float(result[2] or 0)
+                }
+    return {"shares_owned": 0, "cost_basis": 0.0, "cash_balance": 0.0}
+
+
+
 
 def rm_watchlist(ticker, user_id):
     DELETE_TICKER_QUERY = _load_sql("delete_watchlist.sql")
@@ -358,3 +384,4 @@ def rm_watchlist(ticker, user_id):
     except Exception as e:
         print(f"Database error during rm_watchlist (Rollback): {e}")
         return False
+

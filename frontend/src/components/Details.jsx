@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import StockChart from "./StockChart";
 import Info from "./Info.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import "./Details.css"
+import TradeModal from "./TradeModal.jsx";
 
 function Details() {
     const { tickers } = useParams();
@@ -20,6 +20,8 @@ function Details() {
     const currentView = searchParams.get("info") || "";
     const timeButtons = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"];
     const currentTicker = tickers.split(",")[0];
+
+    const [showTradeModal, setShowTradeModal] = useState(false);
 
     const VIEWS = [
         {label: "General Info", value: ""},
@@ -37,7 +39,7 @@ function Details() {
             setShowLogin(true);
             return;
         }
-        // open trade window
+        setShowTradeModal(true);
     }
 
 
@@ -110,6 +112,13 @@ function Details() {
 
     return (
         <div className="container mt-4">
+            <TradeModal
+                show={showTradeModal}
+                onHide={() => setShowTradeModal(false)}
+                ticker={currentTicker}
+                currentPrice={chartData?.[currentTicker]?.at(-1)?.Close || 0}
+                user={user}
+            />
             <div className="row align-items-center">
                 <div className="col">
                     <h1 className="mb-0">{tickers.toUpperCase()}</h1>

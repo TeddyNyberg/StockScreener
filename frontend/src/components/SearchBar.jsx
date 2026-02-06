@@ -14,7 +14,7 @@ function SearchBar({onSearch}) {
         <div className="input-group search-bar">
             <input
                 type="text"
-                className="form-control"
+                className="form-control search-bar-control"
                 placeholder="Search ticker"
                 aria-label="Ticker"
                 aria-describedby="button-addon2"

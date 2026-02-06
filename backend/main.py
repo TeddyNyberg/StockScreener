@@ -22,13 +22,13 @@ async def lifespan(_: FastAPI):
     except Exception as e:
         print(f"Database Init Failed: {e}")
     try:
-        #await model_service.initialize()
+        await model_service.initialize()
         print("Model Service Initialized.")
     except Exception as e:
         print(f"Model Service Init Failed: {e}")
     yield
     print("Server Shutting Down...")
-    #await model_service.shutdown()
+    await model_service.shutdown()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -50,9 +50,9 @@ class WatchlistRequest(BaseModel):
 
 class StockTransaction(BaseModel):
     ticker: str
-    user_id: int
     price: float
     quantity: int
+    type: str
 
 
 class LoginCredentials(BaseModel):
@@ -153,13 +153,14 @@ def api_get_portfolio(user_id: int = Depends(get_current_user)):
         })
     return response
 
-@app.post("/buy-stock")
-def api_buy_stock(request: StockTransaction):
-    buy_stock(request.ticker, request.quantity, request.price, request.user_id)
+@app.post("/stock-transaction")
+def api_transact_stock(request: StockTransaction, user_id: int = Depends(get_current_user)):
+    if request.type == "BUY":
+        buy_stock(request.ticker, request.quantity, request.price, user_id)
+    if request.type == "SELL":
+        sell_stock(request.ticker, request.quantity, request.price, user_id)
 
-@app.post("/sell-stock")
-def api_sell_stock(request: StockTransaction):
-    sell_stock(request.ticker, request.quantity, request.price, request.user_id)
+
 
 @app.post("/register")
 def api_register(request: LoginCredentials):
@@ -195,6 +196,30 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
             response[ticker_name] = df_reset.to_dict(orient="records")
 
     return response
+
+@app.get("/trade/info")
+def api_trade_ticker(ticker: str = Query(...), user_id: int = Depends(get_current_user)):
+    stock_info_dict = get_info([ticker])
+    ticker_data = stock_info_dict.get(ticker, {})
+
+    user_stats = get_ticker_stats_owned(user_id, ticker)
+
+    print("trying to get trad einfo for ")
+    print(ticker)
+
+    response = {
+        "bid": ticker_data.get("bid"),
+        "ask": ticker_data.get("ask"),
+        "last_price": ticker_data.get("regularMarketPrice"),
+        **user_stats
+    }
+
+
+    print(response)
+
+    return response
+
+
 @app.get("/info")
 def api_get_info(tickers: str = Query(..., description="Comma separated tickers"), info: str = ""):
     ticker_list = tickers.split(",")

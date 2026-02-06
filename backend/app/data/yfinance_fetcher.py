@@ -85,7 +85,7 @@ class LiveMarketTable:
         ticker = message.get('id')
         price = message.get('price')
         self.last_day.at[ticker] = price
-        print(f"Updated {ticker}: {price}")
+        #print(f"Updated {ticker}: {price}")
 
     async def close_socket(self):
         print("Stopping socket...")

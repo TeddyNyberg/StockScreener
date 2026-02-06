@@ -20,11 +20,12 @@
     background-color: #411f63;
 }
 
-.form-control,
-.form-control:focus,
-.form-control:focus-visible,
-.form-control:focus::placeholder,
-.form-control::placeholder {
+
+.search-bar-control,
+.search-bar-control:focus,
+.search-bar-control:focus-visible,
+.search-bar-control:focus::placeholder,
+.search-bar-control::placeholder {
     background-color: #614a78;
     color: #ffffff;
     border: none;
