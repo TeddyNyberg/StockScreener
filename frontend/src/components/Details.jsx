@@ -39,7 +39,7 @@ function Details() {
                 show={showTradeModal}
                 onHide={() => setShowTradeModal(false)}
                 ticker={currentTicker}
-                currentPrice={chartData?.[currentTicker]?.at(-1)?.Close || 0}
+                currentPrice={Number(chartData?.[currentTicker]?.at(-1)?.Close || 0).toFixed(2)}
                 user={user}
             />
             <div className="row align-items-center">

@@ -8,7 +8,6 @@ import Home from "./components/Home.jsx";
 import Model from "./components/Model.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import {AuthProvider} from "./context/AuthContext.jsx";
-import TestLogin from "./components/TestLogin.jsx";
 
 function MainContent() {
 

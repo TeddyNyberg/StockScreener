@@ -213,10 +213,7 @@ def api_trade_ticker(ticker: str = Query(...), user_id: int = Depends(get_curren
         "last_price": ticker_data.get("regularMarketPrice"),
         **user_stats
     }
-
-
     print(response)
-
     return response
 
 

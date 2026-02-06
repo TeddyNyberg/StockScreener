@@ -1,4 +1,4 @@
-import {getColor, formatCurrency, formatPercent} from '../utils/formatting';
+import {getColor} from '../utils/formatting';
 
 function PortfolioItem({item}) {
     return (
