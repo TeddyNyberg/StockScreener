@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
+import {apiRequest} from "../utils/api.js";
 
-export function useInfo(tickers, info = "" ){
+export function useInfo({tickers, info = "" }){
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -12,11 +13,7 @@ export function useInfo(tickers, info = "" ){
         setError(null);
         setData(null);
 
-        fetch(`http://localhost:8000/info?tickers=${tickers}&info=${info}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Network response was not ok");
-                return res.json();
-            })
+        apiRequest(`/info?tickers=${tickers}&info=${info}`)
             .then(fetchedData => {
                 setData(fetchedData);
                 setLoading(false);

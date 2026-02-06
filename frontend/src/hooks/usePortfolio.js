@@ -1,35 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {apiRequest} from "../utils/api.js";
+import {useAuth} from "../context/AuthContext.jsx";
 
 export function usePortfolio() {
     const [portfolio, setPortfolio] = useState([]);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     useEffect(() => {
-        const token = sessionStorage.getItem('token');
 
-        if (!token) {
+        if (!user) {
             navigate("/"); // Redirect to login/home if no token
             return;
         }
 
-        fetch("http://localhost:8000/portfolio", {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        })
-        .then(res => {
-            if (res.status === 401) {
-                throw new Error("Unauthorized");
-            }
-            if (!res.ok) {
-                throw new Error("Failed to fetch data");
-            }
-            return res.json();
-        })
+        apiRequest("/portfolio")
         .then(apiData => {
             setPortfolio(apiData);
         })

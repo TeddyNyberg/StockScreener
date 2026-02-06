@@ -5,7 +5,7 @@ function TradeModal({ show, onHide, ticker, currentPrice }) {
     const {
         tradeData, orderSize, setOrderSize,
         orderType, setOrderType, handleTrade
-    } = useTrading(show, ticker, currentPrice);
+    } = useTrading({show:show, ticker:ticker, currentPrice:currentPrice});
 
     if (!show) return null;
 

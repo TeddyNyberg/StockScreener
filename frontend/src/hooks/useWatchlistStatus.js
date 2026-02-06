@@ -1,57 +1,44 @@
 import {useEffect, useState} from "react";
 import {useAuth} from "../context/AuthContext.jsx";
+import {apiRequest} from "../utils/api.js";
 
-export function useWatchlistStatus(ticker){
-    const { user, setShowLogin } = useAuth();
+export function useWatchlistStatus({ticker}) {
+    const {user, setShowLogin} = useAuth();
     const [inWatchlist, setInWatchlist] = useState(false);
 
     useEffect(() => {
-        const token = sessionStorage.getItem('token');
+        if (!user || !ticker) {
+            setInWatchlist(false);
+            return;
+        }
 
-        if (user && token) {
-            fetch(`http://localhost:8000/watchlist/check/${ticker}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            })
-            .then(res => res.json())
+        apiRequest(`/watchlist/check/${ticker}`)
             .then(data => {
                 setInWatchlist(data.in_watchlist);
             })
-            .catch(err => console.error("Error checking watchlist:", err));
-        } else {
-            setInWatchlist(false);
-        }
+            .catch(err => {
+                console.error("Error checking watchlist:", err);
+                setInWatchlist(false);
+            });
     }, [user, ticker]);
 
     function toggleWatchlist() {
-        const token = sessionStorage.getItem('token');
-        if (!user || !token) {
+        if (!user) {
             setShowLogin(true);
             return;
         }
 
         const endpoint = inWatchlist ? "/watchlist/remove" : "/watchlist/add";
-
         setInWatchlist(!inWatchlist);
 
-        fetch(`http://localhost:8000${endpoint}`, {
+        apiRequest(`${endpoint}`, {
             method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ ticker: ticker })
+            body: JSON.stringify({ticker: ticker})
         })
-        .then(res => {
-            if (!res.ok) {
+            .catch(err => {
                 setInWatchlist(!inWatchlist);
-                console.error("Failed to update watchlist");
-            }
-        })
-        .catch(err => {
-            setInWatchlist(!inWatchlist);
-            console.error(err);
-        });
+                console.error(err);
+            });
     }
-
-    return { inWatchlist, toggleWatchlist };
+    return {inWatchlist, toggleWatchlist};
 }

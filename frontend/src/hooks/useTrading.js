@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
+import {apiRequest} from "../utils/api.js";
 
-export function useTrading(show, ticker, currentPrice){
+export function useTrading({show, ticker, currentPrice}){
 
     const [tradeData, setTradeData] = useState({
         bid: 0,
@@ -13,11 +14,7 @@ export function useTrading(show, ticker, currentPrice){
 
     useEffect(() => {
         if (show && ticker) {
-            const token = sessionStorage.getItem("token");
-            fetch(`http://localhost:8000/trade/info?ticker=${ticker}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            })
-                .then(res => res.json())
+            apiRequest(`/trade/info?ticker=${ticker}`)
                 .then(data => {
                     const shares = data.shares_owned || 0;
                     const totalCost = data.cost_basis || 0;
@@ -35,30 +32,23 @@ export function useTrading(show, ticker, currentPrice){
 
     async function handleTrade(onHide) {
         console.log(`Executing ${orderType} for ${orderSize} shares of ${ticker}`);
-        const token = sessionStorage.getItem('token');
 
-        fetch(`http://localhost:8000/stock-transaction`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ ticker: ticker, quantity: orderSize, price: currentPrice, type: orderType })
-        })
-        .then(async res => {
-            if (res.ok) {
-                console.log(`${orderType} successful!`);
-                onHide();
-            } else {
-                const errorData = await res.json();
-                console.error("Transaction failed:", errorData.detail || "Unknown error");
-                alert(`Trade failed: ${errorData.detail || "Server error"}`);
-            }
-        })
-        .catch(err => {
-
-            console.error(err);
-        });
+        try {
+            await apiRequest("/stock-transaction", {
+                method: "POST",
+                body: JSON.stringify({
+                    ticker: ticker,
+                    quantity: orderSize,
+                    price: currentPrice,
+                    type: orderType
+                })
+            });
+            console.log(`${orderType} successful!`);
+            onHide();
+        } catch (err) {
+            console.error("Transaction failed:", err);
+            alert(`Trade failed: ${err.message}`);
+        }
     }
 
     return {tradeData, orderSize, setOrderSize, orderType, setOrderType, handleTrade}

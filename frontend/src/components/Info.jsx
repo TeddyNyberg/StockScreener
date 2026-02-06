@@ -1,7 +1,7 @@
 import {useInfo} from "../hooks/useInfo.js";
 
 function Info({ tickers, info = "" }) {
-    const {data, loading, error} = useInfo(tickers, info)
+    const {data, loading, error} = useInfo({tickers:tickers, info:info})
 
     if (loading) return <div className="text-secondary p-3">Loading details...</div>;
     if (error) return <div className="text-danger p-3">Error: {error}</div>;

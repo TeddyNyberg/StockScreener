@@ -17,8 +17,8 @@ function Details() {
     const [showTradeModal, setShowTradeModal] = useState(false);
     const currentView = searchParams.get("info") || "";
     const currentTicker = tickers.split(",")[0];
-    const { inWatchlist, toggleWatchlist } = useWatchlistStatus(currentTicker);
-    const { chartData, loading, error } = useStockChart(tickers, timeRange);
+    const { inWatchlist, toggleWatchlist } = useWatchlistStatus({ticker:currentTicker});
+    const { chartData, loading, error } = useStockChart({tickers: tickers, timeRange:timeRange});
     const { user, setShowLogin } = useAuth();
 
     const handleViewChange = (newView) => {

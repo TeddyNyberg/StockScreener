@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
+import {apiRequest} from "../utils/api.js";
 
-export function useStockChart(tickers, timeRange){
+export function useStockChart({tickers, timeRange}){
     const [chartData, setChartData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -8,11 +9,7 @@ export function useStockChart(tickers, timeRange){
     useEffect(() => {
         setLoading(true);
         setError(null)
-        fetch(`http://localhost:8000/chart?tickers=${tickers}&time=${timeRange}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Could not find stock");
-                return res.json();
-            })
+        apiRequest(`/chart?tickers=${tickers}&time=${timeRange}`)
             .then(data => {
                 setChartData(data);
                 setLoading(false);
