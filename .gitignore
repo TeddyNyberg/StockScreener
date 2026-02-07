@@ -23,8 +23,8 @@ backtest_results_jan.xlsx
 build/
 dist/
 
-nyberg_static.pth
-tuned_model.pth
+backend/data/nyberg_static.pth
+backend/data/tuned_model.pth
 
 backend/data/sp500_tickers.csv
 backend/data/sp500_history_cache.parquet

@@ -1,12 +1,10 @@
 from backend.app.config import *
 import requests
 import csv
-import pandas as pd
-import io
 import os
+from scripts.utils import extract_tickers_from_response
 
 def fetch_and_cache_tickers():
-
 
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.dirname(BASE_DIR)
@@ -27,15 +25,6 @@ def fetch_and_cache_tickers():
         print(f"Error fetching or writing tickers: {e}")
         return False
 
-def extract_tickers_from_response(r):
-    try:
-        tables = pd.read_html(io.StringIO(r.text))
-        sp500_table = tables[0]
-        tickers = sp500_table['Symbol'].tolist()
-        return tickers
-    except Exception as e:
-        print(f"Error scraping S&P 500 tickers: {e}")
-        return []
 
 if __name__ == "__main__":
     fetch_and_cache_tickers()

@@ -1,13 +1,14 @@
 # contains raw yfinance fetching
 #get_stock_data, get_close ...
-
+import pandas
 # job interact w yfinance api
 
 import yfinance as yf
-from datetime import timedelta
+from datetime import timedelta, datetime
 import asyncio
 from backend.app.data.ticker_source import get_sp500_tickers
 import numpy as np
+
 
 
 # this may lead to errors, understand some may want ticker col some dont
@@ -63,17 +64,41 @@ def get_balancesheet(ticker_list: list[str]):
 
 
 class LiveMarketTable:
-    def __init__(self):
+
+    _instance = None
+
+    CLEANUP_INTERVAL = 60
+    TICKER_TTL = 600 #time to live
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(LiveMarketTable, cls).__new__(cls)
+            cls._instance.init_structure()
+        return cls._instance
+
+    def init_structure(self):
         self.ws = None
-        self.last_day = None
+        self.last_day = {}
         self.listen_task = None
+        self.sp_tickers = None
+        self.cleanup_task = None
+        self.ephemeral_tickers = {}
+        self.ephemeral_prices = {}
+
+    async def initialize(self, tickers = get_sp500_tickers()):
+
         try:
-            sp_tickers = get_sp500_tickers()
-            data = yf.download(sp_tickers, period="5d", auto_adjust=True)["Close"].iloc[-1]
-            self.last_day = data
+            self.sp_tickers = tickers.tolist()
+
+
+            print(tickers, " -IN TABLE INIT-  ")
+            data = yf.download(self.sp_tickers, period="5d", auto_adjust=True)["Close"].iloc[-1]
+            print(data, " -IN TABLE INIT-  ")
+            self.last_day = data.to_dict()
         except Exception as e:
             print(f"Except: {e}")
-
+        await self.start_socket(self.sp_tickers)
+        self.cleanup_task = asyncio.create_task(self.cleanup_loop())
 
     async def start_socket(self, tickers):
         print("WE'LL DO IT LIVE")
@@ -84,7 +109,10 @@ class LiveMarketTable:
     async def message_handler(self, message):
         ticker = message.get('id')
         price = message.get('price')
-        self.last_day.at[ticker] = price
+        if ticker in self.sp_tickers:
+            self.last_day[ticker] = price
+        else:
+            self.ephemeral_prices[ticker] = price
         #print(f"Updated {ticker}: {price}")
 
     async def close_socket(self):
@@ -96,5 +124,43 @@ class LiveMarketTable:
             except asyncio.CancelledError:
                 pass
 
+    async def add_ticker(self, ticker):
+        await self.ws.subscribe([ticker])
+        data = yf.download(ticker, period="5d", auto_adjust=True)["Close"].iloc[-1]
+        self.ephemeral_prices[ticker] = data
+
+    async def cur_price(self, ticker):
+        if ticker in self.sp_tickers:
+            return self.last_day[ticker]
+        if ticker in self.ephemeral_tickers:
+            self.ephemeral_tickers[ticker] = datetime.now()
+            return self.ephemeral_tickers[ticker]
+        self.ephemeral_tickers[ticker] = datetime.now()
+        await self.add_ticker(ticker)
+        return self.ephemeral_prices[ticker]
+
+    async def cleanup_loop(self):
+        while True:
+
+            await asyncio.sleep(self.CLEANUP_INTERVAL)
+            print("====")
+            print(self.last_day.keys())
+            print("----")
+            print(self.ephemeral_tickers.keys())
+            print("====")
+            now = datetime.now()
+            limit = now - timedelta(seconds=self.TICKER_TTL)
+            tickers_to_remove = []
+            for ticker, last_access in list(self.ephemeral_tickers.items()):
+                if last_access < limit:
+                    tickers_to_remove.append(ticker)
+            if tickers_to_remove:
+                print(f"Unsubscribing from stale tickers: {tickers_to_remove}")
+
+                await self.ws.unsubscribe(tickers_to_remove)
+                for t in tickers_to_remove:
+                    del self.ephemeral_tickers[t]
+                    del self.ephemeral_prices[t]
+
     def get_snapshot(self):
-        return self.last_day.copy()
+        return pandas.Series(self.last_day)

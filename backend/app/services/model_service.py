@@ -26,8 +26,9 @@ class ModelService:
         data = get_cached_49days()
         self.data = data.to_numpy(dtype=np.float32)
         self.tickers = np.array(data.columns)  # need to get tickers from data, so order is maintained
+        print(self.tickers, " IN MOD SERV INIT  ")
 
-        await self.market_data.start_socket(self.tickers)
+        await self.market_data.initialize(tickers=self.tickers)
 
     async def predict_next_day(self, ticker):
         start, end = get_date_range("3M")
@@ -51,7 +52,7 @@ class ModelService:
 
     async def shutdown(self):
         if self.market_data is not None:
-            self.market_data.close_socket()
+            await self.market_data.close_socket()
 
 
 

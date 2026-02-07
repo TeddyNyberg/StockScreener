@@ -1,8 +1,8 @@
 import sys
 import yfinance as yf
-from backend.app import get_sp500_tickers
-from backend.app.ml_logic import get_all_volatilities_np
-from backend.app import get_date_range
+from backend.app.data.ticker_source import get_sp500_tickers
+from backend.app.ml_logic.strategy import get_all_volatilities_np
+from backend.app.utils import get_date_range
 import numpy as np
 from backend.app.config import *
 import requests
@@ -17,16 +17,18 @@ PARQ_PATH = os.path.join(PROJECT_ROOT, SP_DATA_CACHE)
 VOL_PATH = os.path.join(PROJECT_ROOT, VOL_DATA_CACHE)
 CSV_PATH = os.path.join(PROJECT_ROOT, SP_TICKER_CACHE)
 
+
+#TODO: if running on server update ram cache too
 def update_cache():
     tickers = get_sp500_tickers()
 
     print("Downloading historical data...")
-    start, end = get_date_range(lookback_period, None)
+    start, end = get_date_range("1Y", None)
     data = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
-    close_data = data["Close"]
+    close_data = data["Close"].iloc[-125:]
     volatility_array = get_all_volatilities_np(close_data.to_numpy())
     np.save(VOL_PATH, volatility_array)
-    data["Close"].iloc[-(SEQUENCE_SIZE - 1):].to_parquet(PARQ_PATH)
+    data.to_parquet(PARQ_PATH)    #removed data["Close"].iloc[-(SEQUENCE_SIZE - 1):]
     print("Cache updated.")
 
 def fetch_and_cache_tickers():

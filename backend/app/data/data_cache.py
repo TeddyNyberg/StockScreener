@@ -12,7 +12,7 @@ _cache = {}  # global cache: {ticker: {("start", "end"): DataFrame}}
 def rm_nm(data_list):
     for df in data_list:
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df .columns.droplevel(1)
+            df.columns = df.columns.droplevel(1)
     return data_list
 
 
@@ -40,6 +40,7 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
             continue
 
         if ticker not in _cache:
+            print("MISSSSSSSS")
             df = get_historical_data(ticker, start_time, end_time)
 
             if normalize:
@@ -52,6 +53,7 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
                 }
 
         else:
+            print("HITTTT")
             cache_start, cache_end = _cache[ticker]["range"]
             cached_df = _cache[ticker]["data"]
 
@@ -81,4 +83,18 @@ def get_volatility_cache():
     return np.load(VOL_DATA_CACHE)
 
 def get_cached_49days():
-    return pd.read_parquet(SP_DATA_CACHE)
+    df = pd.read_parquet(SP_DATA_CACHE)
+    return df["Close"].iloc[-(SEQUENCE_SIZE - 1):]
+
+def ticker_cache_update():
+
+    data = pd.read_parquet(SP_DATA_CACHE)
+
+    for ticker in data.columns.get_level_values(1).unique():
+
+        df = data.xs(ticker, axis=1, level=1)
+
+        _cache[ticker] = {
+            "range": (df.index.min(), df.index.max()),
+            "data": df
+        }

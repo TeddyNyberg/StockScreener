@@ -1,8 +1,8 @@
 from fastapi import Query, FastAPI
 from contextlib import asynccontextmanager
 from backend.app.db.db_handler import *
-from backend.app.data.data_cache import get_yfdata_cache
-from backend.app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet
+from backend.app.data.data_cache import get_yfdata_cache, ticker_cache_update
+from backend.app.data.yfinance_fetcher import get_info, get_financial_metrics, get_balancesheet, LiveMarketTable
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.ml_logic.strategy import calculate_kelly_allocations
 from backend.app.schemas import WatchlistRequest, StockTransaction, LoginCredentials, Token
@@ -14,9 +14,15 @@ from fastapi.security import OAuth2PasswordRequestForm
 # to run, uvicorn backend.app.main:app --reload
 
 model_service = ModelService()
+market_data = LiveMarketTable()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    print("Checking cache online")
+    ticker_cache_update()
+    print("market table")
+
     print("Connecting to Database...")
     try:
         with DB() as conn:
@@ -168,7 +174,7 @@ def api_get_balance(user_id: int):
     return get_balance(user_id)
 
 @app.get("/chart")
-def api_get_tickers(tickers: str = Query(..., description="Comma separated tickers"), time: str = "1Y"):
+async def api_get_tickers(tickers: str = Query(..., description="Comma separated tickers"), time: str = "1Y"):
     ticker_list = tickers.split(",")
     data_list = get_yfdata_cache(ticker_list, time)
 
@@ -183,6 +189,9 @@ def api_get_tickers(tickers: str = Query(..., description="Comma separated ticke
             if "Date" in df_reset.columns:
                 df_reset["Date"] = df_reset["Date"].astype(str)
             response[ticker_name] = df_reset.to_dict(orient="records")
+
+    price = await market_data.cur_price(ticker_list[0])
+    print(price)
 
     return response
 
