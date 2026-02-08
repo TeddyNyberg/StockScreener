@@ -193,10 +193,10 @@ async def api_get_tickers(tickers: str = Query(..., description="Comma separated
             if "Date" in df_reset.columns:
                 df_reset["Date"] = df_reset["Date"].astype(str)
             records = df_reset.to_dict(orient="records")
-            now = datetime.now.strftime("%Y-%m-%d")
+            now = datetime.now()
             if now.weekday() < 5:
                 records.append({
-                    "Date": now,
+                    "Date": now.strftime("%Y-%m-%d"),
                     "Close": prices[i],
                     "High": prices[i],
                     "Low": prices[i],
