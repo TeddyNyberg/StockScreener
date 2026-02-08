@@ -178,8 +178,12 @@ async def api_get_tickers(tickers: str = Query(..., description="Comma separated
     ticker_list = tickers.split(",")
     data_list = get_yfdata_cache(ticker_list, time)
 
+    prices = await market_data.cur_price(ticker_list)
+    print(prices)
+
     response = {}
     for i, df in enumerate(data_list):
+        # df[curday] = price
         ticker_name = ticker_list[i]
         if df is None or df.empty:
             response[ticker_name] = []
@@ -188,11 +192,22 @@ async def api_get_tickers(tickers: str = Query(..., description="Comma separated
             df_reset = df.reset_index()
             if "Date" in df_reset.columns:
                 df_reset["Date"] = df_reset["Date"].astype(str)
-            response[ticker_name] = df_reset.to_dict(orient="records")
+            records = df_reset.to_dict(orient="records")
+            now = datetime.now.strftime("%Y-%m-%d")
+            if now.weekday() < 5:
+                records.append({
+                    "Date": now,
+                    "Close": prices[i],
+                    "High": prices[i],
+                    "Low": prices[i],
+                    "Open": prices[i],
+                    "Volume": "0",
+                })
 
-    price = await market_data.cur_price(ticker_list[0])
-    print(price)
+            response[ticker_name] = records
 
+    print("----in chart----")
+    print(response)
     return response
 
 @app.get("/trade/info")

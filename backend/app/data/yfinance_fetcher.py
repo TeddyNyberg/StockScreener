@@ -68,7 +68,7 @@ class LiveMarketTable:
     _instance = None
 
     CLEANUP_INTERVAL = 60
-    TICKER_TTL = 600 #time to live
+    TICKER_TTL = 600
 
     def __new__(cls):
         if cls._instance is None:
@@ -89,11 +89,7 @@ class LiveMarketTable:
 
         try:
             self.sp_tickers = tickers.tolist()
-
-
-            print(tickers, " -IN TABLE INIT-  ")
             data = yf.download(self.sp_tickers, period="5d", auto_adjust=True)["Close"].iloc[-1]
-            print(data, " -IN TABLE INIT-  ")
             self.last_day = data.to_dict()
         except Exception as e:
             print(f"Except: {e}")
@@ -129,15 +125,21 @@ class LiveMarketTable:
         data = yf.download(ticker, period="5d", auto_adjust=True)["Close"].iloc[-1]
         self.ephemeral_prices[ticker] = data
 
-    async def cur_price(self, ticker):
-        if ticker in self.sp_tickers:
-            return self.last_day[ticker]
-        if ticker in self.ephemeral_tickers:
-            self.ephemeral_tickers[ticker] = datetime.now()
-            return self.ephemeral_tickers[ticker]
-        self.ephemeral_tickers[ticker] = datetime.now()
-        await self.add_ticker(ticker)
-        return self.ephemeral_prices[ticker]
+    async def cur_price(self, ticker_list:list[str]):
+        response = []
+        for ticker in ticker_list:
+            if ticker in self.sp_tickers:
+                response.append(self.last_day[ticker])
+            elif ticker in self.ephemeral_tickers:
+                self.ephemeral_tickers[ticker] = datetime.now()
+                response.append(self.ephemeral_prices[ticker].item())
+            else:
+                self.ephemeral_tickers[ticker] = datetime.now()
+                await self.add_ticker(ticker)
+                print("EPH PRICE OF ", ticker)
+                print(self.ephemeral_prices[ticker].item())
+                response.append(self.ephemeral_prices[ticker].item())
+        return response
 
     async def cleanup_loop(self):
         while True:
