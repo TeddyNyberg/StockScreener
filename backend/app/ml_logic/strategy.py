@@ -134,6 +134,8 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None, only_larg
     for ticker, normalized_allocation, mu in final_allocations:
         print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
 
+    print("THIS IS BASED ON MOST RECENT CLOSES: ", all_most_recent_closes)
+
     return final_allocations, all_most_recent_closes
 
 

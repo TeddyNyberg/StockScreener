@@ -52,6 +52,10 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
                     "data": df
                 }
 
+                print("NOT IN CACHE ADDING ", ticker, " with data ", df)
+                print("CACHE STATE NOW ", _cache[ticker])
+
+
         else:
             print("HITTTT")
             cache_start, cache_end = _cache[ticker]["range"]
@@ -59,7 +63,8 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
 
             if start_time >= cache_start and end_time <= cache_end:
                 df = cached_df.loc[start_time:end_time]
-
+                print("IN CACHE COLLECTING ", ticker, " with data ", df)
+                print("CACHE STATE NOW ", _cache[ticker])
             else:
                 new_start = min(start_time, cache_start)
                 new_end = max(end_time, cache_end)
@@ -72,6 +77,9 @@ def get_yfdata_cache(tickers: list[str], time: str = None, normalize=True):
                         "range": (actual_start, actual_end),
                         "data": new_df
                     }
+
+                    print("IN CACHE BUT WRONG TIME ADDING ", ticker, " with data ", new_df)
+                    print("CACHE STATE NOW ", _cache[ticker])
 
                 df = new_df.loc[start_time:end_time]
         results.append(df)

@@ -136,6 +136,7 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
 
             print(current_day, " total at close: ", total_value)
 
+
         if model_version == "A":
             writer = pd.ExcelWriter(BACKTEST_REPORT_PATH, engine='openpyxl', mode='a', if_sheet_exists='replace')
 

@@ -179,7 +179,6 @@ async def api_get_tickers(tickers: str = Query(..., description="Comma separated
     data_list = get_yfdata_cache(ticker_list, time)
 
     prices = await market_data.cur_price(ticker_list)
-    print(prices)
 
     response = {}
     for i, df in enumerate(data_list):
@@ -203,11 +202,7 @@ async def api_get_tickers(tickers: str = Query(..., description="Comma separated
                     "Open": prices[i],
                     "Volume": "0",
                 })
-
             response[ticker_name] = records
-
-    print("----in chart----")
-    print(response)
     return response
 
 @app.get("/trade/info")

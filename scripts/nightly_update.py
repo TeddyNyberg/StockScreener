@@ -2,6 +2,7 @@ import sys
 import yfinance as yf
 from backend.app.data.ticker_source import get_sp500_tickers
 from backend.app.ml_logic.strategy import get_all_volatilities_np
+from backend.app.ml_logic.tester import run_backtesting
 from backend.app.utils import get_date_range
 import numpy as np
 from backend.app.config import *
@@ -70,5 +71,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"CRITICAL: History update crashed: {e}")
         sys.exit(1)
+    run_backtesting()
     print("--- Nightly Update Complete ---")
 

@@ -6,6 +6,8 @@ import pandas
 import yfinance as yf
 from datetime import timedelta, datetime
 import asyncio
+
+from backend.app.data.nyberg_fetcher import get_nyberg_data
 from backend.app.data.ticker_source import get_sp500_tickers
 import numpy as np
 
@@ -128,6 +130,9 @@ class LiveMarketTable:
     async def cur_price(self, ticker_list:list[str]):
         response = []
         for ticker in ticker_list:
+            if ticker.startswith("NYBERG"):
+                response.append(get_nyberg_data("5D", ticker).iloc[-1])
+                continue
             if ticker in self.sp_tickers:
                 response.append(self.last_day[ticker])
             elif ticker in self.ephemeral_tickers:
@@ -166,3 +171,6 @@ class LiveMarketTable:
 
     def get_snapshot(self):
         return pandas.Series(self.last_day)
+
+
+
