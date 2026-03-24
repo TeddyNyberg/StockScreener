@@ -6,15 +6,17 @@ export function processChartData(apiResponse, tickers) {
         return [];
     }
 
-    const allDates = new Set();
-
-    Object.values(apiResponse).forEach(function(rows) {
-        rows.forEach(function(row) {
-            allDates.add(row.Date);
-        });
+    const tickerDateSets = tickers.map(ticker => {
+        const dates = apiResponse[ticker]?.map(row => row.Date) || [];
+        return new Set(dates);
     });
 
-    const sortedDates = Array.from(allDates).sort();
+    const firstTickerDates = Array.from(tickerDateSets[0] || []);
+    const commonDates = firstTickerDates.filter(date =>
+        tickerDateSets.every(set => set.has(date))
+    );
+
+    const sortedDates = commonDates.sort((a, b) => new Date(a) - new Date(b));
 
     const shouldNormalize = tickers.length > 1;
     const startPrices = {};
