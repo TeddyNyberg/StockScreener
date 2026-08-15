@@ -36,7 +36,12 @@ def fetch_and_cache_tickers():
     try:
         r = requests.get(S_AND_P_URL)
         new_tickers = extract_tickers_from_response(r)
-        processed_tickers = [t.replace(".", "-") for t in new_tickers]
+        #print("GOT THESE")
+        #print(new_tickers)
+        # if Error fetching or writing tickers: 'float' object has no attribute 'replace'
+        # watch out for them adding ads into the list
+
+        processed_tickers = [t.replace(".", "-") for t in new_tickers if t and str(t).strip().lower() != 'nan']
         # sp_cache = "../" + SP_CACHE_FILE
         with open(CSV_PATH, 'w', newline='') as f:
             writer = csv.writer(f)

@@ -63,7 +63,14 @@ def optimal_picks(model_version, is_quantized, today=None):
     return deltas, valid_tickers, all_close_data_full
 
 
-def calculate_kelly_allocations(model_version, is_quantized, end=None, only_largest=False):
+def calculate_kelly_allocations(model_version, is_quantized, end=None, only_largest=False, only_middle=False, only_top=False):
+
+    """print("calculating kelly allocations")
+    print("quantized", is_quantized)
+    print("end", end)
+    print("only_largest", only_largest)
+    print("only_middle", only_middle)
+    print("only_top", only_top)"""
 
     mus_arr, valid_tickers, all_vol_data = (
         optimal_picks(model_version=model_version, is_quantized=is_quantized, today=end))
@@ -87,47 +94,51 @@ def calculate_kelly_allocations(model_version, is_quantized, end=None, only_larg
 
     positive_mask = allocation > 0.0
 
-    final_allocation_values = allocation[positive_mask]
-    final_tickers_really = final_tickers[positive_mask]
-    final_mus_to_trade = final_mus[positive_mask]
+    raw_zipped = list(zip(
+        final_tickers[positive_mask],
+        allocation[positive_mask],
+        final_mus[positive_mask]
+    ))
 
+    # 2. SORT by allocation (descending)
+    sorted_raw = sorted(raw_zipped, key=lambda x: x[1], reverse=True)
 
-    if not only_largest:
-        total_allocation = final_allocation_values.sum()
-        normalization_factor = 1.0 / total_allocation if total_allocation > 1.0 else 1.0
-        normalized_allocations = final_allocation_values * normalization_factor
+    # 3. SLICE to get your desired basket
+    if only_middle:
+        # Grabs Ranks 8, 9, 10, 11, 12, 13, 14, 15
+        target_basket = sorted_raw[7:15]
+    elif only_top:
+        target_basket = sorted_raw[:3]
     else:
-        normalized_allocations = final_allocation_values
-        normalization_factor = 1.0
-        total_allocation = 1
+        # Grabs everything
+        target_basket = sorted_raw
 
-    final_allocations = [
-        (ticker, normalized_allocation, mu)
-        for ticker, normalized_allocation, mu in
-        zip(final_tickers_really, normalized_allocations, final_mus_to_trade)
-    ]
-
-    sorted_allocations = sorted(final_allocations, key=lambda x: x[1], reverse=True)
+    # total alloc in target basket
+    total_raw_allocation = sum(alloc for ticker, alloc, mu in target_basket)
 
     if only_largest:
-        final_allocations = []
-        summation = 0
-
-        for ticker, raw_allocation, mu in sorted_allocations:
-            remaining_cap = 1 - summation
-            if remaining_cap <= 1e-6:
-                break
-
-            allocation_to_use = min(raw_allocation, remaining_cap)
-
-            final_allocations.append((ticker, allocation_to_use, mu))
-            summation += allocation_to_use
+        # Greedy method: Never scale down. Take the raw Kelly fractions until 100% is full.
+        normalization_factor = 1.0
+    elif only_middle or only_top:
+        # Force the middle basket to scale up/down to exactly 100%
+        normalization_factor = 1.0 / total_raw_allocation if total_raw_allocation > 0 else 1.0
     else:
-        final_allocations = sorted_allocations
+        # Default proportional: Scale everyone down evenly if over 100%, otherwise leave cash
+        normalization_factor = 1.0 / total_raw_allocation if total_raw_allocation > 1.0 else 1.0
 
+    final_allocations = []
+    summation=0
+    for ticker, raw_alloc, mu in target_basket:
+        remaining_cap = 1-summation
+        if remaining_cap <= 1e-6:
+            break
+        normalized_alloc = raw_alloc * normalization_factor
+        allocation_to_use = min(normalized_alloc, remaining_cap)
+        final_allocations.append((ticker, allocation_to_use, mu))
+        summation += allocation_to_use
 
     print("\n--- Continuous Kelly-Based Position Sizing ---")
-    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+    print(f"Total Unnormalized Allocation: {total_raw_allocation * 100:.2f}%")
     print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
 
 
@@ -221,6 +232,62 @@ def fastest_kelly(data, model, vol_data, tickers):
     print(data)
 
     return sorted_allocations
+
+
+# not generalizible, only model E
+def fastest_kellE(data, model, vol_data, tickers):
+
+    mus_arr, optimal_val_mask = fastest_optimal(data, model)
+
+    if mus_arr is None or len(mus_arr) == 0:
+        print("No predictions available to calculate Kelly bets.")
+        return None
+
+    vol_data = vol_data[optimal_val_mask]
+
+    valid_mask = (vol_data > 0) & (~np.isnan(vol_data)) & (~np.isnan(mus_arr))
+
+    valid_tickers = tickers[optimal_val_mask]
+    final_tickers = valid_tickers[valid_mask]
+    final_mus = mus_arr[valid_mask]
+    final_sigma_squareds = vol_data[valid_mask]
+
+    kelly_fraction = (final_mus - RISK_FREE_RATE) / final_sigma_squareds
+    allocation = kelly_fraction * HALF_KELLY_MULTIPLIER
+    allocation = np.clip(allocation, 0.0, 1.0)
+
+    positive_mask = allocation > 0.0
+
+    raw_zipped = list(zip(
+        final_tickers[positive_mask],
+        allocation[positive_mask],
+        final_mus[positive_mask]
+    ))
+
+    sorted_raw = sorted(raw_zipped, key=lambda x: x[1], reverse=True)
+
+    target_basket = sorted_raw[5:15] #THIS IS MODEL E, COULD CHANGE TO DROP TOP 5 OR 7 OR SOMEHTING??? THEN FULL KELLY?
+    total_allocation = sum(alloc for ticker, alloc, mu in target_basket)
+
+    normalization_factor = 1.0 / total_allocation
+
+    final_allocations = []
+    for ticker, raw_alloc, mu in target_basket:
+        normalized_alloc = raw_alloc * normalization_factor
+        final_allocations.append((ticker, normalized_alloc, mu))
+
+    print("\n--- Continuous Kelly-Based Position Sizing ---")
+    print(f"Total Unnormalized Allocation: {total_allocation * 100:.2f}%")
+    print(f"Normalization Factor (if > 100%): {normalization_factor:.4f}")
+
+    for ticker, normalized_allocation, mu in final_allocations:
+        print(f"Stock: {ticker}, μ: {mu:+.4f}, Allocation: {normalized_allocation * 100:.2f}%")
+
+    print(tickers)
+    print(data)
+
+    return final_allocations
+
 
 def fastest_optimal(all_close_data, model):
 

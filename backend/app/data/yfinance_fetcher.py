@@ -1,5 +1,7 @@
 # contains raw yfinance fetching
 #get_stock_data, get_close ...
+import math
+
 import pandas
 # job interact w yfinance api
 
@@ -170,6 +172,23 @@ class LiveMarketTable:
                     del self.ephemeral_prices[t]
 
     def get_snapshot(self):
+        nan_entries = {ticker: price for ticker, price in self.last_day.items()
+                       if price is None or (isinstance(price, float) and math.isnan(price))}
+
+        if nan_entries:
+            print("--- TICKERS WITH NULL/NaN PRICES ---")
+            print(f"Total problematic tickers: {len(nan_entries)}")
+            for ticker, price in nan_entries.items():
+                print(f"{ticker}: {price}")
+                self.last_day[ticker] = yf.download(ticker, period="5d", auto_adjust=True)["Close"].iloc[-1]
+
+            nan_entries = {ticker: price for ticker, price in self.last_day.items()
+                           if price is None or (isinstance(price, float) and math.isnan(price))}
+            print(f"Total problematic tickers fixed???: {len(nan_entries)}")
+
+        else:
+            print("No NaN values found in market data.")
+
         return pandas.Series(self.last_day)
 
 

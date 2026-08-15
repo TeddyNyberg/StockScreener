@@ -12,11 +12,12 @@ from backend.app.ml_logic.helpers import is_tuning_day
 #use 1/28/2025 for no leak data, model trained on 10/2; all data until 9-7; train from 2022 > 1/27/2025; test 1/28/2025
 def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
                     initial_capital = initial_capital_fully, model_version="A", tuning_period = None,
-                    only_largest=False):
+                    only_largest=False, only_middle=False, only_top=False):
 
     print(f"Starting backtest from {start_date} with ${initial_capital:,.2f}...")
     daily_position_reports = {}
     daily_pnl_reports = {}
+    daily_position_reports_combo = {}
     is_quantized = MODEL_MAP[model_version]["quantized"]
     try:
         today = pd.Timestamp(datetime.now().date()) - pd.Timedelta(days=1)
@@ -52,7 +53,9 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
                     model_version=model_version,
                     is_quantized=is_quantized,
                     end=current_day,
-                    only_largest=only_largest
+                    only_largest=only_largest,
+                    only_middle=only_middle,
+                    only_top=only_top
                 )
                 if not kelly_allocations:
                     print("no kelly allocations")
@@ -69,6 +72,7 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
                 daily_position_reports[current_day.strftime("%m-%d-%Y")] = allocations_df
 
             daily_pnl_list = []
+
 
             total_value = leftover_cash
 
@@ -124,6 +128,30 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
                     new_holdings = {}
                     daily_pnl_reports[current_day.strftime('%m-%d-%Y')] = pd.DataFrame(daily_pnl_list)
                     portfolio_df.loc[current_day, 'Total_Value_At_Close'] = total_value
+
+                    date_str = current_day.strftime("%m-%d-%Y")
+
+                    allocations_df = pd.DataFrame(daily_allocations_list) if daily_allocations_list else pd.DataFrame()
+                    pnl_df = pd.DataFrame(daily_pnl_list) if daily_pnl_list else pd.DataFrame()
+
+                    if not allocations_df.empty or not pnl_df.empty:
+                        #merged_df = pd.merge(
+                        #    allocations_df,
+                        #    pnl_df,
+                        #    on="Ticker",
+                        #    how="outer"
+                        #)
+                        combined_df = pd.concat(
+                            [
+                                allocations_df,
+                                pnl_df.drop(columns=["Entry_Price", "Shares"])
+                            ],
+                            axis=1
+                        )
+                        daily_position_reports_combo[date_str] = combined_df
+
+
+
                 else:
                     total_value = total_capital_available
                     portfolio_df.drop(portfolio_df.index[-1], inplace=True)
@@ -148,6 +176,10 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
                 sheet_name = f"{date_str}_PnL"
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
+            for date_str, df in daily_position_reports_combo.items():
+                sheet_name = f"{date_str}_everything"
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
             writer.close()
 
         print("\n" + "=" * 50)
@@ -166,7 +198,7 @@ def handle_backtest(start_date = pd.to_datetime("1/28/2025", format='%m/%d/%Y'),
 
 #TODO: combine all th csvs into one and just have dif titles, also tak eout cash at open, uselss
 
-def continue_backtest(version, tuning_period=None, only_largest=False):
+def continue_backtest(version, tuning_period=None, only_largest=False, only_middle=False, only_top=False):
 
     filepath = MODEL_MAP[version]["csv_filepath"]
     data = pd.read_csv(filepath, index_col=0, parse_dates=True)
@@ -193,7 +225,9 @@ def continue_backtest(version, tuning_period=None, only_largest=False):
         initial_capital=last_day_total_value,
         model_version=version,
         tuning_period=tuning_period,
-        only_largest=only_largest
+        only_largest=only_largest,
+        only_middle=only_middle,
+        only_top=only_top
     )
 
     if new_results_df is None:
@@ -231,7 +265,7 @@ def _purchase_kelly_positions(total_capital_available, kelly_allocations, all_mo
     daily_allocations_list = []
     cash_for_trading = total_capital_available
 
-    for ticker, kelly_fraction, _ in kelly_allocations:
+    for ticker, kelly_fraction, mu in kelly_allocations:
         target_value = total_capital_available * kelly_fraction
         # buy at prev days close
         close_price = all_most_recent_closes[ticker]
@@ -251,7 +285,8 @@ def _purchase_kelly_positions(total_capital_available, kelly_allocations, all_mo
                     "Allocation_Percent": kelly_fraction,
                     "Entry_Price": close_price,
                     "Target_Value": target_value,
-                    "Actual_Shares": shares_to_buy
+                    "Actual_Shares": shares_to_buy,
+                    "Mu": mu
                 })
 
     return new_holdings, daily_allocations_list, cash_for_trading
@@ -262,3 +297,5 @@ def run_backtesting():
     continue_backtest(version="B", tuning_period="weekly")
     continue_backtest(version="C")
     continue_backtest(version="D", only_largest=True)
+    continue_backtest(version="E", only_middle=True)
+    continue_backtest(version="F", only_top=True)

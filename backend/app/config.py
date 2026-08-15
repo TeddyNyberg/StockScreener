@@ -54,5 +54,22 @@ MODEL_MAP = {
         "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
         "model_filepath": DATA_DIR / "nyberg_static.pth",
         "quantized": False
+    },
+    "E":{
+        "name": "NYBERG STATIC MODEL MIDDLE", #only 6-15
+        "csv_filepath": DATA_DIR / "nyberg_results_static_middle.csv",
+        "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
+        "model_filepath": DATA_DIR / "nyberg_static.pth",
+        "quantized": False
+    },
+    "F":{
+        "name": "NYBERG STATIC MODEL TOP 3", #only 1-3
+        "csv_filepath": DATA_DIR / "nyberg_results_static_top_3.csv",
+        "s3_prefix": "pytorch-training-2025-10-03-15-34-22-625/output/model.tar.gz",
+        "model_filepath": DATA_DIR / "nyberg_static.pth",
+        "quantized": False
     }
+
 }
+
+PL_PATH = DATA_DIR / "backtest_portfolio_PL.xlsx"

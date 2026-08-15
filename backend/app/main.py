@@ -293,6 +293,22 @@ async def api_get_current_picks():
         print(f"Error fetching current picks: {e}")
         return []
 
+@app.get("/sp-snapshot")
+async def api_get_snapshot():
+    try:
+        result = model_service.market_data.get_snapshot()
+        if result is None:
+            return []
+
+        response = [
+            {"ticker": ticker, "price": float(price)}
+            for ticker, price in result.items()
+        ]
+        return response
+    except Exception as e:
+        print(f"Error fetching current prices: {e}")
+        return []
+
 
 @app.post("/token")
 async def login_for_access_token(
@@ -312,3 +328,20 @@ async def login_for_access_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
+
+@app.get("/health")
+def health_check():
+    try:
+        with DB() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+    except Exception as e:
+        print(f"Health Check Failed (DB): {e}")
+        raise HTTPException(status_code=503, detail="Database unreachable")
+
+    if not hasattr(model_service, 'is_initialized') or not model_service.is_initialized:
+        print("Health Check Failed (Model): Not initialized yet")
+        raise HTTPException(status_code=503, detail="Model service not ready")
+
+    return {"status": "healthy"}
